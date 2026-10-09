@@ -55,7 +55,7 @@ To keep implementation moving, use these reversible defaults until the owner cha
 - Add account identity, timezone, and absolute ISO timestamps; derive solver horizons from current time.
 - Move graph/policy memory to a per-user Git repository with import/export and durable commits.
 
-**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, and a read-only signed-in Google Calendar adapter/preview are implemented. Database-backed graph/workflow execution and the live OAuth round trip still need configured Google/Postgres secrets.
+**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, per-user empty `DomainState` bootstrap, and a read-only signed-in Google Calendar adapter/preview are implemented. Database-backed workflow execution and the live OAuth round trip still need configured Google/Postgres secrets. Calendar entries do not enter a user's graph until the future proposal/review flow is built.
 
 **Exit:** two accounts cannot read or mutate each other's state; timezone and persistence survive restarts.
 

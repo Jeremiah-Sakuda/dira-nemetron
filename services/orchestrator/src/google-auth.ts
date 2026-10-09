@@ -152,6 +152,7 @@ export async function completeGoogleOAuth(
     scopes: token.scope?.split(' ') ?? [],
     expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000) : undefined,
   });
+  await store.ensureDomainState(user.sub);
 
   const session = signedCookie(SESSION_COOKIE, {
     value: user.sub,

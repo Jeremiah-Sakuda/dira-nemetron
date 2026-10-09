@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { Pool, type PoolClient } from 'pg';
-import type { DomainState } from '@dira/commitment-model';
+import { DEFAULT_ENGINE_CONFIG, type DomainState } from '@dira/commitment-model';
 import type { ActionRecord, LedgerStore } from '@dira/action-ledger';
 import type { WorkflowRun, WorkflowStore } from '@dira/agent';
 
@@ -133,6 +133,34 @@ export class PostgresAccountStore {
     });
   }
 
+  async ensureDomainState(accountId: string): Promise<DomainState> {
+    return this.withAccount(accountId, async (client) => {
+      const existing = await client.query<{ state: DomainState }>(
+        'SELECT state FROM dira_account_state WHERE account_id = $1',
+        [accountId],
+      );
+      if (existing.rows[0]?.state) {
+        assertAccountMatch(accountId, existing.rows[0].state.userId);
+        return existing.rows[0].state;
+      }
+      const timezone = await loadTimezone(client, accountId);
+      const state = createEmptyDomainState(accountId, timezone);
+      await client.query(
+        `INSERT INTO dira_account_state (account_id, state) VALUES ($1, $2::jsonb)
+         ON CONFLICT (account_id) DO NOTHING`,
+        [accountId, JSON.stringify(state)],
+      );
+      const saved = await client.query<{ state: DomainState }>(
+        'SELECT state FROM dira_account_state WHERE account_id = $1',
+        [accountId],
+      );
+      const result = saved.rows[0]?.state;
+      if (!result) throw new Error('failed to initialize account state');
+      assertAccountMatch(accountId, result.userId);
+      return result;
+    });
+  }
+
   async claimEvent(accountId: string, input: EventClaimInput): Promise<EventClaim> {
     const now = input.now ?? new Date();
     const leaseUntil = new Date(now.getTime() + (input.leaseMs ?? 5 * 60_000));
@@ -188,6 +216,22 @@ export class PostgresAccountStore {
       client.release();
     }
   }
+}
+
+export function createEmptyDomainState(accountId: string, timezone: string, now = new Date()): DomainState {
+  return {
+    userId: accountId,
+    timezone,
+    horizonStartIso: now.toISOString(),
+    horizonEndMin: 90 * 24 * 60,
+    commitments: {},
+    edges: [],
+    people: {},
+    constraints: {},
+    availability: [],
+    approvedSlots: {},
+    config: { ...DEFAULT_ENGINE_CONFIG },
+  };
 }
 
 export class PostgresWorkflowStore implements WorkflowStore {

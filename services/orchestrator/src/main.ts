@@ -216,7 +216,16 @@ const server = createServer(async (req, res) => {
         json(req, res, 401, { error: 'account_not_found' });
         return;
       }
-      json(req, res, 200, { account });
+      const state = await (await accountStore()).ensureDomainState(accountId);
+      json(req, res, 200, {
+        account,
+        stateSummary: {
+          commitmentCount: Object.keys(state.commitments).length,
+          edgeCount: state.edges.length,
+          timezone: state.timezone,
+          horizonEndMin: state.horizonEndMin,
+        },
+      });
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/calendar/events') {

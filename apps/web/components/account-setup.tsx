@@ -7,6 +7,12 @@ interface Account {
   timezone: string;
 }
 
+interface AccountStateSummary {
+  commitmentCount: number;
+  edgeCount: number;
+  timezone: string;
+}
+
 interface CalendarEvent {
   id: string;
   title: string;
@@ -16,6 +22,7 @@ interface CalendarEvent {
 
 export function AccountSetup() {
   const [account, setAccount] = useState<Account | null>(null);
+  const [stateSummary, setStateSummary] = useState<AccountStateSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
@@ -31,7 +38,8 @@ export function AccountSetup() {
     fetch('/api/me', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) return null;
-        const result = await response.json() as { account?: Account };
+        const result = await response.json() as { account?: Account; stateSummary?: AccountStateSummary };
+        setStateSummary(result.stateSummary ?? null);
         return result.account ?? null;
       })
       .then(setAccount)
@@ -82,6 +90,12 @@ export function AccountSetup() {
               <strong>Google account connected</strong>
               <p>{account.email}</p>
               <p className="muted">Calendar timezone: {account.timezone}</p>
+              {stateSummary && (
+                <p className="muted">Personal graph: {stateSummary.commitmentCount} commitments · {stateSummary.edgeCount} confirmed links</p>
+              )}
+              {stateSummary?.commitmentCount === 0 && (
+                <p className="muted">Calendar events stay outside your graph until you review and confirm them.</p>
+              )}
             </div>
             <button type="button" className="btn btn-secondary" onClick={signOut}>Sign out</button>
             <button type="button" className="btn" onClick={loadCalendar} disabled={calendarLoading}>
