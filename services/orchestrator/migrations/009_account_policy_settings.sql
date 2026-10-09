@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS dira_account_policy_settings (
   account_id text PRIMARY KEY REFERENCES dira_accounts(account_id) ON DELETE CASCADE,
-  policy jsonb NOT NULL DEFAULT '{"schemaVersion":1,"requireApproval":[]}'::jsonb,
+  policy jsonb NOT NULL DEFAULT '{"schemaVersion":1,"fencedCalendarIds":[],"requireApproval":[]}'::jsonb,
   updated_at timestamptz NOT NULL DEFAULT now(),
   CHECK (jsonb_typeof(policy) = 'object')
 );
