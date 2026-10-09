@@ -163,9 +163,11 @@ Google/Postgres secrets configured.
 
 The Policies page now includes account-specific approval rules and a primary
 Google Calendar fence. The fence blocks future Calendar reads, graph-proposal
-generation/confirmation, approval revalidation, and broker reads/writes; each
-request checks current policy before token retrieval or Calendar access.
-Previously confirmed graph facts stay active until the user removes them.
+access/generation/confirmation, approval revalidation, broker reads/writes,
+and new Calendar repair requests; each request checks current policy before
+token retrieval or Calendar access.
+Previously confirmed Calendar facts stay stored but are excluded from schedule
+checks while fenced; turning the fence off makes them available again.
 Attempts blocked by policy appear in the account audit list. Users can
 require approval before flexible-calendar moves, study-block restructuring,
 or delegation that the deterministic baseline would otherwise permit. These

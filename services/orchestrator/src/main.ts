@@ -483,6 +483,14 @@ const server = createServer(async (req, res) => {
         store.ensureDomainState(accountId),
         store.getAccountPolicySettings(accountId),
       ]);
+      if (policy.fencedCalendarIds.includes('primary')) {
+        const reason = 'Calendar repair requests are disabled while the primary Google Calendar is fenced.';
+        await store.recordPolicyBlock(accountId, {
+          actionType: 'REQUEST_CALENDAR_REPAIR', targetId: 'primary', policyRule: 'fenced-calendar', reason,
+        });
+        json(req, res, 403, { error: reason });
+        return;
+      }
       const prepared = prepareAccountSchedule(state, policy);
       const validation = prepared.ranked.find((candidate) => candidate.plan.id === body.planId);
       if (!validation || !validation.acceptable) {

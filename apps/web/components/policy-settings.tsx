@@ -143,7 +143,7 @@ export function PolicySettingsForm() {
               />
               <span>
                 <strong>Fence my primary Google Calendar</strong>
-                <small>Stops future reads and changes through Dira, including schedule refreshes and approval checks. Previously confirmed graph facts stay active until you remove them.</small>
+                <small>Stops future reads and changes through Dira. Previously confirmed Calendar facts stay stored but are excluded from schedule checks and approvals until you re-enable access.</small>
               </span>
             </label>
           </fieldset>

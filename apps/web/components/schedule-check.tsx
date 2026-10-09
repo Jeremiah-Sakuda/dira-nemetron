@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 type AvailabilityProfile = { weekdays: number[]; startMinute: number; endMinute: number };
 type ScheduleAnalysis = {
   checkedAtIso: string;
+  calendarFenced?: boolean;
   feasibility: { globalSlackMinutes: number; violations: { type: string; detail: string }[] };
   plans: { id: string; label: string; acceptable: boolean; requestable: boolean; approvalRequired: boolean; rejectionReason?: string; slackMinutes: number; actions: { type: string; summary: string; policyVerdict: string }[] }[];
 };
@@ -131,6 +132,7 @@ export function ScheduleCheck() {
         <div className="schedule-results">
           <button type="button" className="btn btn-secondary" onClick={check} disabled={checking}>{checking ? 'Checking…' : 'Check my schedule'}</button>
           {analysis && <div className="schedule-result" aria-live="polite">
+            {analysis.calendarFenced && <p className="privacy-note">Primary Google Calendar is fenced. Calendar-derived commitments stay stored but are excluded from this schedule check, and Calendar repairs are unavailable until you re-enable access.</p>}
             <div className="schedule-result-heading">
               <strong>{analysis.feasibility.violations.length ? `${analysis.feasibility.violations.length} feasibility issue(s) found` : 'No current feasibility issues'}</strong>
               <span className={analysis.feasibility.globalSlackMinutes < 0 ? 'schedule-slack negative' : 'schedule-slack'}>Global slack {formatSlack(analysis.feasibility.globalSlackMinutes)}</span>

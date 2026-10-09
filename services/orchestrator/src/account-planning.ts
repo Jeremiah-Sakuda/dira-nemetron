@@ -79,7 +79,8 @@ export function rebaseDomainState(state: DomainState, now = new Date()): DomainS
 
 export function analyzeAccountSchedule(state: DomainState, policy?: AccountPolicySettings) {
   const { feasibility, ranked } = prepareAccountSchedule(state, policy);
-  const plans = ranked.slice(0, 5).map((validation) => {
+  const calendarFenced = policy?.fencedCalendarIds.includes('primary') ?? false;
+  const plans = (calendarFenced ? [] : ranked.slice(0, 5)).map((validation) => {
     const policy = validation.policy;
     const denied = policy.decisions.find((decision) => decision.verdict === 'DENY');
     const approvalRequired = policy.decisions.some((decision) => decision.verdict === 'REQUIRE_APPROVAL');
@@ -99,6 +100,7 @@ export function analyzeAccountSchedule(state: DomainState, policy?: AccountPolic
     };
   });
   return {
+    calendarFenced,
     feasibility: {
       globalSlackMinutes: feasibility.global_slack_minutes,
       violations: feasibility.violations,
@@ -111,15 +113,32 @@ export function analyzeAccountSchedule(state: DomainState, policy?: AccountPolic
 }
 
 export function prepareAccountSchedule(state: DomainState, policy?: AccountPolicySettings) {
-  const feasibility = computeFeasibility(state);
-  const nowMin = Math.max(0, isoToMinutes(new Date().toISOString(), state.horizonStartIso));
-  const candidates = generateCandidatePlans({ state, feasibility, liveSlots: {}, nowMin });
-  const validations = candidates.map((plan) => validatePlan(state, plan));
+  const planningState = withoutFencedCalendarFacts(state, policy);
+  const feasibility = computeFeasibility(planningState);
+  const nowMin = Math.max(0, isoToMinutes(new Date().toISOString(), planningState.horizonStartIso));
+  const candidates = generateCandidatePlans({ state: planningState, feasibility, liveSlots: {}, nowMin });
+  const validations = candidates.map((plan) => validatePlan(planningState, plan));
   const ranked = rankValidations(validations).map((validation) => ({
     ...validation,
-    policy: evaluatePlanActions(state, validation.plan.actions, policy?.requireApproval),
+    policy: evaluatePlanActions(planningState, validation.plan.actions, policy?.requireApproval),
   }));
   return { feasibility, ranked };
+}
+
+function withoutFencedCalendarFacts(state: DomainState, policy?: AccountPolicySettings): DomainState {
+  if (!policy?.fencedCalendarIds.includes('primary')) return state;
+  const planningState = structuredClone(state);
+  const fencedCommitmentIds = new Set(
+    Object.values(planningState.commitments)
+      .filter((commitment) => commitment.source === 'google-calendar')
+      .map((commitment) => commitment.id),
+  );
+  for (const id of fencedCommitmentIds) delete planningState.commitments[id];
+  planningState.edges = planningState.edges.filter(
+    (edge) => !fencedCommitmentIds.has(edge.from) && !fencedCommitmentIds.has(edge.to),
+  );
+  for (const id of fencedCommitmentIds) delete planningState.approvedSlots[id];
+  return planningState;
 }
 
 /** Stable across horizon rebasing; ISO instants, not minute offsets, identify schedule intents. */
