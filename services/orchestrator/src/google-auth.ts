@@ -261,6 +261,11 @@ function encryptCredential(value: unknown): Omit<EncryptedCredential, 'scopes' |
   };
 }
 
+/** Encrypt account-owned connector secrets with the same envelope as OAuth tokens. */
+export function encryptAccountSecret(value: unknown): EncryptedCredential {
+  return { ...encryptCredential(value), scopes: [] };
+}
+
 function decryptCredential<T>(credential: EncryptedCredential): T {
   if (credential.keyVersion !== 1) throw new Error(`unsupported Google credential key version ${credential.keyVersion}`);
   const decipher = createDecipheriv('aes-256-gcm', encryptionKey(), Buffer.from(credential.iv, 'base64'));
@@ -270,6 +275,10 @@ function decryptCredential<T>(credential: EncryptedCredential): T {
     decipher.final(),
   ]).toString('utf8');
   return JSON.parse(cleartext) as T;
+}
+
+export function decryptAccountSecret<T>(credential: EncryptedCredential): T {
+  return decryptCredential<T>(credential);
 }
 
 function signedCookie(name: string, payload: SignedPayload, maxAge: number, path: string): string {

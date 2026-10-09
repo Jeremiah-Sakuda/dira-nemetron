@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { GraphReview } from './graph-review';
 import { ScheduleCheck } from './schedule-check';
+import { DeadlineFeeds } from './deadline-feeds';
 
 interface Account {
   email: string;
@@ -210,6 +211,7 @@ export function AccountSetup() {
             )}
           </section>
         )}
+        {account && <DeadlineFeeds />}
         {account && <GraphReview
           timezone={account.timezone}
           commitmentCount={stateSummary?.commitmentCount ?? 0}

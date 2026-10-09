@@ -8,7 +8,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./google": "./src/google-calendar.ts",
-    "./user-google": "./src/user-google-calendar.ts"
+    "./user-google": "./src/user-google-calendar.ts",
+    "./ical-feed": "./src/ical-feed.ts",
+    "./safe-ical-fetch": "./src/safe-ical-fetch.ts"
   },
   "dependencies": {
     "@dira/tool-contracts": "*",

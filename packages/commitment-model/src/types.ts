@@ -70,7 +70,7 @@ export interface Commitment {
   resourceRequirements: string[];
 
   /** Which external system materializes this commitment, for executor routing. */
-  externalSystem?: 'calendar' | 'recruiter' | 'organization' | 'gmail';
+  externalSystem?: 'calendar' | 'recruiter' | 'organization' | 'gmail' | 'ical-feed';
   externalId?: string;
 
   autonomyScope?: string;

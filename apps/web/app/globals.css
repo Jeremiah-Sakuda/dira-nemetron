@@ -640,6 +640,114 @@ table.data td:first-child {
   font-size: 13px;
 }
 
+.deadline-feeds {
+  margin-top: 32px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border);
+}
+
+.deadline-feeds h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.deadline-feeds > p {
+  max-width: 72ch;
+}
+
+.deadline-feed-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(140px, 0.55fr) minmax(240px, 1.6fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin: 20px 0 26px;
+}
+
+.deadline-feed-form label,
+.deadline-feed-controls label {
+  display: grid;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.deadline-feed-form input,
+.deadline-feed-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 16px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.deadline-feed-form input:focus-visible,
+.deadline-feed-form select:focus-visible {
+  outline: 3px solid #a9cdf9;
+  outline-offset: 2px;
+}
+
+.deadline-feed-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.deadline-feed-card {
+  padding: 15px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.deadline-feed-heading,
+.deadline-feed-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.deadline-feed-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.deadline-feed-heading time {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.deadline-feed-controls {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.deadline-feed-controls label {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin-right: 8px;
+}
+
+.deadline-feed-controls input {
+  accent-color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  .deadline-feed-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .deadline-feed-url {
+    grid-column: 1 / -1;
+  }
+}
+
 .graph-review {
   margin-top: 32px;
   padding-top: 26px;
@@ -1105,6 +1213,24 @@ table.data td:first-child {
   .calendar-preview li {
     flex-direction: column;
     gap: 2px;
+  }
+
+  .deadline-feed-form {
+    grid-template-columns: 1fr;
+  }
+
+  .deadline-feed-url {
+    grid-column: auto;
+  }
+
+  .deadline-feed-form > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .deadline-feed-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .graph-review-heading {

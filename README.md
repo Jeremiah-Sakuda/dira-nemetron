@@ -194,6 +194,18 @@ independent source fence. Email changes do not yet enter the production repair
 workflow. Person fences, OpenShell egress controls, and imported correction rules remain
 unimplemented.
 
+Signed-in users can also add user-selected iCalendar exports from an LMS or
+tracker. Feed URLs are stored AES-encrypted; each sync allows only public
+HTTPS hosts, pins the resolved public IPv4 address, and bounds redirects,
+response size, and request time. New, changed, cancelled, and removed items
+become review proposals. Feed titles and dates are the only fields sent to
+Nemotron for a new-item draft; descriptions and locations are ignored. A
+proposal must still match the current feed snapshot when confirmed. Recurrence
+rules are skipped rather than expanded. Manual sync is available; 30-minute
+polling defaults off and requires both `DIRA_ICAL_SYNC_ACCOUNT_IDS` on the
+trusted orchestrator and the user's per-feed opt-in. Feed changes currently
+join the confirmed graph but do not yet enter the production repair workflow.
+
 Monorepo map: engines in [`packages/`](packages), the agent loop in
 [`agents/dira`](agents/dira), scoped tool adapters in [`adapters/`](adapters),
 the Cloud Run service in [`services/`](services), the golden fixture in

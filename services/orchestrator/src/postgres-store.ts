@@ -24,6 +24,28 @@ export interface EncryptedCredential {
   expiresAt?: Date;
 }
 
+export interface IcalEventSnapshot {
+  uid: string;
+  title: string;
+  startIso: string;
+  endIso: string;
+  version: string;
+}
+
+export interface StoredIcalFeed {
+  feedId: string;
+  label: string;
+  domain: 'academic' | 'career';
+  enabled: boolean;
+  autoSync: boolean;
+  etag?: string;
+  lastModified?: string;
+  snapshot: Record<string, IcalEventSnapshot>;
+  lastCheckedAtIso?: string;
+  lastError?: string;
+  urlSecret?: EncryptedCredential;
+}
+
 export interface AccountPlanningSnapshot {
   state: DomainState;
   stateVersion: string;
@@ -62,13 +84,14 @@ export type EventClaim = 'CLAIMED' | 'COMPLETED' | 'PROCESSING';
 export interface StoredGraphProposal {
   proposalId: string;
   sourceId: string;
-  sourceType: 'google-calendar' | 'gmail';
+  sourceType: 'google-calendar' | 'gmail' | 'ical-feed';
   status: 'PENDING_REVIEW' | 'CONFIRMED' | 'REJECTED' | 'IGNORED';
   source: {
     id: string; title: string; startIso: string; endIso: string; version?: string; etag?: string;
     changeType?: 'NEW' | 'UPDATED' | 'CANCELLED';
     previous?: { title: string; startIso: string; endIso: string };
     sender?: string; receivedAtIso?: string; evidenceQuote?: string;
+    feedId?: string; feedUid?: string; feedLabel?: string;
   };
   draft: CalendarCommitmentDraft;
   model: Record<string, unknown>;
@@ -103,7 +126,7 @@ export class PostgresAccountStore {
       '003_graph_proposals.sql', '004_graph_edge_proposals.sql',
       '005_account_availability.sql', '006_action_approvals.sql', '007_action_ledger_identity.sql',
       '008_workflow_execution_evidence.sql', '009_account_policy_settings.sql',
-      '010_policy_block_events.sql', '011_source_sync_cursors.sql',
+      '010_policy_block_events.sql', '011_source_sync_cursors.sql', '012_ical_deadline_feeds.sql',
     ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
@@ -192,6 +215,113 @@ export class PostgresAccountStore {
         `INSERT INTO dira_source_sync_cursors (account_id, source, cursor) VALUES ($1, $2, $3)
          ON CONFLICT (account_id, source) DO UPDATE SET cursor = EXCLUDED.cursor, updated_at = now()`,
         [accountId, source, cursor],
+      );
+    });
+  }
+
+  async listIcalFeeds(accountId: string): Promise<(Omit<StoredIcalFeed, 'snapshot' | 'urlSecret' | 'etag' | 'lastModified'> & { eventCount: number })[]> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{
+        feed_id: string; label: string; domain: 'academic' | 'career'; enabled: boolean; auto_sync: boolean;
+        last_checked_at: Date | null; last_error: string | null; event_count: number;
+      }>(
+        `SELECT feed_id, label, domain, enabled, auto_sync, last_checked_at, last_error,
+                jsonb_object_length(snapshot) AS event_count
+         FROM dira_ical_feeds WHERE account_id = $1 ORDER BY created_at`,
+        [accountId],
+      );
+      return result.rows.map((row) => ({
+        feedId: row.feed_id, label: row.label, domain: row.domain, enabled: row.enabled,
+        autoSync: row.auto_sync, eventCount: row.event_count,
+        lastCheckedAtIso: row.last_checked_at?.toISOString(), lastError: row.last_error ?? undefined,
+      }));
+    });
+  }
+
+  async getIcalFeed(accountId: string, feedId: string): Promise<StoredIcalFeed | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{
+        feed_id: string; label: string; domain: 'academic' | 'career'; enabled: boolean; auto_sync: boolean;
+        etag: string | null; last_modified: string | null; snapshot: Record<string, IcalEventSnapshot>;
+        last_checked_at: Date | null; last_error: string | null;
+        url_ciphertext: string; url_iv: string; url_auth_tag: string; url_key_version: number;
+      }>(
+        `SELECT * FROM dira_ical_feeds WHERE account_id = $1 AND feed_id = $2`,
+        [accountId, feedId],
+      );
+      const row = result.rows[0];
+      return row ? {
+        feedId: row.feed_id, label: row.label, domain: row.domain, enabled: row.enabled,
+        autoSync: row.auto_sync, etag: row.etag ?? undefined, lastModified: row.last_modified ?? undefined,
+        snapshot: row.snapshot, lastCheckedAtIso: row.last_checked_at?.toISOString(),
+        lastError: row.last_error ?? undefined,
+        urlSecret: {
+          ciphertext: row.url_ciphertext, iv: row.url_iv, authTag: row.url_auth_tag,
+          keyVersion: row.url_key_version, scopes: [],
+        },
+      } : undefined;
+    });
+  }
+
+  async createIcalFeed(accountId: string, input: {
+    feedId: string; label: string; domain: 'academic' | 'career'; urlSecret: EncryptedCredential;
+  }): Promise<void> {
+    await this.withAccount(accountId, async (client) => {
+      await client.query(
+        `INSERT INTO dira_ical_feeds
+           (account_id, feed_id, label, domain, url_ciphertext, url_iv, url_auth_tag, url_key_version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [accountId, input.feedId, input.label, input.domain, input.urlSecret.ciphertext,
+          input.urlSecret.iv, input.urlSecret.authTag, input.urlSecret.keyVersion],
+      );
+    });
+  }
+
+  async updateIcalFeedSettings(accountId: string, feedId: string, input: {
+    label: string; domain: 'academic' | 'career'; enabled: boolean; autoSync: boolean;
+  }): Promise<boolean> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query(
+        `UPDATE dira_ical_feeds SET label = $3, domain = $4, enabled = $5,
+                auto_sync = CASE WHEN $5 THEN $6 ELSE false END, updated_at = now()
+         WHERE account_id = $1 AND feed_id = $2`,
+        [accountId, feedId, input.label, input.domain, input.enabled, input.autoSync],
+      );
+      return result.rowCount === 1;
+    });
+  }
+
+  async deleteIcalFeed(accountId: string, feedId: string): Promise<boolean> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query(
+        'DELETE FROM dira_ical_feeds WHERE account_id = $1 AND feed_id = $2',
+        [accountId, feedId],
+      );
+      return result.rowCount === 1;
+    });
+  }
+
+  async saveIcalFeedSync(accountId: string, feedId: string, input: {
+    snapshot: Record<string, IcalEventSnapshot>; etag?: string; lastModified?: string;
+  }): Promise<void> {
+    await this.withAccount(accountId, async (client) => {
+      const result = await client.query(
+        `UPDATE dira_ical_feeds SET snapshot = $3::jsonb, etag = $4, last_modified = $5,
+                last_checked_at = now(), last_error = NULL, updated_at = now()
+         WHERE account_id = $1 AND feed_id = $2 AND enabled = true`,
+        [accountId, feedId, JSON.stringify(input.snapshot), input.etag ?? null, input.lastModified ?? null],
+      );
+      if (result.rowCount !== 1) throw new Error('deadline feed was removed or fenced during sync');
+    });
+  }
+
+  async recordIcalFeedFailure(accountId: string, feedId: string, error: string): Promise<void> {
+    const detail = error.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 500);
+    await this.withAccount(accountId, async (client) => {
+      await client.query(
+        `UPDATE dira_ical_feeds SET last_checked_at = now(), last_error = $3, updated_at = now()
+         WHERE account_id = $1 AND feed_id = $2`,
+        [accountId, feedId, detail],
       );
     });
   }
@@ -961,10 +1091,25 @@ export class PostgresAccountStore {
         [accountId],
       );
       const policy = policyResult.rows[0]?.policy;
-      const fenced = proposal.source_type === 'gmail'
-        ? policy?.fencedGmail === true
-        : Array.isArray(policy?.fencedCalendarIds) && policy.fencedCalendarIds.includes('primary');
-      if (fenced) throw new Error(`${proposal.source_type} source is fenced by account policy`);
+      if (proposal.source_type === 'gmail' && policy?.fencedGmail === true) {
+        throw new Error('gmail source is fenced by account policy');
+      }
+      if (proposal.source_type === 'google-calendar'
+        && Array.isArray(policy?.fencedCalendarIds) && policy.fencedCalendarIds.includes('primary')) {
+        throw new Error('google-calendar source is fenced by account policy');
+      }
+      if (proposal.source_type === 'ical-feed') {
+        const feedResult = await client.query<{ enabled: boolean; version: string | null }>(
+          `SELECT enabled, snapshot -> $3 ->> 'version' AS version
+           FROM dira_ical_feeds WHERE account_id = $1 AND feed_id = $2 FOR SHARE`,
+          [accountId, proposal.source_snapshot.feedId, proposal.source_snapshot.feedUid],
+        );
+        const feed = feedResult.rows[0];
+        const removed = proposal.source_snapshot.changeType === 'CANCELLED' && !feed?.version;
+        if (!feed?.enabled || (!removed && feed.version !== proposal.source_snapshot.version)) {
+          throw new Error('iCalendar feed changed or was disabled; refresh proposals before reviewing');
+        }
+      }
 
       const stateResult = await client.query<{ state: DomainState }>(
         'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
@@ -974,8 +1119,9 @@ export class PostgresAccountStore {
       if (!state) throw new Error('account state is not initialized');
       assertAccountMatch(accountId, state.userId);
       const source = proposal.source_snapshot;
-      const externalSystem = proposal.source_type === 'gmail' ? 'gmail' : 'calendar';
-      const externalId = source.id.replace(/^(google|gmail):/, '');
+      const externalSystem = proposal.source_type === 'gmail' ? 'gmail'
+        : proposal.source_type === 'ical-feed' ? 'ical-feed' : 'calendar';
+      const externalId = source.id.replace(/^(google|gmail|ical):/, '');
       const existingCommitment = Object.values(state.commitments).find(
         (item) => item.externalSystem === externalSystem && item.externalId === externalId,
       );

@@ -20,6 +20,7 @@ import { exportAccountMemory, importAccountMemoryBundle, syncAccountMemory } fro
 import { AccountPolicySettingsSchema } from './account-policy.js';
 import { startConfiguredCalendarPolling, syncAccountCalendarChanges } from './account-calendar-sync.js';
 import { startConfiguredGmailPolling, syncAccountGmailChanges } from './account-gmail-sync.js';
+import { createIcalFeed, startConfiguredIcalPolling, syncAccountIcalFeed } from './account-ical-sync.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -785,6 +786,70 @@ const server = createServer(async (req, res) => {
       });
       return;
     }
+    if (req.method === 'GET' && url.pathname === '/api/ical/feeds') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) { json(req, res, 401, { error: 'unauthenticated' }); return; }
+      json(req, res, 200, { feeds: await (await accountStore()).listIcalFeeds(accountId) });
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/ical/feeds') {
+      if (!isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return; }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) { json(req, res, 401, { error: 'unauthenticated' }); return; }
+      const body = safeJson(await readBody(req)) as { label?: string; domain?: string; url?: string } | null;
+      if (typeof body?.label !== 'string' || body.label.trim().length < 1 || body.label.length > 120
+        || (body.domain !== 'academic' && body.domain !== 'career')
+        || typeof body.url !== 'string' || body.url.length > 4096) {
+        json(req, res, 400, { error: 'invalid_ical_feed' });
+        return;
+      }
+      const store = await accountStore();
+      const feedId = await createIcalFeed(store, accountId, {
+        label: body.label, domain: body.domain, url: body.url,
+      });
+      json(req, res, 201, { feedId, feeds: await store.listIcalFeeds(accountId) });
+      return;
+    }
+    const icalFeedPath = /^\/api\/ical\/feeds\/([0-9a-f-]{36})(?:\/(sync))?$/i.exec(url.pathname);
+    if (icalFeedPath && req.method === 'PATCH' && !icalFeedPath[2]) {
+      if (!isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return; }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) { json(req, res, 401, { error: 'unauthenticated' }); return; }
+      const body = safeJson(await readBody(req)) as {
+        label?: string; domain?: string; enabled?: boolean; autoSync?: boolean;
+      } | null;
+      if (typeof body?.label !== 'string' || body.label.trim().length < 1 || body.label.length > 120
+        || (body.domain !== 'academic' && body.domain !== 'career')
+        || typeof body.enabled !== 'boolean' || typeof body.autoSync !== 'boolean') {
+        json(req, res, 400, { error: 'invalid_ical_feed_settings' });
+        return;
+      }
+      const store = await accountStore();
+      const updated = await store.updateIcalFeedSettings(accountId, icalFeedPath[1]!, {
+        label: body.label.trim(), domain: body.domain, enabled: body.enabled, autoSync: body.autoSync,
+      });
+      if (!updated) { json(req, res, 404, { error: 'deadline feed not found' }); return; }
+      json(req, res, 200, { feeds: await store.listIcalFeeds(accountId) });
+      return;
+    }
+    if (icalFeedPath && req.method === 'DELETE' && !icalFeedPath[2]) {
+      if (!isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return; }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) { json(req, res, 401, { error: 'unauthenticated' }); return; }
+      const deleted = await (await accountStore()).deleteIcalFeed(accountId, icalFeedPath[1]!);
+      if (!deleted) { json(req, res, 404, { error: 'deadline feed not found' }); return; }
+      json(req, res, 200, { deleted: true });
+      return;
+    }
+    if (icalFeedPath && icalFeedPath[2] === 'sync' && req.method === 'POST') {
+      if (!isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return; }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) { json(req, res, 401, { error: 'unauthenticated' }); return; }
+      const store = await accountStore();
+      const summary = await syncAccountIcalFeed(store, accountId, icalFeedPath[1]!);
+      json(req, res, 200, { ...summary, feeds: await store.listIcalFeeds(accountId) });
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/api/graph/proposals') {
       const accountId = getSessionAccountId(req);
       if (!accountId) {
@@ -792,11 +857,14 @@ const server = createServer(async (req, res) => {
         return;
       }
       const store = await accountStore();
-      if (await blockFencedPrimaryCalendar(store, accountId, 'READ_CALENDAR_PROPOSALS')) {
-        json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
-        return;
-      }
-      const proposals = await store.listGraphProposals(accountId, 'PENDING_REVIEW');
+      const [allProposals, policy] = await Promise.all([
+        store.listGraphProposals(accountId, 'PENDING_REVIEW'),
+        store.getAccountPolicySettings(accountId),
+      ]);
+      const calendarFenced = policy.fencedCalendarIds.includes('primary');
+      const proposals = allProposals.filter((proposal) =>
+        !(calendarFenced && proposal.sourceType === 'google-calendar')
+        && !(policy.fencedGmail && proposal.sourceType === 'gmail'));
       json(req, res, 200, { proposals });
       return;
     }
@@ -923,9 +991,10 @@ const server = createServer(async (req, res) => {
         }
         if (proposal.source.changeType === 'UPDATED' || proposal.source.changeType === 'CANCELLED') {
           const state = await store.ensureDomainState(accountId);
-          const externalId = proposal.source.id.replace(/^google:/, '');
+          const externalId = proposal.source.id.replace(/^(google|ical):/, '');
+          const externalSystem = proposal.sourceType === 'ical-feed' ? 'ical-feed' : 'calendar';
           const commitment = Object.values(state.commitments).find(
-            (item) => item.externalSystem === 'calendar' && item.externalId === externalId,
+            (item) => item.externalSystem === externalSystem && item.externalId === externalId,
           );
           if (!commitment || commitment.status === 'COMPLETE' || commitment.status === 'DROPPED') {
             json(req, res, 409, { error: 'The graph commitment changed after this proposal was created. Refresh proposals before reviewing it.' });
@@ -960,7 +1029,7 @@ const server = createServer(async (req, res) => {
             json(req, res, 409, { error: 'Calendar changed again after this proposal was prepared. Sync changes and review the new version.' });
             return;
           }
-        } else {
+        } else if (proposal.sourceType === 'gmail') {
           const gmailPolicy = await store.getAccountPolicySettings(accountId);
           if (gmailPolicy.fencedGmail) {
             await store.recordPolicyBlock(accountId, {
@@ -973,6 +1042,18 @@ const server = createServer(async (req, res) => {
           const gmail = new GoogleUserGmailTool(() => googleAccessToken(store, accountId));
           if (!await gmail.verifyMessage(proposal.source.id.replace(/^gmail:/, ''))) {
             json(req, res, 409, { error: 'This Gmail source is no longer available. Refresh proposals before reviewing it.' });
+            return;
+          }
+        } else {
+          const feed = await store.getIcalFeed(accountId, proposal.source.feedId ?? '');
+          const event = proposal.source.feedUid ? feed?.snapshot[proposal.source.feedUid] : undefined;
+          const removed = proposal.source.changeType === 'CANCELLED' && !event;
+          if (!feed?.enabled || (!removed && event?.version !== proposal.source.version)) {
+            await store.recordPolicyBlock(accountId, {
+              actionType: 'CONFIRM_ICAL_PROPOSAL', targetId: proposal.source.feedId ?? 'unknown-feed',
+              policyRule: 'stale-or-disabled-feed', reason: 'The iCalendar feed changed or was disabled before confirmation.',
+            });
+            json(req, res, 409, { error: 'This feed item changed or its feed was disabled. Sync the feed and review the latest proposal.' });
             return;
           }
         }
@@ -1277,4 +1358,5 @@ server.listen(PORT, () => {
   console.log(`dira-orchestrator listening on :${PORT} (mode: ${MODE})`);
   startConfiguredCalendarPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
   startConfiguredGmailPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
+  startConfiguredIcalPolling(accountStore);
 });

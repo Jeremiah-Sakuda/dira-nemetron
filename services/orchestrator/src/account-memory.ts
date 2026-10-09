@@ -32,7 +32,7 @@ const CommitmentSchema = z.object({
   flexibility: z.enum(['FIXED', 'MOVE_WITHIN_WINDOW', 'FLEXIBLE', 'DELEGATABLE', 'OPTIONAL']),
   criticality: z.enum(['CRITICAL', 'HIGH', 'NORMAL', 'LOW']), owner: z.string(),
   participants: z.array(z.string()), goalIds: z.array(z.string()), resourceRequirements: z.array(z.string()),
-  externalSystem: z.enum(['calendar', 'recruiter', 'organization', 'gmail']).optional(),
+  externalSystem: z.enum(['calendar', 'recruiter', 'organization', 'gmail', 'ical-feed']).optional(),
   externalId: z.string().optional(), autonomyScope: z.string().optional(),
   confidence: z.number().min(0).max(1), createdAtIso: z.string().datetime({ offset: true }),
   updatedAtIso: z.string().datetime({ offset: true }), absoluteTimes: AbsoluteTimesSchema.optional(),
