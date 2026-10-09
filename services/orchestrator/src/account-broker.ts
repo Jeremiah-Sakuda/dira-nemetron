@@ -41,6 +41,14 @@ export async function resumeApprovedAccountWorkflow(
     if (run.status === 'RESOLVED' && records.every((record) => record.status === 'VERIFIED')) {
       return { status: 'RESOLVED', workflowId, verifiedActions: records.length };
     }
+    const currentPolicy = await store.getAccountPolicySettings(accountId);
+    if (currentPolicy.fencedCalendarIds.includes('primary')) {
+      const reason = 'Primary Google Calendar is fenced by account policy. Re-enable access before resuming this workflow.';
+      await store.recordPolicyBlock(accountId, {
+        actionType: 'READ_CALENDAR', targetId: 'primary', policyRule: 'fenced-calendar', reason,
+      });
+      return waitForReview(workflowStore, run, workflowId, records.filter((record) => record.status !== 'VERIFIED').length, reason);
+    }
     if (records.some((record) => ['AWAITING_APPROVAL', 'REJECTED', 'STALE', 'REPLAN_REQUIRED', 'FAILED_PERMANENT'].includes(record.status))) {
       return waitForReview(workflowStore, run, workflowId, records.filter((record) => record.status !== 'VERIFIED').length,
         'The plan contains an action that is not authorized for execution.');
@@ -69,7 +77,11 @@ export async function resumeApprovedAccountWorkflow(
     const credential = await store.getCredential(accountId, 'google');
     const writeGranted = credential?.scopes.includes('https://www.googleapis.com/auth/calendar.events') ?? false;
     const ledger = await ActionLedger.open(new PostgresLedgerStore(store, accountId));
-    const calendar = new GoogleUserCalendarTool(getAccessToken, async () => writeGranted);
+    const calendar = new GoogleUserCalendarTool(
+      getAccessToken,
+      async () => writeGranted,
+      async () => (await store.getAccountPolicySettings(accountId)).fencedCalendarIds.includes('primary'),
+    );
     const snapshot = await store.loadAccountPlanningSnapshot(accountId);
     if (!snapshot) return waitForReview(workflowStore, run, workflowId, records.length, 'The account graph is unavailable.');
     for (const record of records.filter((item) => ['EXECUTING', 'EXECUTED_UNVERIFIED'].includes(item.status))) {

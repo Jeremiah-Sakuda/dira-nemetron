@@ -11,6 +11,7 @@ const overrideableRules = [
 
 export const AccountPolicySettingsSchema = z.object({
   schemaVersion: z.literal(1),
+  fencedCalendarIds: z.array(z.literal('primary')).max(1).default([]),
   requireApproval: z.array(z.object({
     rule: z.enum(overrideableRules),
     scope: z.object({
@@ -34,5 +35,6 @@ export type AccountPolicySettings = z.infer<typeof AccountPolicySettingsSchema>;
 
 export const DEFAULT_ACCOUNT_POLICY: AccountPolicySettings = {
   schemaVersion: 1,
+  fencedCalendarIds: [],
   requireApproval: [],
 };

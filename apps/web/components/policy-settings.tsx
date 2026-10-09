@@ -23,6 +23,7 @@ const OPTIONS = [
 type RuleId = typeof OPTIONS[number]['rule'];
 interface PolicySettings {
   schemaVersion: 1;
+  fencedCalendarIds: ('primary')[];
   requireApproval: { rule: RuleId; scope?: { domain?: string; commitmentId?: string } }[];
 }
 interface PolicyBlockEvent {
@@ -34,7 +35,7 @@ interface PolicyBlockEvent {
   createdAtIso: string;
 }
 
-const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, requireApproval: [] };
+const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], requireApproval: [] };
 
 export function PolicySettingsForm() {
   const [policy, setPolicy] = useState<PolicySettings>(DEFAULT_POLICY);
@@ -72,6 +73,14 @@ export function PolicySettingsForm() {
         ...current.requireApproval.filter((item) => item.rule !== rule),
         ...(enabled ? [{ rule }] : []),
       ],
+    }));
+    setNotice('');
+  }
+
+  function setPrimaryCalendarFenced(enabled: boolean) {
+    setPolicy((current) => ({
+      ...current,
+      fencedCalendarIds: enabled ? ['primary'] : [],
     }));
     setNotice('');
   }
@@ -124,9 +133,23 @@ export function PolicySettingsForm() {
               </label>
             ))}
           </fieldset>
+          <fieldset className="policy-rule-list policy-fence-list" disabled={saving}>
+            <legend>Sources Dira must not access</legend>
+            <label className="policy-rule">
+              <input
+                type="checkbox"
+                checked={policy.fencedCalendarIds.includes('primary')}
+                onChange={(event) => setPrimaryCalendarFenced(event.currentTarget.checked)}
+              />
+              <span>
+                <strong>Fence my primary Google Calendar</strong>
+                <small>Stops future reads and changes through Dira, including schedule refreshes and approval checks. Previously confirmed graph facts stay active until you remove them.</small>
+              </span>
+            </label>
+          </fieldset>
           <div className="policy-save-row">
             <button className="btn" type="submit" disabled={saving || loading}>
-              {saving ? 'Saving…' : 'Save approval rules'}
+              {saving ? 'Saving…' : 'Save policy settings'}
             </button>
             {notice && <span className="policy-feedback" role="status">{notice}</span>}
           </div>

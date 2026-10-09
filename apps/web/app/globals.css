@@ -425,6 +425,10 @@ table.data td:first-child {
   font-weight: 600;
 }
 
+.policy-fence-list {
+  margin-top: 18px;
+}
+
 .policy-rule {
   display: flex;
   align-items: flex-start;

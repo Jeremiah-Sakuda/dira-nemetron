@@ -77,6 +77,22 @@ function accountStore(): Promise<PostgresAccountStore> {
   return accountStorePromise;
 }
 
+async function blockFencedPrimaryCalendar(
+  store: PostgresAccountStore,
+  accountId: string,
+  actionType: string,
+): Promise<boolean> {
+  const policy = await store.getAccountPolicySettings(accountId);
+  if (!policy.fencedCalendarIds.includes('primary')) return false;
+  await store.recordPolicyBlock(accountId, {
+    actionType,
+    targetId: 'primary',
+    policyRule: 'fenced-calendar',
+    reason: 'Primary Google Calendar access is disabled by account policy.',
+  });
+  return true;
+}
+
 async function syncMemoryFromStore(store: PostgresAccountStore, accountId: string): Promise<void> {
   try {
     await syncAccountMemory(accountId, async () => {
@@ -676,12 +692,20 @@ const server = createServer(async (req, res) => {
         return;
       }
       const store = await accountStore();
+      if (await blockFencedPrimaryCalendar(store, accountId, 'READ_CALENDAR')) {
+        json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
+        return;
+      }
       const account = await store.getAccount(accountId);
       if (!account) {
         json(req, res, 401, { error: 'account_not_found' });
         return;
       }
-      const calendar = new GoogleUserCalendarTool(() => googleAccessToken(store, accountId));
+      const calendar = new GoogleUserCalendarTool(
+        () => googleAccessToken(store, accountId),
+        undefined,
+        async () => (await store.getAccountPolicySettings(accountId)).fencedCalendarIds.includes('primary'),
+      );
       json(req, res, 200, { timezone: account.timezone, events: await calendar.getEvents() });
       return;
     }
@@ -691,7 +715,12 @@ const server = createServer(async (req, res) => {
         json(req, res, 401, { error: 'unauthenticated' });
         return;
       }
-      const proposals = await (await accountStore()).listGraphProposals(accountId, 'PENDING_REVIEW');
+      const store = await accountStore();
+      if (await blockFencedPrimaryCalendar(store, accountId, 'READ_CALENDAR_PROPOSALS')) {
+        json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
+        return;
+      }
+      const proposals = await store.listGraphProposals(accountId, 'PENDING_REVIEW');
       json(req, res, 200, { proposals });
       return;
     }
@@ -702,6 +731,10 @@ const server = createServer(async (req, res) => {
         return;
       }
       const store = await accountStore();
+      if (await blockFencedPrimaryCalendar(store, accountId, 'READ_CALENDAR_FOR_GRAPH')) {
+        json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
+        return;
+      }
       const account = await store.getAccount(accountId);
       if (!account) {
         json(req, res, 401, { error: 'account_not_found' });
@@ -713,7 +746,11 @@ const server = createServer(async (req, res) => {
       const confirmedSourceIds = new Set(
         Object.values(state.commitments).map((commitment) => commitment.externalId).filter(Boolean),
       );
-      const calendar = new GoogleUserCalendarTool(() => googleAccessToken(store, accountId));
+      const calendar = new GoogleUserCalendarTool(
+        () => googleAccessToken(store, accountId),
+        undefined,
+        async () => (await store.getAccountPolicySettings(accountId)).fencedCalendarIds.includes('primary'),
+      );
       const events = await calendar.getEvents();
       const now = Date.now();
       const horizonEnd = now + 90 * 24 * 60 * 60_000;
@@ -795,13 +832,17 @@ const server = createServer(async (req, res) => {
         }
         edits = parsed.data;
       }
-      const result = await (await accountStore()).reviewGraphProposal(
+      const store = await accountStore();
+      if (body.decision === 'CONFIRMED' && await blockFencedPrimaryCalendar(store, accountId, 'CONFIRM_CALENDAR_PROPOSAL')) {
+        json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
+        return;
+      }
+      const result = await store.reviewGraphProposal(
         accountId,
         body.proposalId,
         body.decision,
         edits,
       );
-      const store = await accountStore();
       const state = await store.ensureDomainState(accountId);
       await syncMemoryFromStore(store, accountId);
       json(req, res, 200, {

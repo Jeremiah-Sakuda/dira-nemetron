@@ -42,10 +42,21 @@ export async function revalidateAccountApproval(
 
   const snapshot = await store.loadAccountPlanningSnapshot(accountId);
   if (!snapshot) return { ok: false, reason: 'Set focus hours and refresh the schedule before approval.' };
+  if (snapshot.policy.fencedCalendarIds.includes('primary')) {
+    const reason = 'Primary Google Calendar is fenced by account policy. Re-enable access before approval or resume.';
+    await store.recordPolicyBlock(accountId, {
+      actionType: 'READ_CALENDAR', targetId: 'primary', policyRule: 'fenced-calendar', reason,
+    });
+    return { ok: false, reason };
+  }
   const now = new Date();
   const oldState = snapshot.state;
   const oldNowMin = isoToMinutes(now.toISOString(), oldState.horizonStartIso);
-  const calendar = new GoogleUserCalendarTool(getAccessToken);
+  const calendar = new GoogleUserCalendarTool(
+    getAccessToken,
+    undefined,
+    async () => (await store.getAccountPolicySettings(accountId)).fencedCalendarIds.includes('primary'),
+  );
   const freshReads: { id: string; startIso: string; endIso: string }[] = [];
 
   for (const commitment of Object.values(oldState.commitments)) {

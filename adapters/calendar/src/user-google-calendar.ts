@@ -7,9 +7,13 @@ export class GoogleUserCalendarTool implements CalendarTool {
   constructor(
     private readonly accessToken: () => Promise<string>,
     private readonly canWrite: () => Promise<boolean> = async () => false,
+    private readonly isPrimaryCalendarFenced: () => Promise<boolean> = async () => false,
   ) {}
 
   private async client(): Promise<calendar_v3.Calendar> {
+    if (await this.isPrimaryCalendarFenced()) {
+      throw new ToolError('Primary Google Calendar is fenced by your account policy', 'POLICY_FENCED', true);
+    }
     const { google } = await import('googleapis');
     const auth = new google.auth.OAuth2();
     auth.setCredentials({ access_token: await this.accessToken() });
