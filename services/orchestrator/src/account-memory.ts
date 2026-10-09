@@ -224,11 +224,13 @@ export async function importAccountMemoryBundle(accountId: string, bundle: Buffe
   const temporaryDirectory = await mkdtemp(join(tmpdir(), 'dira-memory-import-'));
   await chmod(temporaryDirectory, 0o700);
   const bundlePath = join(temporaryDirectory, 'upload.bundle');
+  const verificationRepository = join(temporaryDirectory, 'verify.git');
   const sourceRepository = join(temporaryDirectory, 'source.git');
   try {
     await writeFile(bundlePath, bundle, { mode: 0o600 });
     await chmod(bundlePath, 0o600);
-    await git(temporaryDirectory, 'bundle', 'verify', bundlePath);
+    await git(temporaryDirectory, 'init', '--bare', '--quiet', verificationRepository);
+    await git(verificationRepository, 'bundle', 'verify', bundlePath);
     await git(temporaryDirectory, 'clone', '--quiet', '--bare', bundlePath, sourceRepository);
     const [rawGraph, rawAvailability, rawPolicy, rawRules, sourceCommit] = await Promise.all([
       git(sourceRepository, 'show', 'HEAD:graph.json'),
