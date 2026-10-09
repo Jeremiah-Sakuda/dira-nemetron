@@ -4,7 +4,7 @@ import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import type { DomainState } from '@dira/commitment-model';
+import { minutesToIso, type DomainState } from '@dira/commitment-model';
 import type { AvailabilityProfile } from './account-planning.js';
 
 const execFile = promisify(execFileCallback);
@@ -61,12 +61,29 @@ export async function syncAccountMemory(
       await git(directory, 'config', 'core.filemode', 'true');
     }
 
+    const timeZone = state.timezone ?? 'UTC';
     const graph = {
       schemaVersion: 1,
-      timezone: state.timezone ?? 'UTC',
+      timezone: timeZone,
       horizonStartIso: state.horizonStartIso,
       horizonEndMin: state.horizonEndMin,
-      commitments: state.commitments,
+      commitments: Object.fromEntries(Object.entries(state.commitments).map(([id, commitment]) => [id, {
+        ...commitment,
+        absoluteTimes: {
+          ...(commitment.startMin !== undefined
+            ? { startIso: minutesToIso(commitment.startMin, state.horizonStartIso, timeZone) }
+            : {}),
+          ...(commitment.startMin !== undefined && commitment.durationMin !== undefined
+            ? { endIso: minutesToIso(commitment.startMin + commitment.durationMin, state.horizonStartIso, timeZone) }
+            : {}),
+          ...(commitment.deadlineMin !== undefined
+            ? { deadlineIso: minutesToIso(commitment.deadlineMin, state.horizonStartIso, timeZone) }
+            : {}),
+          ...(commitment.releaseMin !== undefined
+            ? { releaseIso: minutesToIso(commitment.releaseMin, state.horizonStartIso, timeZone) }
+            : {}),
+        },
+      }])),
       edges: state.edges,
       people: state.people,
       constraints: state.constraints,
