@@ -15,17 +15,21 @@ export async function revalidateAccountApproval(
   accountId: string,
   actionId: string,
   getAccessToken: () => Promise<string>,
-  stage: 'approval' | 'resume' = 'approval',
+  stage: 'approval' | 'resume' | 'autonomous' = 'approval',
 ): Promise<ApprovalRevalidation> {
   const record = await store.getActionRecord(accountId, actionId);
   const resumableStatus = record && ['AUTHORIZED', 'FAILED_TRANSIENT', 'PENDING_EXECUTION'].includes(record.status);
-  if (!record || (stage === 'approval' ? record.status !== 'AWAITING_APPROVAL' : !resumableStatus)) {
+  const statusIsValid = stage === 'approval'
+    ? record?.status === 'AWAITING_APPROVAL'
+    : stage === 'autonomous' ? record?.status === 'AUTHORIZED' : Boolean(resumableStatus);
+  if (!record || !statusIsValid) {
     return { ok: false, reason: stage === 'approval' ? 'The action is no longer awaiting approval.' : 'The action is not authorized for workflow resumption.' };
   }
   const run = await new PostgresWorkflowStore(store, accountId).get(record.workflowId);
   if (!run || (stage === 'approval'
     ? run.status !== 'AWAITING_APPROVAL'
-    : !['AWAITING_APPROVAL', 'WAITING_REVIEW', 'RUNNING'].includes(run.status))) {
+    : stage === 'autonomous' ? run.status !== 'RUNNING'
+      : !['AWAITING_APPROVAL', 'WAITING_REVIEW', 'RUNNING'].includes(run.status))) {
     return { ok: false, reason: 'The workflow is no longer awaiting approval.' };
   }
   const workflowRecords = await store.listWorkflowActionRecords(accountId, record.workflowId);
@@ -35,9 +39,14 @@ export async function revalidateAccountApproval(
   const approvalRecords = workflowRecords.filter((item) => item.policyVerdict === 'REQUIRE_APPROVAL');
   const validApprovalStatuses = stage === 'approval'
     ? ['AWAITING_APPROVAL', 'AUTHORIZED']
-    : ['AWAITING_APPROVAL', 'AUTHORIZED', 'FAILED_TRANSIENT', 'PENDING_EXECUTION'];
+    : stage === 'autonomous' ? ['AUTHORIZED']
+      : ['AWAITING_APPROVAL', 'AUTHORIZED', 'FAILED_TRANSIENT', 'PENDING_EXECUTION'];
   if (approvalRecords.some((item) => !validApprovalStatuses.includes(item.status))) {
     return { ok: false, reason: 'The plan approval state is inconsistent; create a fresh plan.' };
+  }
+  if (stage === 'autonomous' && (approvalRecords.length > 0 || workflowRecords.some((item) =>
+    item.policyVerdict !== 'ALLOW' && item.policyVerdict !== 'ALLOW_AND_NOTIFY'))) {
+    return { ok: false, reason: 'An autonomous workflow must contain only policy-allowed actions.' };
   }
 
   const snapshot = await store.loadAccountPlanningSnapshot(accountId);
@@ -101,7 +110,7 @@ export async function revalidateAccountApproval(
   if (!matching) {
     return { ok: false, reason: 'Fresh Calendar state, feasibility, or policy no longer matches this plan. Check the schedule and request a new plan.' };
   }
-  if (!approvalRecords.some((item) => item.actionId === actionId)) {
+  if (stage !== 'autonomous' && !approvalRecords.some((item) => item.actionId === actionId)) {
     return { ok: false, reason: 'This action is not part of the current approval plan.' };
   }
 

@@ -217,7 +217,7 @@ export function GraphReview({
       });
       const result = await response.json() as {
         error?: string;
-        repairRequest?: { status: string; approvalCount?: number };
+        repairRequest?: { status: string; approvalCount?: number; verifiedActions?: number };
       };
       if (!response.ok) throw new Error(result.error ?? 'Review could not be saved.');
       setProposals((current) => current.filter((item) => item.proposalId !== proposal.proposalId));
@@ -226,6 +226,10 @@ export function GraphReview({
           ? `Commitment confirmed. A repair plan with ${result.repairRequest.approvalCount ?? 0} approval step(s) is waiting in Approvals.`
           : result.repairRequest?.status === 'ALREADY_PENDING'
             ? 'Commitment confirmed. A matching repair plan is already waiting in Approvals.'
+            : result.repairRequest?.status === 'RESOLVED'
+              ? `Commitment confirmed. Dira verified ${result.repairRequest.verifiedActions ?? 0} Calendar action(s).`
+              : result.repairRequest?.status === 'WAITING_REVIEW'
+                ? 'Commitment confirmed. The repair plan needs review before Dira can continue; check Approvals.'
             : 'Commitment confirmed and added to your graph.'
         : 'Proposal rejected and remembered.');
       if (decision === 'CONFIRMED') onConfirmed();
@@ -247,7 +251,7 @@ export function GraphReview({
       });
       const result = await response.json() as {
         error?: string;
-        repairRequest?: { status: string; approvalCount?: number };
+        repairRequest?: { status: string; approvalCount?: number; verifiedActions?: number };
       };
       if (!response.ok) throw new Error(result.error ?? 'Link review could not be saved.');
       setEdgeProposals((current) => current.filter((item) => item.proposalId !== proposal.proposalId));
@@ -256,6 +260,10 @@ export function GraphReview({
           ? `Link confirmed. A repair plan with ${result.repairRequest.approvalCount ?? 0} approval step(s) is waiting in Approvals.`
           : result.repairRequest?.status === 'ALREADY_PENDING'
             ? 'Link confirmed. A matching repair plan is already waiting in Approvals.'
+            : result.repairRequest?.status === 'RESOLVED'
+              ? `Link confirmed. Dira verified ${result.repairRequest.verifiedActions ?? 0} Calendar action(s).`
+              : result.repairRequest?.status === 'WAITING_REVIEW'
+                ? 'Link confirmed. The repair plan needs review before Dira can continue; check Approvals.'
             : 'Link confirmed. It can now inform impact propagation.'
         : 'Link rejected and remembered.');
       if (decision === 'CONFIRMED') onConfirmed();

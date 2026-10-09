@@ -58,10 +58,16 @@ export async function resumeApprovedAccountWorkflow(
     const noActionStarted = records.every((record) => ['AUTHORIZED', 'PENDING_EXECUTION'].includes(record.status));
     if (!evidence || noActionStarted) {
       const approvalRecord = records.find((record) => record.policyVerdict === 'REQUIRE_APPROVAL');
-      if (!approvalRecord || records.some((record) => record.status !== 'AUTHORIZED')) {
+      const autonomous = !approvalRecord;
+      const allAuthorized = records.every((record) => record.status === 'AUTHORIZED');
+      const onlyAllowed = records.every((record) => record.policyVerdict === 'ALLOW' || record.policyVerdict === 'ALLOW_AND_NOTIFY');
+      if (!allAuthorized || (autonomous && !onlyAllowed)) {
         return waitForReview(workflowStore, run, workflowId, 0, 'Every plan action must be authorized before it can resume.');
       }
-      const revalidation = await revalidateAccountApproval(store, accountId, approvalRecord.actionId, getAccessToken, 'resume');
+      const revalidationTarget = approvalRecord?.actionId ?? records[0]!.actionId;
+      const revalidation = await revalidateAccountApproval(
+        store, accountId, revalidationTarget, getAccessToken, autonomous ? 'autonomous' : 'resume',
+      );
       if (!revalidation.ok) {
         if (!revalidation.retryable) {
           await store.invalidateWorkflowActionsForReplan(accountId, workflowId, revalidation.reason);

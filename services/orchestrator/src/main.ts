@@ -1019,6 +1019,12 @@ const server = createServer(async (req, res) => {
       if (body.decision === 'CONFIRMED') {
         try {
           repairRequest = await createApprovalForCurrentFeasibility(store, accountId);
+          if (repairRequest?.status === 'AUTONOMOUS') {
+            const execution = await resumeApprovedAccountWorkflow(
+              store, accountId, repairRequest.workflowId, () => googleAccessToken(store, accountId),
+            );
+            repairRequest = { ...execution };
+          }
         } catch (error) {
           console.error(JSON.stringify({ severity: 'WARN', msg: 'post-confirmation schedule check failed',
             failureType: error instanceof Error ? error.name : 'unknown' }));
@@ -1105,6 +1111,12 @@ const server = createServer(async (req, res) => {
       if (body.decision === 'CONFIRMED') {
         try {
           repairRequest = await createApprovalForCurrentFeasibility(store, accountId);
+          if (repairRequest?.status === 'AUTONOMOUS') {
+            const execution = await resumeApprovedAccountWorkflow(
+              store, accountId, repairRequest.workflowId, () => googleAccessToken(store, accountId),
+            );
+            repairRequest = { ...execution };
+          }
         } catch (error) {
           console.error(JSON.stringify({ severity: 'WARN', msg: 'post-link-confirmation schedule check failed',
             failureType: error instanceof Error ? error.name : 'unknown' }));

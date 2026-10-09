@@ -206,9 +206,14 @@ polling defaults off and requires both `DIRA_ICAL_SYNC_ACCOUNT_IDS` on the
 trusted orchestrator and the user's per-feed opt-in. After the user confirms a
 Calendar, Gmail, or iCalendar proposal into the graph, Dira recomputes
 feasibility and queues a viable approval-required Calendar repair in the inbox
-when one is available. These changes do not yet enter the production
-`handleEvent` loop, and policy-allowed actions are not yet automatically
-executed.
+when one is available. If the best supported repair is fully allowed by the
+account's deterministic policy, Dira starts it through the out-of-model broker:
+the broker freshly re-reads Google Calendar, reruns feasibility and policy,
+checks the separate Calendar write grant, and reads back every mutation before
+updating the graph. Autonomous execution is limited to plans based on Google
+Calendar commitments; imported-feed commitments remain in the review path.
+These graph changes still do not enter the legacy production `handleEvent`
+loop.
 For accounts provisioned in `DIRA_DAILY_JOB_ACCOUNT_IDS`, the orchestrator
 re-anchors and recomputes schedule feasibility at 02:00 local time, then saves
 a durable 07:00 local-time report for the onboarding summary. These reports
