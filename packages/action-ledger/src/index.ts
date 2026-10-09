@@ -31,7 +31,10 @@ const LEGAL_TRANSITIONS: Record<ActionStatus, ActionStatus[]> = {
   AWAITING_APPROVAL: ['AUTHORIZED', 'REJECTED', 'STALE'],
   AUTHORIZED: ['PENDING_EXECUTION', 'STALE'],
   PENDING_EXECUTION: ['EXECUTING', 'STALE'],
-  EXECUTING: ['EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT', 'FAILED_PERMANENT'],
+  // EXECUTING may be reclaimed by the workflow broker after its process dies.
+  // The broker verifies external truth first and every supported calendar
+  // mutation is idempotent before it repeats an uncertain call.
+  EXECUTING: ['EXECUTING', 'EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT', 'FAILED_PERMANENT'],
   EXECUTED_UNVERIFIED: ['VERIFIED', 'REPLAN_REQUIRED', 'FAILED_TRANSIENT'],
   FAILED_TRANSIENT: ['PENDING_EXECUTION', 'FAILED_PERMANENT'],
   FAILED_PERMANENT: ['REPLAN_REQUIRED'],

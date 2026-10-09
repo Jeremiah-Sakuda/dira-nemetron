@@ -142,6 +142,6 @@ function asToolError(error: unknown, operation: string): ToolError {
   throw new ToolError(
     `Google Calendar ${operation} failed: ${value.message ?? String(error)}`,
     `HTTP_${status || 'ERR'}`,
-    status >= 500 || status === 429,
+    status === 401 || status === 403 || status >= 500 || status === 429,
   );
 }

@@ -7,7 +7,7 @@ import { availabilityIntervals, prepareAccountSchedule, rebaseDomainState, stabl
 
 export type ApprovalRevalidation =
   | { ok: true; evidence: ApprovalRevalidationEvidence; checkedCalendarEvents: number; planLabel: string }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; retryable?: boolean };
 
 /** Re-read Google Calendar, then rerun the deterministic solver and policy before recording an approval. */
 export async function revalidateAccountApproval(
@@ -15,13 +15,17 @@ export async function revalidateAccountApproval(
   accountId: string,
   actionId: string,
   getAccessToken: () => Promise<string>,
+  stage: 'approval' | 'resume' = 'approval',
 ): Promise<ApprovalRevalidation> {
   const record = await store.getActionRecord(accountId, actionId);
-  if (!record || record.status !== 'AWAITING_APPROVAL') {
-    return { ok: false, reason: 'The action is no longer awaiting approval.' };
+  const resumableStatus = record && ['AUTHORIZED', 'FAILED_TRANSIENT', 'PENDING_EXECUTION'].includes(record.status);
+  if (!record || (stage === 'approval' ? record.status !== 'AWAITING_APPROVAL' : !resumableStatus)) {
+    return { ok: false, reason: stage === 'approval' ? 'The action is no longer awaiting approval.' : 'The action is not authorized for workflow resumption.' };
   }
   const run = await new PostgresWorkflowStore(store, accountId).get(record.workflowId);
-  if (!run || run.status !== 'AWAITING_APPROVAL') {
+  if (!run || (stage === 'approval'
+    ? run.status !== 'AWAITING_APPROVAL'
+    : !['AWAITING_APPROVAL', 'WAITING_REVIEW', 'RUNNING'].includes(run.status))) {
     return { ok: false, reason: 'The workflow is no longer awaiting approval.' };
   }
   const workflowRecords = await store.listWorkflowActionRecords(accountId, record.workflowId);
@@ -29,7 +33,10 @@ export async function revalidateAccountApproval(
     return { ok: false, reason: 'Another action in this plan was rejected or invalidated; create a fresh plan.' };
   }
   const approvalRecords = workflowRecords.filter((item) => item.policyVerdict === 'REQUIRE_APPROVAL');
-  if (approvalRecords.some((item) => !['AWAITING_APPROVAL', 'AUTHORIZED'].includes(item.status))) {
+  const validApprovalStatuses = stage === 'approval'
+    ? ['AWAITING_APPROVAL', 'AUTHORIZED']
+    : ['AWAITING_APPROVAL', 'AUTHORIZED', 'FAILED_TRANSIENT', 'PENDING_EXECUTION'];
+  if (approvalRecords.some((item) => !validApprovalStatuses.includes(item.status))) {
     return { ok: false, reason: 'The plan approval state is inconsistent; create a fresh plan.' };
   }
 
@@ -48,7 +55,7 @@ export async function revalidateAccountApproval(
     try {
       event = await calendar.verifyEvent({ id: `google:${commitment.externalId}` });
     } catch {
-      return { ok: false, reason: `Could not freshly read Calendar item for “${commitment.title}”. Nothing was authorized; retry when Calendar is reachable.` };
+      return { ok: false, retryable: true, reason: `Could not freshly read Calendar item for “${commitment.title}”. Nothing was authorized; retry when Calendar is reachable.` };
     }
     if (!event) return { ok: false, reason: `Calendar item for “${commitment.title}” was removed or is no longer accessible. Refresh the graph and request a new plan.` };
     const observedStart = calendarIsoToMinutes(event.startIso, oldState.horizonStartIso, oldState.timezone ?? 'UTC');
@@ -72,16 +79,13 @@ export async function revalidateAccountApproval(
   const state = rebaseDomainState(oldState, now);
   state.availability = availabilityIntervals(snapshot.profile, state, now);
   const { ranked } = prepareAccountSchedule(state);
-  const expectedKeys = approvalRecords.map((item) => stableActionIntentKey(item.action)).sort();
+  const expectedKeys = workflowRecords.map((item) => stableActionIntentKey(item.action)).sort();
   const matching = ranked.find((validation) => {
     if (!validation.acceptable) return false;
     const denied = validation.policy.decisions.some((decision) => decision.verdict === 'DENY');
     if (denied) return false;
-    const requiredKeys = validation.plan.actions
-      .filter((_, index) => validation.policy.decisions[index]?.verdict === 'REQUIRE_APPROVAL')
-      .map(stableActionIntentKey)
-      .sort();
-    return arraysEqual(requiredKeys, expectedKeys);
+    const actionKeys = validation.plan.actions.map(stableActionIntentKey).sort();
+    return arraysEqual(actionKeys, expectedKeys);
   });
   if (!matching) {
     return { ok: false, reason: 'Fresh Calendar state, feasibility, or policy no longer matches this plan. Check the schedule and request a new plan.' };
@@ -94,7 +98,7 @@ export async function revalidateAccountApproval(
   const evidence = {
     accountId,
     workflowId: record.workflowId,
-    actionIds: approvalRecords.map((item) => item.actionId).sort(),
+    actionIds: workflowRecords.map((item) => item.actionId).sort(),
     freshReads,
     feasibility: {
       globalSlackMinutes: matching.feasibility.global_slack_minutes,
@@ -126,7 +130,7 @@ function isUpcomingCalendarCommitment(commitment: Commitment, nowMin: number): b
     && commitment.startMin + (commitment.durationMin ?? 0) >= nowMin;
 }
 
-function calendarIsoToMinutes(value: string, horizonStartIso: string, timezone: string): number {
+export function calendarIsoToMinutes(value: string, horizonStartIso: string, timezone: string): number {
   const iso = /^\d{4}-\d{2}-\d{2}$/.test(value)
     ? localDateTimeToIso(`${value}T00:00`, timezone)
     : new Date(Date.parse(value)).toISOString();

@@ -82,7 +82,8 @@ export class PostgresAccountStore {
     for (const name of [
       '001_account_state.sql', '002_google_credentials.sql',
       '003_graph_proposals.sql', '004_graph_edge_proposals.sql',
-      '005_account_availability.sql', '006_action_approvals.sql',
+      '005_account_availability.sql', '006_action_approvals.sql', '007_action_ledger_identity.sql',
+      '008_workflow_execution_evidence.sql',
     ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
@@ -280,6 +281,29 @@ export class PostgresAccountStore {
     });
   }
 
+  async listResumableApprovalWorkflows(accountId: string): Promise<{ workflowId: string; label: string }[]> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ workflow_id: string; label: string }>(
+        `SELECT w.workflow_id, COALESCE(w.run->>'mutationSummary', 'Approved plan') AS label
+         FROM dira_workflows w
+         WHERE w.account_id = $1 AND w.run->>'status' IN ('WAITING_REVIEW', 'RUNNING')
+           AND EXISTS (
+             SELECT 1 FROM dira_action_ledger l
+             WHERE l.account_id = w.account_id AND l.workflow_id = w.workflow_id
+               AND l.status IN ('AUTHORIZED', 'PENDING_EXECUTION', 'EXECUTING', 'EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT', 'VERIFIED')
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM dira_action_ledger l
+             WHERE l.account_id = w.account_id AND l.workflow_id = w.workflow_id
+               AND l.status IN ('AWAITING_APPROVAL', 'REJECTED', 'STALE', 'REPLAN_REQUIRED', 'FAILED_PERMANENT')
+           )
+         ORDER BY w.updated_at DESC`,
+        [accountId],
+      );
+      return result.rows.map((row) => ({ workflowId: row.workflow_id, label: row.label }));
+    });
+  }
+
   async getActionRecord(accountId: string, actionId: string): Promise<ActionRecord | undefined> {
     return this.withAccount(accountId, async (client) => {
       const result = await client.query<{ record: ActionRecord }>(
@@ -300,6 +324,200 @@ export class PostgresAccountStore {
       );
       return result.rows.map((row) => row.record);
     });
+  }
+
+  /** Serialize one workflow's external mutations across service instances. */
+  async withWorkflowExecutionLock<T>(accountId: string, workflowId: string, operation: (client: PoolClient) => Promise<T>): Promise<T> {
+    if (!accountId || !workflowId) throw new Error('account and workflow ids are required');
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('dira.account_id', $1, true)", [accountId]);
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', [accountId, workflowId]);
+      const state = await client.query('SELECT account_id FROM dira_account_state WHERE account_id = $1 FOR UPDATE', [accountId]);
+      const profile = await client.query('SELECT account_id FROM dira_availability_profiles WHERE account_id = $1 FOR UPDATE', [accountId]);
+      if (!state.rowCount || !profile.rowCount) throw new Error('account graph and focus hours must exist before workflow resumption');
+      const result = await operation(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /** Persist resume-time deterministic revalidation before the first external write. */
+  async recordWorkflowExecutionEvidence(
+    accountId: string,
+    workflowId: string,
+    evidence: ApprovalRevalidationEvidence,
+    transactionClient?: PoolClient,
+  ): Promise<void> {
+    const operation = async (client: PoolClient) => {
+      const [stateResult, profileResult] = await Promise.all([
+        client.query<{ state: DomainState }>('SELECT state FROM dira_account_state WHERE account_id = $1', [accountId]),
+        client.query<{ profile: AvailabilityProfile }>('SELECT profile FROM dira_availability_profiles WHERE account_id = $1', [accountId]),
+      ]);
+      if (!stateResult.rows[0] || !profileResult.rows[0]
+        || contentHash(stateResult.rows[0].state) !== evidence.stateVersion
+        || contentHash(profileResult.rows[0].profile) !== evidence.profileVersion) {
+        throw new Error('account graph or focus hours changed during workflow resumption; refresh the plan');
+      }
+      const recordsResult = await client.query<{ status: ActionRecord['status'] }>(
+        'SELECT status FROM dira_action_ledger WHERE account_id = $1 AND workflow_id = $2',
+        [accountId, workflowId],
+      );
+      if (recordsResult.rows.length === 0 || recordsResult.rows.some((row) => !['AUTHORIZED', 'FAILED_TRANSIENT', 'PENDING_EXECUTION'].includes(row.status))) {
+        throw new Error('every action in this workflow must be authorized and not externally in progress before revalidation');
+      }
+      await client.query(
+        `INSERT INTO dira_workflow_execution_evidence (account_id, workflow_id, evidence)
+         VALUES ($1, $2, $3::jsonb)
+         ON CONFLICT (account_id, workflow_id) DO UPDATE SET evidence = EXCLUDED.evidence, updated_at = now()`,
+        [accountId, workflowId, JSON.stringify(evidence)],
+      );
+    };
+    if (transactionClient) return operation(transactionClient);
+    await this.withAccount(accountId, operation);
+  }
+
+  async invalidateWorkflowActionsForReplan(accountId: string, workflowId: string, reason: string): Promise<void> {
+    await this.withAccount(accountId, async (client) => {
+      const rows = await client.query<{ action_id: string; status: ActionRecord['status']; record: ActionRecord }>(
+        `SELECT action_id, status, record FROM dira_action_ledger
+         WHERE account_id = $1 AND workflow_id = $2
+           AND status IN ('AUTHORIZED', 'PENDING_EXECUTION', 'EXECUTING', 'EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT') FOR UPDATE`,
+        [accountId, workflowId],
+      );
+      const now = new Date().toISOString();
+      for (const row of rows.rows) {
+        const nextStatus: ActionRecord['status'] = ['EXECUTING', 'EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT'].includes(row.status)
+          ? 'REPLAN_REQUIRED' : 'STALE';
+        const stale: ActionRecord = {
+          ...row.record,
+          status: nextStatus,
+          failureReason: reason,
+          history: [...row.record.history, { status: nextStatus, atIso: now, note: reason }],
+        };
+        await client.query(
+          'UPDATE dira_action_ledger SET status = $3, record = $4::jsonb, updated_at = now() WHERE account_id = $1 AND action_id = $2',
+          [accountId, row.action_id, nextStatus, JSON.stringify(stale)],
+        );
+      }
+    });
+  }
+
+  async getWorkflowExecutionEvidence(accountId: string, workflowId: string): Promise<ApprovalRevalidationEvidence | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ evidence: ApprovalRevalidationEvidence }>(
+        'SELECT evidence FROM dira_workflow_execution_evidence WHERE account_id = $1 AND workflow_id = $2',
+        [accountId, workflowId],
+      );
+      return result.rows[0]?.evidence;
+    });
+  }
+
+  /** Commit the verified Calendar result to the account graph after the full plan succeeds. */
+  async applyVerifiedCalendarActions(
+    accountId: string,
+    records: ActionRecord[],
+    evidence: ApprovalRevalidationEvidence,
+    transactionClient?: PoolClient,
+  ): Promise<void> {
+    const operation = async (client: PoolClient) => {
+      const [stateResult, profileResult] = await Promise.all([
+        client.query<{ state: DomainState }>('SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE', [accountId]),
+        client.query<{ profile: AvailabilityProfile }>('SELECT profile FROM dira_availability_profiles WHERE account_id = $1 FOR SHARE', [accountId]),
+      ]);
+      const state = stateResult.rows[0]?.state;
+      const profile = profileResult.rows[0]?.profile;
+      if (!state || !profile || contentHash(state) !== evidence.stateVersion) {
+        throw new Error('account graph changed before the verified plan could be committed');
+      }
+      assertAccountMatch(accountId, state.userId);
+      const nowIso = new Date().toISOString();
+      for (const record of records) {
+        if (record.status !== 'VERIFIED' || record.action.external_system !== 'calendar') {
+          throw new Error('only verified Calendar actions can update the account graph');
+        }
+        const action = record.action;
+        const desired = action.desired_state as Record<string, unknown>;
+        const startIso = typeof desired.start_iso === 'string' ? desired.start_iso : undefined;
+        const endIso = typeof desired.end_iso === 'string' ? desired.end_iso : undefined;
+        const startMin = startIso ? isoToMinutes(startIso, state.horizonStartIso) : undefined;
+        const endMin = endIso ? isoToMinutes(endIso, state.horizonStartIso) : undefined;
+        if ((action.type === 'MOVE_CALENDAR_EVENT' || action.type === 'CREATE_CALENDAR_EVENT')
+          && (startMin === undefined || endMin === undefined || endMin <= startMin)) {
+          throw new Error(`verified Calendar action ${record.actionId} has invalid absolute times`);
+        }
+
+        if (action.type === 'MOVE_CALENDAR_EVENT') {
+          const commitment = state.commitments[action.target];
+          if (!commitment) throw new Error(`Calendar move target ${action.target} is no longer in the account graph`);
+          commitment.startMin = startMin;
+          commitment.durationMin = endMin! - startMin!;
+          commitment.updatedAtIso = nowIso;
+        } else if (action.type === 'CREATE_CALENDAR_EVENT') {
+          const title = typeof desired.title === 'string' ? desired.title : action.summary;
+          const relatedId = typeof desired.reserves_effort_for === 'string' ? desired.reserves_effort_for : undefined;
+          const related = relatedId ? state.commitments[relatedId] : undefined;
+          const externalResponse = record.externalResponse as { id?: unknown; metadata?: { googleEventId?: unknown } } | undefined;
+          const googleEventId = typeof externalResponse?.id === 'string'
+            ? externalResponse.id
+            : typeof externalResponse?.metadata?.googleEventId === 'string'
+              ? externalResponse.metadata.googleEventId : undefined;
+          if (!googleEventId) throw new Error(`verified Calendar event id is missing for ${record.actionId}`);
+          const graphId = `cal-${googleEventId}`;
+          const existing = state.commitments[graphId];
+          if (existing) {
+            if (existing.title !== title || existing.startMin !== startMin || existing.durationMin !== endMin! - startMin!) {
+              throw new Error(`Calendar reservation id ${graphId} conflicts with an existing commitment`);
+            }
+            existing.status = 'PLANNED';
+            existing.externalId = googleEventId;
+            existing.updatedAtIso = nowIso;
+          } else {
+            const commitment: Commitment = {
+              id: graphId,
+              userId: accountId,
+              title,
+              domain: related?.domain ?? 'personal',
+              source: 'dira-calendar-action',
+              sourceReference: record.actionId,
+              status: 'PLANNED',
+              kind: relatedId ? 'block' : 'event',
+              startMin,
+              durationMin: endMin! - startMin!,
+              ...(relatedId ? { reservesEffortFor: relatedId } : {}),
+              flexibility: relatedId ? 'FLEXIBLE' : 'FIXED',
+              criticality: 'NORMAL',
+              owner: accountId,
+              participants: [],
+              goalIds: [],
+              resourceRequirements: [],
+              externalSystem: 'calendar',
+              ...(googleEventId ? { externalId: googleEventId } : {}),
+              confidence: 1,
+              createdAtIso: nowIso,
+              updatedAtIso: nowIso,
+            };
+            state.commitments[graphId] = commitment;
+          }
+        } else if (action.type === 'DELETE_CALENDAR_EVENT') {
+          const commitment = state.commitments[action.target];
+          if (!commitment) throw new Error(`Calendar delete target ${action.target} is no longer in the account graph`);
+          commitment.status = 'DROPPED';
+          commitment.updatedAtIso = nowIso;
+        } else {
+          throw new Error(`unsupported Calendar action ${action.type}`);
+        }
+      }
+      await client.query('UPDATE dira_account_state SET state = $2::jsonb, updated_at = now() WHERE account_id = $1', [accountId, JSON.stringify(state)]);
+    };
+    if (transactionClient) return operation(transactionClient);
+    await this.withAccount(accountId, operation);
   }
 
   async listRecentApprovalDecisions(accountId: string): Promise<{
@@ -407,6 +625,43 @@ export class PostgresAccountStore {
         [accountId, actionId, decision, now, evidence?.revalidatedAtIso ?? null,
           evidence?.evidenceHash ?? null, evidence?.stateVersion ?? null, evidence?.profileVersion ?? null],
       );
+      if (decision === 'REJECTED') {
+        const siblings = await client.query<{ action_id: string; record: ActionRecord }>(
+          `SELECT action_id, record FROM dira_action_ledger
+           WHERE account_id = $1 AND workflow_id = $2 AND action_id <> $3
+             AND status IN ('AWAITING_APPROVAL', 'AUTHORIZED') FOR UPDATE`,
+          [accountId, row.record.workflowId, actionId],
+        );
+        for (const sibling of siblings.rows) {
+          const stale: ActionRecord = {
+            ...sibling.record,
+            status: 'STALE',
+            failureReason: 'A sibling action in this approved plan was rejected.',
+            history: [...sibling.record.history, {
+              status: 'STALE', atIso: now, note: 'plan invalidated by account owner rejection',
+            }],
+          };
+          await client.query(
+            `UPDATE dira_action_ledger SET status = 'STALE', record = $3::jsonb, updated_at = now()
+             WHERE account_id = $1 AND action_id = $2`,
+            [accountId, sibling.action_id, JSON.stringify(stale)],
+          );
+        }
+        const workflow = await client.query<{ run: WorkflowRun }>(
+          'SELECT run FROM dira_workflows WHERE account_id = $1 AND workflow_id = $2 FOR UPDATE',
+          [accountId, row.record.workflowId],
+        );
+        if (workflow.rows[0]) {
+          const run = workflow.rows[0].run;
+          run.status = 'WAITING_REVIEW';
+          run.statusReason = 'The account owner rejected an action; create a fresh plan before continuing.';
+          run.userInterventions += 1;
+          await client.query(
+            'UPDATE dira_workflows SET run = $3::jsonb, updated_at = now() WHERE account_id = $1 AND workflow_id = $2',
+            [accountId, row.record.workflowId, JSON.stringify(run)],
+          );
+        }
+      }
       return record;
     });
   }
@@ -792,7 +1047,7 @@ export class PostgresLedgerStore implements LedgerStore {
   async load(): Promise<ActionRecord[]> {
     return this.store.withAccount(this.accountId, async (client) => {
       const result = await client.query<{ record: ActionRecord }>(
-        'SELECT record FROM dira_action_ledger WHERE account_id = $1 ORDER BY record_index',
+        'SELECT record FROM dira_action_ledger WHERE account_id = $1 ORDER BY record_index, action_id',
         [this.accountId],
       );
       return result.rows.map((row) => row.record);
@@ -801,12 +1056,17 @@ export class PostgresLedgerStore implements LedgerStore {
 
   async save(records: ActionRecord[]): Promise<void> {
     return this.store.withAccount(this.accountId, async (client) => {
-      await client.query('DELETE FROM dira_action_ledger WHERE account_id = $1', [this.accountId]);
       for (const [recordIndex, record] of records.entries()) {
         await client.query(
           `INSERT INTO dira_action_ledger
              (account_id, record_index, action_id, workflow_id, idempotency_key, status, record)
-           VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+           ON CONFLICT (account_id, action_id) DO UPDATE SET
+             record_index = EXCLUDED.record_index, workflow_id = EXCLUDED.workflow_id,
+             idempotency_key = EXCLUDED.idempotency_key, status = EXCLUDED.status,
+             record = EXCLUDED.record, updated_at = now()
+           WHERE EXCLUDED.record #>> '{history,-1,atIso}'
+             >= dira_action_ledger.record #>> '{history,-1,atIso}'`,
           [this.accountId, recordIndex, record.actionId, record.workflowId,
             record.idempotencyKey, record.status, JSON.stringify(record)],
         );

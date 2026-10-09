@@ -7,13 +7,14 @@ import { FileWorkflowStore } from '@dira/agent/file-stores';
 import { Gemma3nVoiceClient, transcriptToVoiceEvent } from '@dira/gemma-voice';
 import { RawEmailEventSchema, RawVoiceNoteSchema } from '@dira/event-schema';
 import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden';
-import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAccountId, isAllowedOrigin } from './google-auth.js';
+import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAccountId, googleCalendarWriteEnabled, isAllowedOrigin } from './google-auth.js';
 import { PostgresAccountStore, PostgresLedgerStore, PostgresWorkflowStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema, type WorkflowRun } from '@dira/agent';
 import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule, stableActionIntentKey } from './account-planning.js';
 import { revalidateAccountApproval } from './account-approval.js';
+import { resumeApprovedAccountWorkflow } from './account-broker.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -329,8 +330,9 @@ const server = createServer(async (req, res) => {
         json(req, res, 409, { error: `Policy does not allow this action: ${denied.reason}` });
         return;
       }
-      const pending = validation.plan.actions
+      const planActions = validation.plan.actions
         .map((action, index) => ({ action, decision: validation.policy.decisions[index]! }))
+      const pending = planActions
         .filter(({ decision }) => decision.verdict === 'REQUIRE_APPROVAL');
       if (pending.length === 0) {
         json(req, res, 409, { error: 'This plan has no approval-required actions.' });
@@ -342,14 +344,14 @@ const server = createServer(async (req, res) => {
       const requestedAtIso = new Date().toISOString();
       const ledger = await ActionLedger.open(new PostgresLedgerStore(store, accountId));
       const existingPendingKeys = new Set(ledger.all()
-        .filter((record) => ['AWAITING_APPROVAL', 'AUTHORIZED', 'PENDING_EXECUTION', 'EXECUTING'].includes(record.status))
+        .filter((record) => ['AWAITING_APPROVAL', 'AUTHORIZED', 'PENDING_EXECUTION', 'EXECUTING', 'EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT'].includes(record.status))
         .map((record) => stableActionIntentKey(record.action)));
-      if (pending.some(({ action }) => existingPendingKeys.has(stableActionIntentKey(action)))) {
+      if (planActions.some(({ action }) => existingPendingKeys.has(stableActionIntentKey(action)))) {
         json(req, res, 409, { error: 'A matching action is already awaiting approval or authorized.' });
         return;
       }
       const actionIds: string[] = [];
-      for (const [index, { action, decision }] of pending.entries()) {
+      for (const [index, { action, decision }] of planActions.entries()) {
         const persisted = await ledger.persistIntent(
           workflowId,
           action,
@@ -358,11 +360,15 @@ const server = createServer(async (req, res) => {
           { planId: validation.plan.id, seq: index },
         );
         if (persisted.record.status === 'PLANNED') {
-          const awaiting = await ledger.transition(persisted.record.actionId, 'AWAITING_APPROVAL', {
-            approval: { requestedAtIso },
-          }, 'feasible plan held for authenticated account-owner decision');
-          actionIds.push(awaiting.actionId);
-        } else if (persisted.record.status === 'AWAITING_APPROVAL') {
+          if (decision.verdict === 'REQUIRE_APPROVAL') {
+            const awaiting = await ledger.transition(persisted.record.actionId, 'AWAITING_APPROVAL', {
+              approval: { requestedAtIso },
+            }, 'feasible plan held for authenticated account-owner decision');
+            actionIds.push(awaiting.actionId);
+          } else {
+            await ledger.transition(persisted.record.actionId, 'AUTHORIZED', {}, 'deterministic policy permits this action; held until the plan approvals are complete');
+          }
+        } else if (persisted.record.status === 'AWAITING_APPROVAL' && decision.verdict === 'REQUIRE_APPROVAL') {
           actionIds.push(persisted.record.actionId);
         }
       }
@@ -404,6 +410,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       const approvals = await (await accountStore()).listPendingApprovals(accountId);
+      const store = await accountStore();
       json(req, res, 200, {
         approvals: approvals.map((record) => ({
           actionId: record.actionId,
@@ -417,7 +424,32 @@ const server = createServer(async (req, res) => {
             ?? record.history.find((entry) => entry.status === 'AWAITING_APPROVAL')?.atIso,
         })),
         recentDecisions: await (await accountStore()).listRecentApprovalDecisions(accountId),
+        resumableWorkflows: await store.listResumableApprovalWorkflows(accountId),
       });
+      return;
+    }
+    if (url.pathname === '/api/approvals/resume' && req.method === 'POST') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const body = safeJson(await readBody(req)) as { workflowId?: string } | null;
+      if (typeof body?.workflowId !== 'string' || body.workflowId.length < 1 || body.workflowId.length > 500) {
+        json(req, res, 400, { error: 'invalid_workflow_id' });
+        return;
+      }
+      const store = await accountStore();
+      try {
+        const result = await resumeApprovedAccountWorkflow(store, accountId, body.workflowId, () => googleAccessToken(store, accountId));
+        json(req, res, 200, result);
+      } catch (error) {
+        json(req, res, 409, { error: error instanceof Error ? error.message : 'workflow_resume_conflict' });
+      }
       return;
     }
     if (url.pathname === '/api/approvals' && req.method === 'POST') {
@@ -438,6 +470,10 @@ const server = createServer(async (req, res) => {
       }
       try {
         const store = await accountStore();
+        if (body.decision === 'APPROVED' && !await googleCalendarWriteEnabled(store, accountId)) {
+          json(req, res, 409, { error: 'Enable Google Calendar changes in Account setup before approving this plan.' });
+          return;
+        }
         const revalidation = body.decision === 'APPROVED'
           ? await revalidateAccountApproval(store, accountId, body.actionId, () => googleAccessToken(store, accountId))
           : undefined;
@@ -451,6 +487,15 @@ const server = createServer(async (req, res) => {
           body.decision,
           revalidation?.ok ? revalidation.evidence : undefined,
         );
+        let execution: { status: string; verifiedActions: number; reason?: string } | undefined;
+        if (body.decision === 'APPROVED') {
+          const workflowRecords = await store.listWorkflowActionRecords(accountId, record.workflowId);
+          if (workflowRecords.every((item) => item.status === 'AUTHORIZED')) {
+            execution = await resumeApprovedAccountWorkflow(
+              store, accountId, record.workflowId, () => googleAccessToken(store, accountId),
+            );
+          }
+        }
         json(req, res, 200, {
           actionId: record.actionId,
           status: record.status,
@@ -458,7 +503,7 @@ const server = createServer(async (req, res) => {
           revalidatedAtIso: record.approval?.revalidatedAtIso,
           checkedCalendarEvents: revalidation?.ok ? revalidation.checkedCalendarEvents : 0,
           planLabel: revalidation?.ok ? revalidation.planLabel : undefined,
-          execution: 'authorized and durably recorded; write scopes and brokered execution are not connected yet',
+          execution: execution ?? { status: body.decision === 'APPROVED' ? 'AWAITING_APPROVAL' : 'REJECTED', verifiedActions: 0 },
         });
       } catch (error) {
         json(req, res, 409, { error: error instanceof Error ? error.message : 'approval_conflict' });

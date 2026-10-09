@@ -23,9 +23,15 @@ interface RecentDecision {
   status: string | null;
 }
 
+interface ResumableWorkflow {
+  workflowId: string;
+  label: string;
+}
+
 export function ApprovalsInbox() {
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [recentDecisions, setRecentDecisions] = useState<RecentDecision[]>([]);
+  const [resumableWorkflows, setResumableWorkflows] = useState<ResumableWorkflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
@@ -38,10 +44,16 @@ export function ApprovalsInbox() {
     setError('');
     try {
       const response = await fetch('/api/approvals', { cache: 'no-store' });
-      const result = await response.json() as { approvals?: PendingApproval[]; recentDecisions?: RecentDecision[]; error?: string };
+      const result = await response.json() as {
+        approvals?: PendingApproval[];
+        recentDecisions?: RecentDecision[];
+        resumableWorkflows?: ResumableWorkflow[];
+        error?: string;
+      };
       if (!response.ok) throw new Error(result.error ?? 'Approvals could not be loaded.');
       setApprovals(result.approvals ?? []);
       setRecentDecisions(result.recentDecisions ?? []);
+      setResumableWorkflows(result.resumableWorkflows ?? []);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Approvals could not be loaded.');
     } finally {
@@ -59,15 +71,45 @@ export function ApprovalsInbox() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ actionId: item.actionId, decision }),
       });
-      const result = await response.json() as { error?: string; checkedCalendarEvents?: number; planLabel?: string };
+      const result = await response.json() as {
+        error?: string;
+        checkedCalendarEvents?: number;
+        planLabel?: string;
+        execution?: { status: string; reason?: string };
+      };
       if (!response.ok) throw new Error(result.error ?? 'Decision could not be recorded.');
       setApprovals((current) => current.filter((approval) => approval.actionId !== item.actionId));
       setNotice(decision === 'APPROVED'
-        ? `Approved after rechecking ${result.checkedCalendarEvents ?? 0} Calendar item(s)${result.planLabel ? ` for “${result.planLabel}”` : ''}. This account path does not execute actions yet.`
+        ? result.execution?.status === 'RESOLVED'
+          ? `Plan completed and ${result.checkedCalendarEvents ?? 0} Calendar item(s) were freshly checked before execution.`
+          : `Authorization recorded${result.planLabel ? ` for “${result.planLabel}”` : ''}${result.execution?.reason ? `. ${result.execution.reason}` : result.execution?.status === 'AWAITING_APPROVAL' ? '. Other actions in this plan still need approval.' : ''}`
         : 'Action rejected and recorded.');
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Decision could not be recorded.');
+    } finally {
+      setBusyId('');
+    }
+  }
+
+  async function resumeWorkflow(workflow: ResumableWorkflow) {
+    setBusyId(workflow.workflowId);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/approvals/resume', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ workflowId: workflow.workflowId }),
+      });
+      const result = await response.json() as { error?: string; status?: string; reason?: string; verifiedActions?: number };
+      if (!response.ok) throw new Error(result.error ?? 'Plan could not be resumed.');
+      setNotice(result.status === 'RESOLVED'
+        ? `Plan completed; ${result.verifiedActions ?? 0} action(s) were verified against Google Calendar.`
+        : result.reason ?? 'The plan is waiting for review.');
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Plan could not be resumed.');
     } finally {
       setBusyId('');
     }
@@ -85,7 +127,7 @@ export function ApprovalsInbox() {
           </div>
           <button className="btn btn-secondary" type="button" onClick={() => void load()} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
         </div>
-        <p className="privacy-note">Approving records authorization only. Before execution is connected, the workflow must re-read external state and re-run feasibility and policy. This build does not execute account actions.</p>
+        <p className="privacy-note">Approval re-reads Calendar and reruns the deterministic solver and policy. Calendar writes require the separate permission in Account setup; every write is read back before Dira updates your graph.</p>
         {loading && <p className="muted" role="status">Loading approvals…</p>}
         {error && <p className="form-error" role="alert">{error}</p>}
         {notice && <p className="graph-notice" role="status">{notice}</p>}
@@ -107,6 +149,17 @@ export function ApprovalsInbox() {
             </article>
           ))}
         </div>
+        {resumableWorkflows.length > 0 && <section className="recent-decisions" aria-labelledby="resume-workflows-title">
+          <h3 id="resume-workflows-title">Plans waiting to resume</h3>
+          {resumableWorkflows.map((workflow) => <article className="proposal-card approval-card" key={workflow.workflowId}>
+            <h3>{workflow.label}</h3>
+            <div className="proposal-actions">
+              <button className="btn" type="button" disabled={busyId === workflow.workflowId} onClick={() => void resumeWorkflow(workflow)}>
+                {busyId === workflow.workflowId ? 'Resuming…' : 'Resume plan'}
+              </button>
+            </div>
+          </article>)}
+        </section>}
         {recentDecisions.length > 0 && <section className="recent-decisions" aria-labelledby="recent-approvals-title">
           <h3 id="recent-approvals-title">Recent decisions</h3>
           {recentDecisions.map((item) => <div className="recent-decision" key={`${item.actionId}-${item.decidedAtIso}`}>

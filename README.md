@@ -150,12 +150,16 @@ delegation links are excluded without explicit person evidence. Users can set
 their recurring focus hours and run an account-private feasibility check with
 the deterministic solver and policy engine; candidate repairs are previews
 and cannot mutate services. A feasible candidate with policy-held actions can
-be sent to the per-account approval inbox. Before authorizing, Dira re-reads
-relevant Calendar items and reruns feasibility and policy; the decision and
-revalidation evidence hash are stored per account. This account path does not
-resume or execute those actions yet and keeps Calendar read-only. It remains
-separate from the shared synthetic judge world. The hosted dashboard does not
-yet have these Google/Postgres secrets configured.
+be sent to the per-account approval inbox. Approval re-reads relevant Calendar
+items and reruns feasibility and policy. After every required approval, the
+out-of-model broker revalidates, checks policy again, runs authorized Calendar
+actions only when the account separately grants event-write scope, verifies
+each result with a fresh Calendar read, and commits verified changes to the
+account graph. The ledger and deterministic Calendar identifiers support
+recovery after interrupted writes. Gmail and non-Calendar actions are not
+connected to this account broker yet. It remains separate from the shared
+synthetic judge world. The hosted dashboard does not yet have these
+Google/Postgres secrets configured.
 
 Monorepo map: engines in [`packages/`](packages), the agent loop in
 [`agents/dira`](agents/dira), scoped tool adapters in [`adapters/`](adapters),
