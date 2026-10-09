@@ -1,6 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-import { ActionLedger } from '@dira/action-ledger';
 import { FileLedgerStore } from '@dira/action-ledger/file-store';
 import { buildReplayRuntime, computeRunMetrics } from '@dira/agent';
 import { FileWorkflowStore } from '@dira/agent/file-stores';
@@ -8,12 +7,12 @@ import { Gemma3nVoiceClient, transcriptToVoiceEvent } from '@dira/gemma-voice';
 import { RawEmailEventSchema, RawVoiceNoteSchema } from '@dira/event-schema';
 import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden';
 import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAccountId, googleCalendarWriteEnabled, isAllowedOrigin } from './google-auth.js';
-import { PostgresAccountStore, PostgresLedgerStore, PostgresWorkflowStore } from './postgres-store.js';
+import { PostgresAccountStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
-import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema, type WorkflowRun } from '@dira/agent';
+import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema } from '@dira/agent';
 import { GoogleUserGmailTool } from '@dira/adapter-gmail/user-google';
-import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule, stableActionIntentKey } from './account-planning.js';
+import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule } from './account-planning.js';
 import { revalidateAccountApproval } from './account-approval.js';
 import { resumeApprovedAccountWorkflow } from './account-broker.js';
 import { exportAccountMemory, importAccountMemoryBundle, syncAccountMemory } from './account-memory.js';
@@ -22,6 +21,7 @@ import { startConfiguredCalendarPolling, syncAccountCalendarChanges } from './ac
 import { startConfiguredGmailPolling, syncAccountGmailChanges } from './account-gmail-sync.js';
 import { createIcalFeed, startConfiguredIcalPolling, syncAccountIcalFeed } from './account-ical-sync.js';
 import { startConfiguredAccountDailyJobs } from './account-daily-jobs.js';
+import { createApprovalForCurrentFeasibility, createScheduleApprovalRequest } from './account-schedule-approval.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -535,77 +535,16 @@ const server = createServer(async (req, res) => {
         json(req, res, 409, { error: `Policy does not allow this action: ${denied.reason}` });
         return;
       }
-      const planActions = validation.plan.actions
-        .map((action, index) => ({ action, decision: validation.policy.decisions[index]! }))
-      const pending = planActions
-        .filter(({ decision }) => decision.verdict === 'REQUIRE_APPROVAL');
-      if (pending.length === 0) {
+      const request = await createScheduleApprovalRequest(store, accountId, validation);
+      if (request.status === 'NO_APPROVAL_REQUIRED') {
         json(req, res, 409, { error: 'This plan has no approval-required actions.' });
         return;
       }
-
-      const eventId = `account-plan-${randomUUID()}`;
-      const workflowId = `wf-${eventId}`;
-      const requestedAtIso = new Date().toISOString();
-      const ledger = await ActionLedger.open(new PostgresLedgerStore(store, accountId));
-      const existingPendingKeys = new Set(ledger.all()
-        .filter((record) => ['AWAITING_APPROVAL', 'AUTHORIZED', 'PENDING_EXECUTION', 'EXECUTING', 'EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT'].includes(record.status))
-        .map((record) => stableActionIntentKey(record.action)));
-      if (planActions.some(({ action }) => existingPendingKeys.has(stableActionIntentKey(action)))) {
+      if (request.status === 'ALREADY_PENDING') {
         json(req, res, 409, { error: 'A matching action is already awaiting approval or authorized.' });
         return;
       }
-      const actionIds: string[] = [];
-      for (const [index, { action, decision }] of planActions.entries()) {
-        const persisted = await ledger.persistIntent(
-          workflowId,
-          action,
-          decision.verdict,
-          decision.rule,
-          { planId: validation.plan.id, seq: index },
-        );
-        if (persisted.record.status === 'PLANNED') {
-          if (decision.verdict === 'REQUIRE_APPROVAL') {
-            const awaiting = await ledger.transition(persisted.record.actionId, 'AWAITING_APPROVAL', {
-              approval: { requestedAtIso },
-            }, 'feasible plan held for authenticated account-owner decision');
-            actionIds.push(awaiting.actionId);
-          } else {
-            await ledger.transition(persisted.record.actionId, 'AUTHORIZED', {}, 'deterministic policy permits this action; held until the plan approvals are complete');
-          }
-        } else if (persisted.record.status === 'AWAITING_APPROVAL' && decision.verdict === 'REQUIRE_APPROVAL') {
-          actionIds.push(persisted.record.actionId);
-        }
-      }
-      if (actionIds.length === 0) {
-        json(req, res, 409, { error: 'The selected plan already has a terminal action record.' });
-        return;
-      }
-      const run: WorkflowRun = {
-        id: workflowId,
-        eventId,
-        status: 'AWAITING_APPROVAL',
-        statusReason: 'A feasible schedule plan contains action(s) requiring the account owner’s approval.',
-        mutationSummary: `Schedule review: ${validation.plan.label}`,
-        impacts: [],
-        affected: [],
-        planningRounds: [[{
-          id: validation.plan.id,
-          label: validation.plan.label,
-          acceptable: false,
-          autonomous: false,
-          costTotal: validation.cost.total,
-          slackMinutes: validation.feasibility.global_slack_minutes,
-          rejectionReason: 'Awaiting authenticated account-owner approval.',
-          actionCount: validation.plan.actions.length,
-        }]],
-        selectedPlanIds: [validation.plan.id],
-        failuresRecovered: 0,
-        replans: 0,
-        userInterventions: 0,
-      };
-      await new PostgresWorkflowStore(store, accountId).save(run);
-      json(req, res, 202, { workflowId, status: run.status, approvalCount: actionIds.length, actionIds });
+      json(req, res, 202, request);
       return;
     }
     if (url.pathname === '/api/approvals' && req.method === 'GET') {
@@ -877,6 +816,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (req.method === 'POST' && url.pathname === '/api/graph/proposals') {
+      if (!isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return; }
       const accountId = getSessionAccountId(req);
       if (!accountId) {
         json(req, res, 401, { error: 'unauthenticated' });
@@ -968,6 +908,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (req.method === 'POST' && url.pathname === '/api/graph/proposals/review') {
+      if (!isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return; }
       const accountId = getSessionAccountId(req);
       if (!accountId) {
         json(req, res, 401, { error: 'unauthenticated' });
@@ -1074,8 +1015,18 @@ const server = createServer(async (req, res) => {
       );
       const state = await store.ensureDomainState(accountId);
       await syncMemoryFromStore(store, accountId);
+      let repairRequest;
+      if (body.decision === 'CONFIRMED') {
+        try {
+          repairRequest = await createApprovalForCurrentFeasibility(store, accountId);
+        } catch (error) {
+          console.error(JSON.stringify({ severity: 'WARN', msg: 'post-confirmation schedule check failed',
+            failureType: error instanceof Error ? error.name : 'unknown' }));
+        }
+      }
       json(req, res, 200, {
         ...result,
+        ...(repairRequest ? { repairRequest } : {}),
         stateSummary: {
           commitmentCount: Object.keys(state.commitments).length,
           edgeCount: state.edges.length,
@@ -1094,6 +1045,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (req.method === 'POST' && url.pathname === '/api/graph/edges') {
+      if (!isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return; }
       const accountId = getSessionAccountId(req);
       if (!accountId) {
         json(req, res, 401, { error: 'unauthenticated' });
@@ -1123,6 +1075,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (req.method === 'POST' && url.pathname === '/api/graph/edges/review') {
+      if (!isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return; }
       const accountId = getSessionAccountId(req);
       if (!accountId) {
         json(req, res, 401, { error: 'unauthenticated' });
@@ -1148,7 +1101,16 @@ const server = createServer(async (req, res) => {
       const store = await accountStore();
       const state = await store.ensureDomainState(accountId);
       await syncMemoryFromStore(store, accountId);
-      json(req, res, 200, { ...result, edgeCount: state.edges.length });
+      let repairRequest;
+      if (body.decision === 'CONFIRMED') {
+        try {
+          repairRequest = await createApprovalForCurrentFeasibility(store, accountId);
+        } catch (error) {
+          console.error(JSON.stringify({ severity: 'WARN', msg: 'post-link-confirmation schedule check failed',
+            failureType: error instanceof Error ? error.name : 'unknown' }));
+        }
+      }
+      json(req, res, 200, { ...result, ...(repairRequest ? { repairRequest } : {}), edgeCount: state.edges.length });
       return;
     }
     if (req.method === 'POST' && url.pathname === '/auth/logout') {

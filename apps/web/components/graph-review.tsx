@@ -215,10 +215,19 @@ export function GraphReview({
           } : undefined,
         }),
       });
-      const result = await response.json() as { error?: string };
+      const result = await response.json() as {
+        error?: string;
+        repairRequest?: { status: string; approvalCount?: number };
+      };
       if (!response.ok) throw new Error(result.error ?? 'Review could not be saved.');
       setProposals((current) => current.filter((item) => item.proposalId !== proposal.proposalId));
-      setNotice(decision === 'CONFIRMED' ? 'Commitment confirmed and added to your graph.' : 'Proposal rejected and remembered.');
+      setNotice(decision === 'CONFIRMED'
+        ? result.repairRequest?.status === 'CREATED'
+          ? `Commitment confirmed. A repair plan with ${result.repairRequest.approvalCount ?? 0} approval step(s) is waiting in Approvals.`
+          : result.repairRequest?.status === 'ALREADY_PENDING'
+            ? 'Commitment confirmed. A matching repair plan is already waiting in Approvals.'
+            : 'Commitment confirmed and added to your graph.'
+        : 'Proposal rejected and remembered.');
       if (decision === 'CONFIRMED') onConfirmed();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Review could not be saved.');
@@ -236,10 +245,19 @@ export function GraphReview({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ proposalId: proposal.proposalId, decision, data: proposal.data }),
       });
-      const result = await response.json() as { error?: string };
+      const result = await response.json() as {
+        error?: string;
+        repairRequest?: { status: string; approvalCount?: number };
+      };
       if (!response.ok) throw new Error(result.error ?? 'Link review could not be saved.');
       setEdgeProposals((current) => current.filter((item) => item.proposalId !== proposal.proposalId));
-      setNotice(decision === 'CONFIRMED' ? 'Link confirmed. It can now inform impact propagation.' : 'Link rejected and remembered.');
+      setNotice(decision === 'CONFIRMED'
+        ? result.repairRequest?.status === 'CREATED'
+          ? `Link confirmed. A repair plan with ${result.repairRequest.approvalCount ?? 0} approval step(s) is waiting in Approvals.`
+          : result.repairRequest?.status === 'ALREADY_PENDING'
+            ? 'Link confirmed. A matching repair plan is already waiting in Approvals.'
+            : 'Link confirmed. It can now inform impact propagation.'
+        : 'Link rejected and remembered.');
       if (decision === 'CONFIRMED') onConfirmed();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Link review could not be saved.');

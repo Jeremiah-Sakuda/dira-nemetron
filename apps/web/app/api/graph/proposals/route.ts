@@ -15,6 +15,7 @@ async function proxy(request: Request, method: 'GET' | 'POST', body?: string): P
     method,
     headers: {
       cookie: request.headers.get('cookie') ?? '',
+      ...(request.headers.get('origin') ? { origin: request.headers.get('origin')! } : {}),
       ...(body ? { 'content-type': 'application/json' } : {}),
     },
     body,

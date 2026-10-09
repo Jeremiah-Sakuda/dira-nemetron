@@ -203,8 +203,12 @@ Nemotron for a new-item draft; descriptions and locations are ignored. A
 proposal must still match the current feed snapshot when confirmed. Recurrence
 rules are skipped rather than expanded. Manual sync is available; 30-minute
 polling defaults off and requires both `DIRA_ICAL_SYNC_ACCOUNT_IDS` on the
-trusted orchestrator and the user's per-feed opt-in. Feed changes currently
-join the confirmed graph but do not yet enter the production repair workflow.
+trusted orchestrator and the user's per-feed opt-in. After the user confirms a
+Calendar, Gmail, or iCalendar proposal into the graph, Dira recomputes
+feasibility and queues a viable approval-required Calendar repair in the inbox
+when one is available. These changes do not yet enter the production
+`handleEvent` loop, and policy-allowed actions are not yet automatically
+executed.
 For accounts provisioned in `DIRA_DAILY_JOB_ACCOUNT_IDS`, the orchestrator
 re-anchors and recomputes schedule feasibility at 02:00 local time, then saves
 a durable 07:00 local-time report for the onboarding summary. These reports

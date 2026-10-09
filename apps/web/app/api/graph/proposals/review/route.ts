@@ -7,6 +7,7 @@ export async function POST(request: Request): Promise<Response> {
     method: 'POST',
     headers: {
       cookie: request.headers.get('cookie') ?? '',
+      ...(request.headers.get('origin') ? { origin: request.headers.get('origin')! } : {}),
       'content-type': 'application/json',
     },
     body: await request.text(),
