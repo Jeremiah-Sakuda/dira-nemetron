@@ -7,10 +7,12 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./firestore": "./src/firestore-outbox.ts"
+    "./firestore": "./src/firestore-outbox.ts",
+    "./user-google": "./src/user-google-gmail.ts"
   },
   "dependencies": {
     "@dira/tool-contracts": "*",
-    "@google-cloud/firestore": "^9.0.0"
+    "@google-cloud/firestore": "^9.0.0",
+    "googleapis": "^174.0.1"
   }
 }

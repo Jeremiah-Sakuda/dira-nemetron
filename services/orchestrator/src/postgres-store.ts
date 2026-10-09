@@ -62,18 +62,20 @@ export type EventClaim = 'CLAIMED' | 'COMPLETED' | 'PROCESSING';
 export interface StoredGraphProposal {
   proposalId: string;
   sourceId: string;
-  sourceType: 'google-calendar';
+  sourceType: 'google-calendar' | 'gmail';
   status: 'PENDING_REVIEW' | 'CONFIRMED' | 'REJECTED' | 'IGNORED';
   source: {
     id: string; title: string; startIso: string; endIso: string; version?: string; etag?: string;
     changeType?: 'NEW' | 'UPDATED' | 'CANCELLED';
     previous?: { title: string; startIso: string; endIso: string };
+    sender?: string; receivedAtIso?: string; evidenceQuote?: string;
   };
   draft: CalendarCommitmentDraft;
   model: Record<string, unknown>;
 }
 
 export interface GraphProposalInput {
+  sourceType: StoredGraphProposal['sourceType'];
   source: StoredGraphProposal['source'];
   draft: CalendarCommitmentDraft;
   model: Record<string, unknown>;
@@ -886,7 +888,7 @@ export class PostgresAccountStore {
   async listGraphProposals(accountId: string, status?: StoredGraphProposal['status']): Promise<StoredGraphProposal[]> {
     return this.withAccount(accountId, async (client) => {
       const result = await client.query<{
-        proposal_id: string; source_id: string; source_type: 'google-calendar'; status: StoredGraphProposal['status'];
+        proposal_id: string; source_id: string; source_type: StoredGraphProposal['sourceType']; status: StoredGraphProposal['status'];
         source_snapshot: StoredGraphProposal['source']; draft: CalendarCommitmentDraft; model_telemetry: Record<string, unknown>;
       }>(
         `SELECT proposal_id, source_id, source_type, status, source_snapshot, draft, model_telemetry
@@ -894,11 +896,6 @@ export class PostgresAccountStore {
          ORDER BY created_at DESC`,
         [accountId, status ?? null],
       );
-      const stateResult = await client.query<{ state: DomainState }>(
-        'SELECT state FROM dira_account_state WHERE account_id = $1',
-        [accountId],
-      );
-      const state = stateResult.rows[0]?.state;
       return result.rows.map((row) => ({
         proposalId: row.proposal_id, sourceId: row.source_id, sourceType: row.source_type,
         status: row.status, source: row.source_snapshot, draft: row.draft, model: row.model_telemetry,
@@ -915,8 +912,8 @@ export class PostgresAccountStore {
       const result = await client.query(
         `INSERT INTO dira_graph_proposals
            (account_id, proposal_id, source_id, source_type, status, source_snapshot, draft, model_telemetry, decided_at)
-         VALUES ($1, $2, $3, 'google-calendar', $4, $5::jsonb, $6::jsonb, $7::jsonb,
-                 CASE WHEN $4 = 'IGNORED' THEN now() ELSE NULL END)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb,
+                 CASE WHEN $5 = 'IGNORED' THEN now() ELSE NULL END)
          ON CONFLICT (account_id, source_id) DO UPDATE SET
            proposal_id = EXCLUDED.proposal_id,
            status = EXCLUDED.status,
@@ -927,7 +924,7 @@ export class PostgresAccountStore {
            decided_at = CASE WHEN EXCLUDED.status = 'IGNORED' THEN now() ELSE NULL END
          WHERE dira_graph_proposals.source_snapshot->>'version' IS DISTINCT FROM EXCLUDED.source_snapshot->>'version'
          RETURNING proposal_id`,
-        [accountId, randomUUID(), input.source.id, status, JSON.stringify(input.source), JSON.stringify(input.draft), JSON.stringify(input.model)],
+        [accountId, randomUUID(), input.source.id, input.sourceType, status, JSON.stringify(input.source), JSON.stringify(input.draft), JSON.stringify(input.model)],
       );
       return result.rowCount === 1;
     });
@@ -941,9 +938,9 @@ export class PostgresAccountStore {
   ): Promise<{ status: StoredGraphProposal['status']; commitment?: Commitment }> {
     return this.withAccount(accountId, async (client) => {
       const result = await client.query<{
-        status: StoredGraphProposal['status']; source_snapshot: StoredGraphProposal['source']; draft: CalendarCommitmentDraft;
+        status: StoredGraphProposal['status']; source_type: StoredGraphProposal['sourceType']; source_snapshot: StoredGraphProposal['source']; draft: CalendarCommitmentDraft;
       }>(
-        `SELECT status, source_snapshot, draft FROM dira_graph_proposals
+        `SELECT status, source_type, source_snapshot, draft FROM dira_graph_proposals
          WHERE account_id = $1 AND proposal_id = $2 FOR UPDATE`,
         [accountId, proposalId],
       );
@@ -959,6 +956,16 @@ export class PostgresAccountStore {
         return { status: 'REJECTED' };
       }
 
+      const policyResult = await client.query<{ policy: Record<string, unknown> }>(
+        'SELECT policy FROM dira_account_policy_settings WHERE account_id = $1 FOR SHARE',
+        [accountId],
+      );
+      const policy = policyResult.rows[0]?.policy;
+      const fenced = proposal.source_type === 'gmail'
+        ? policy?.fencedGmail === true
+        : Array.isArray(policy?.fencedCalendarIds) && policy.fencedCalendarIds.includes('primary');
+      if (fenced) throw new Error(`${proposal.source_type} source is fenced by account policy`);
+
       const stateResult = await client.query<{ state: DomainState }>(
         'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
         [accountId],
@@ -967,9 +974,10 @@ export class PostgresAccountStore {
       if (!state) throw new Error('account state is not initialized');
       assertAccountMatch(accountId, state.userId);
       const source = proposal.source_snapshot;
-      const externalId = source.id.replace(/^google:/, '');
+      const externalSystem = proposal.source_type === 'gmail' ? 'gmail' : 'calendar';
+      const externalId = source.id.replace(/^(google|gmail):/, '');
       const existingCommitment = Object.values(state.commitments).find(
-        (item) => item.externalSystem === 'calendar' && item.externalId === externalId,
+        (item) => item.externalSystem === externalSystem && item.externalId === externalId,
       );
       if (source.changeType === 'CANCELLED') {
         if (!existingCommitment) throw new Error('cancelled Calendar commitment is no longer in the graph');
@@ -995,22 +1003,22 @@ export class PostgresAccountStore {
       const nowIso = new Date().toISOString();
       const commitment: Commitment = existingCommitment ?? {
         id: `commitment_${randomUUID()}`, userId: accountId, title: edits.title.trim(), domain: edits.domain,
-        source: 'google-calendar', sourceReference: `google-calendar:${source.id}`, status: 'PLANNED',
+        source: proposal.source_type, sourceReference: `${proposal.source_type}:${source.id}`, status: 'PLANNED',
         kind: edits.kind, flexibility: edits.flexibility, criticality: edits.criticality, owner: accountId,
-        participants: [accountId], goalIds: [], resourceRequirements: ['user-time'], externalSystem: 'calendar',
+        participants: [accountId], goalIds: [], resourceRequirements: ['user-time'], externalSystem,
         externalId, confidence: proposal.draft.confidence, createdAtIso: nowIso, updatedAtIso: nowIso,
       };
       commitment.title = edits.title.trim();
       commitment.domain = edits.domain;
-      commitment.source = 'google-calendar';
-      commitment.sourceReference = `google-calendar:${source.id}`;
+      commitment.source = proposal.source_type;
+      commitment.sourceReference = `${proposal.source_type}:${source.id}`;
       commitment.status = 'PLANNED';
       commitment.kind = edits.kind;
       commitment.flexibility = existingCommitment?.flexibility === 'DELEGATABLE'
         ? 'DELEGATABLE'
         : edits.flexibility;
       commitment.criticality = edits.criticality;
-      commitment.externalSystem = 'calendar';
+      commitment.externalSystem = externalSystem;
       commitment.externalId = externalId;
       commitment.confidence = proposal.draft.confidence;
       commitment.updatedAtIso = nowIso;

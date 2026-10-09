@@ -183,9 +183,15 @@ cursors unchanged if proposal processing fails.
 Deployments must configure `DIRA_CALENDAR_SYNC_ACCOUNT_IDS` on the orchestrator
 to enable background checks for specific accounts; `DIRA_CALENDAR_POLL_INTERVAL_MS`
 can adjust the interval from one minute to one hour (default five minutes).
-Gmail read-only consent can be granted separately from Calendar access, but
-Gmail message retrieval and automatic intake remain unimplemented. Gmail/person
-fences, OpenShell egress controls, and imported correction rules remain
+Gmail read-only consent can be granted separately from Calendar access. Users
+can sync up to ten recent inbox messages on first sync and subsequent Gmail history into
+reviewable graph proposals. Automatic extraction remains off by default and
+can be enabled per account in Policies; deployments must also configure
+`DIRA_GMAIL_SYNC_ACCOUNT_IDS`. `DIRA_GMAIL_POLL_INTERVAL_MS` controls its
+one-minute to one-hour interval (default five minutes). Message bodies are capped at 8,000 characters
+for Nano extraction and are not stored in graph proposals. Gmail has an
+independent source fence. Email changes do not yet enter the production repair
+workflow. Person fences, OpenShell egress controls, and imported correction rules remain
 unimplemented.
 
 Monorepo map: engines in [`packages/`](packages), the agent loop in

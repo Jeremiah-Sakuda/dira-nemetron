@@ -158,7 +158,7 @@ export function AccountSetup() {
                   Enable Calendar changes
                 </a>
               )}
-              <p className="muted">Gmail: {gmailReadEnabled ? 'read permission granted' : 'not connected'}</p>
+              <p className="muted">Gmail: {gmailReadEnabled ? 'read permission granted; automatic processing stays off until enabled in Policies' : 'not connected'}</p>
               {!gmailReadEnabled && (
                 <a className="btn btn-secondary" href="/api/auth/google/gmail-read">
                   Connect Gmail (read-only)

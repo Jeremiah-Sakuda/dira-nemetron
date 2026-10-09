@@ -9,11 +9,15 @@ type Criticality = 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW';
 
 interface Proposal {
   proposalId: string;
+  sourceType: 'google-calendar' | 'gmail';
   source: {
     id: string; title: string; startIso: string; endIso: string;
     etag?: string;
     changeType?: 'NEW' | 'UPDATED' | 'CANCELLED';
     previous?: { title: string; startIso: string; endIso: string };
+    sender?: string;
+    receivedAtIso?: string;
+    evidenceQuote?: string;
   };
   draft: {
     include: boolean;
@@ -61,6 +65,7 @@ export function GraphReview({
   const [generating, setGenerating] = useState(false);
   const [generatingEdges, setGeneratingEdges] = useState(false);
   const [syncingCalendar, setSyncingCalendar] = useState(false);
+  const [syncingGmail, setSyncingGmail] = useState(false);
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -127,6 +132,29 @@ export function GraphReview({
       setNotice('');
     } finally {
       setSyncingCalendar(false);
+    }
+  }
+
+  async function syncGmail() {
+    setSyncingGmail(true);
+    setError('');
+    setNotice('Checking Gmail for new messages…');
+    try {
+      const response = await fetch('/api/gmail/sync', { method: 'POST' });
+      const result = await response.json() as {
+        proposals?: Proposal[]; messages?: number; proposalsCreated?: number;
+        ignored?: number; reset?: boolean; busy?: boolean; error?: string;
+      };
+      if (!response.ok) throw new Error(result.error ?? 'Gmail could not be synced.');
+      setProposals(result.proposals ?? []);
+      setNotice(result.busy
+        ? 'A Gmail sync is already running. New proposals will appear when it finishes.'
+        : `Checked ${result.messages ?? 0} inbox message(s): ${result.proposalsCreated ?? 0} commitment proposal(s), ${result.ignored ?? 0} unrelated message(s) skipped${result.reset ? ' · used the recent-message baseline' : ''}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Gmail could not be synced.');
+      setNotice('');
+    } finally {
+      setSyncingGmail(false);
     }
   }
 
@@ -234,12 +262,15 @@ export function GraphReview({
       <div className="graph-review-heading">
         <div>
           <div className="section-label">Your commitments</div>
-          <h2 id="graph-review-title">Review calendar proposals</h2>
-          <p className="muted">Nothing enters your graph until you confirm it. Authority and relationships are not inferred from calendar events.</p>
+          <h2 id="graph-review-title">Review commitment proposals</h2>
+          <p className="muted">Nothing enters your graph until you confirm it. Authority and relationships are not inferred from source messages.</p>
         </div>
         <div className="graph-review-actions">
-          <button className="btn btn-secondary" type="button" onClick={syncCalendar} disabled={syncingCalendar || loading}>
+          <button className="btn btn-secondary" type="button" onClick={syncCalendar} disabled={syncingCalendar || syncingGmail || loading}>
             {syncingCalendar ? 'Syncing…' : 'Sync Calendar changes'}
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={syncGmail} disabled={syncingGmail || syncingCalendar || loading}>
+            {syncingGmail ? 'Syncing…' : 'Sync Gmail'}
           </button>
           <button className="btn" type="button" onClick={generate} disabled={generating || loading}>
             {generating ? 'Preparing drafts…' : 'Analyze upcoming calendar'}
@@ -247,7 +278,7 @@ export function GraphReview({
         </div>
       </div>
       <p className="privacy-note graph-consent">
-        When you analyze upcoming events or sync new Calendar items, Dira sends event titles and dates (not descriptions or attendee lists) to Nebius Token Factory for structured draft extraction. Existing commitment changes and cancellations are proposed deterministically. Review each proposal before it changes your graph.
+        Calendar analysis sends event titles and dates (not descriptions or attendee lists) to Nebius Token Factory. Gmail sync sends each candidate subject and up to 8,000 body characters; Dira stores only its subject, sender, date, short evidence quote, and proposal. New commitments remain outside your graph until you confirm them.
       </p>
       {loading && <p role="status" className="muted">Loading saved proposals…</p>}
       {notice && <p role="status" className="graph-notice">{notice}</p>}
@@ -257,14 +288,17 @@ export function GraphReview({
         {proposals.map((proposal) => (
           <article className="proposal-card" key={proposal.proposalId}>
             <div className="proposal-source">
-              <span className="section-label">{proposal.source.changeType === 'UPDATED' ? 'Calendar update · review graph change' : proposal.source.changeType === 'CANCELLED' ? 'Calendar cancellation · review graph change' : 'Google Calendar source'}</span>
+              <span className="section-label">{proposal.source.changeType === 'UPDATED' ? 'Calendar update · review graph change' : proposal.source.changeType === 'CANCELLED' ? 'Calendar cancellation · review graph change' : proposal.sourceType === 'gmail' ? 'Gmail message · review commitment' : 'Google Calendar source'}</span>
+              {proposal.sourceType === 'gmail' && <p className="muted">From {proposal.source.sender ?? 'unknown sender'} · received {formatDate(proposal.source.receivedAtIso ?? proposal.source.startIso, timezone)}</p>}
               {proposal.source.previous && <p className="muted">Previously: {proposal.source.previous.title} · {formatDate(proposal.source.previous.startIso, timezone)}</p>}
               <strong>{proposal.source.title}</strong>
+              {proposal.sourceType === 'gmail' && <a href={`https://mail.google.com/mail/u/0/#all/${encodeURIComponent(proposal.source.id.replace(/^gmail:/, ''))}`} target="_blank" rel="noreferrer">Open source in Gmail</a>}
+              {proposal.source.evidenceQuote && <blockquote className="proposal-evidence">“{proposal.source.evidenceQuote}”</blockquote>}
               {proposal.source.changeType !== 'CANCELLED' && <time dateTime={proposal.source.startIso}>
                 {formatDate(proposal.source.startIso, timezone)}
               </time>}
             </div>
-            <p className="proposal-reason">{proposal.source.changeType === 'NEW' || !proposal.source.changeType ? 'Nemotron Nano' : 'Source sync'}: {proposal.draft.reason}{(proposal.source.changeType === 'NEW' || !proposal.source.changeType) && <span> ({Math.round(proposal.draft.confidence * 100)}% confidence)</span>}</p>
+            <p className="proposal-reason">{proposal.sourceType === 'gmail' || proposal.source.changeType === 'NEW' || !proposal.source.changeType ? 'Nemotron Nano' : 'Source sync'}: {proposal.draft.reason}{(proposal.sourceType === 'gmail' || proposal.source.changeType === 'NEW' || !proposal.source.changeType) && <span> ({Math.round(proposal.draft.confidence * 100)}% confidence)</span>}</p>
             {proposal.source.changeType !== 'CANCELLED' && <div className="proposal-fields">
               <label>Title<input value={proposal.draft.title} maxLength={200} onChange={(event) => edit(proposal.proposalId, 'title', event.target.value)} /></label>
               <label>Area<select value={proposal.draft.domain} onChange={(event) => edit(proposal.proposalId, 'domain', event.target.value)}>{DOMAINS.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>

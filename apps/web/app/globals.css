@@ -899,6 +899,15 @@ table.data td:first-child {
   justify-content: flex-end;
 }
 
+.proposal-evidence {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
 .graph-review h2 {
   font-size: 20px;
   margin-bottom: 5px;

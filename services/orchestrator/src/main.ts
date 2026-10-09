@@ -12,12 +12,14 @@ import { PostgresAccountStore, PostgresLedgerStore, PostgresWorkflowStore } from
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema, type WorkflowRun } from '@dira/agent';
+import { GoogleUserGmailTool } from '@dira/adapter-gmail/user-google';
 import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule, stableActionIntentKey } from './account-planning.js';
 import { revalidateAccountApproval } from './account-approval.js';
 import { resumeApprovedAccountWorkflow } from './account-broker.js';
 import { exportAccountMemory, importAccountMemoryBundle, syncAccountMemory } from './account-memory.js';
 import { AccountPolicySettingsSchema } from './account-policy.js';
 import { startConfiguredCalendarPolling, syncAccountCalendarChanges } from './account-calendar-sync.js';
+import { startConfiguredGmailPolling, syncAccountGmailChanges } from './account-gmail-sync.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -754,6 +756,35 @@ const server = createServer(async (req, res) => {
       });
       return;
     }
+    if (req.method === 'POST' && url.pathname === '/api/gmail/sync') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const store = await accountStore();
+      const policy = await store.getAccountPolicySettings(accountId);
+      if (policy.fencedGmail) {
+        await store.recordPolicyBlock(accountId, {
+          actionType: 'SYNC_GMAIL', targetId: 'gmail', policyRule: 'fenced-gmail',
+          reason: 'Gmail is fenced by account policy.',
+        });
+        json(req, res, 403, { error: 'Gmail is fenced by your account policy.' });
+        return;
+      }
+      const summary = await syncAccountGmailChanges(
+        store, accountId, () => googleAccessToken(store, accountId),
+      );
+      json(req, res, 200, {
+        ...summary,
+        proposals: await store.listGraphProposals(accountId, 'PENDING_REVIEW'),
+      });
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/api/graph/proposals') {
       const accountId = getSessionAccountId(req);
       if (!accountId) {
@@ -826,6 +857,7 @@ const server = createServer(async (req, res) => {
           if (!result.draft.include) {
             excluded += 1;
             await store.saveGraphProposal(accountId, {
+              sourceType: 'google-calendar',
               source: result.source,
               draft: result.draft,
               model: result.model,
@@ -833,6 +865,7 @@ const server = createServer(async (req, res) => {
             continue;
           }
           const saved = await store.saveGraphProposal(accountId, {
+            sourceType: 'google-calendar',
             source: result.source,
             draft: result.draft,
             model: result.model,
@@ -881,10 +914,6 @@ const server = createServer(async (req, res) => {
         edits = parsed.data;
       }
       const store = await accountStore();
-      if (body.decision === 'CONFIRMED' && await blockFencedPrimaryCalendar(store, accountId, 'CONFIRM_CALENDAR_PROPOSAL')) {
-        json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
-        return;
-      }
       if (body.decision === 'CONFIRMED') {
         const proposal = (await store.listGraphProposals(accountId, 'PENDING_REVIEW'))
           .find((item) => item.proposalId === body.proposalId);
@@ -903,28 +932,49 @@ const server = createServer(async (req, res) => {
             return;
           }
         }
-        const calendar = new GoogleUserCalendarTool(
-          () => googleAccessToken(store, accountId),
-          undefined,
-          async () => (await store.getAccountPolicySettings(accountId)).fencedCalendarIds.includes('primary'),
-        );
-        let currentEvent;
-        try {
-          currentEvent = await calendar.verifyEvent({ id: proposal.source.id });
-        } catch (error) {
-          const code = error instanceof Error && 'code' in error ? String((error as Error & { code?: string }).code) : '';
-          if (proposal.source.changeType !== 'CANCELLED' || !['HTTP_404', 'HTTP_410'].includes(code)) throw error;
-          currentEvent = null;
-        }
-        if (proposal.source.changeType === 'CANCELLED') {
-          if (currentEvent && currentEvent.metadata?.status !== 'cancelled') {
-            json(req, res, 409, { error: 'Calendar changed again after this cancellation was proposed. Sync changes and review the new version.' });
+        if (proposal.sourceType === 'google-calendar') {
+          if (await blockFencedPrimaryCalendar(store, accountId, 'CONFIRM_CALENDAR_PROPOSAL')) {
+            json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
             return;
           }
-        } else if (!currentEvent || currentEvent.metadata?.status === 'cancelled'
-          || (proposal.source.etag && currentEvent.metadata?.etag && proposal.source.etag !== currentEvent.metadata.etag)) {
-          json(req, res, 409, { error: 'Calendar changed again after this proposal was prepared. Sync changes and review the new version.' });
-          return;
+          const calendar = new GoogleUserCalendarTool(
+            () => googleAccessToken(store, accountId),
+            undefined,
+            async () => (await store.getAccountPolicySettings(accountId)).fencedCalendarIds.includes('primary'),
+          );
+          let currentEvent;
+          try {
+            currentEvent = await calendar.verifyEvent({ id: proposal.source.id });
+          } catch (error) {
+            const code = error instanceof Error && 'code' in error ? String((error as Error & { code?: string }).code) : '';
+            if (proposal.source.changeType !== 'CANCELLED' || !['HTTP_404', 'HTTP_410'].includes(code)) throw error;
+            currentEvent = null;
+          }
+          if (proposal.source.changeType === 'CANCELLED') {
+            if (currentEvent && currentEvent.metadata?.status !== 'cancelled') {
+              json(req, res, 409, { error: 'Calendar changed again after this cancellation was proposed. Sync changes and review the new version.' });
+              return;
+            }
+          } else if (!currentEvent || currentEvent.metadata?.status === 'cancelled'
+            || (proposal.source.etag && currentEvent.metadata?.etag && proposal.source.etag !== currentEvent.metadata.etag)) {
+            json(req, res, 409, { error: 'Calendar changed again after this proposal was prepared. Sync changes and review the new version.' });
+            return;
+          }
+        } else {
+          const gmailPolicy = await store.getAccountPolicySettings(accountId);
+          if (gmailPolicy.fencedGmail) {
+            await store.recordPolicyBlock(accountId, {
+              actionType: 'CONFIRM_GMAIL_PROPOSAL', targetId: proposal.source.id,
+              policyRule: 'fenced-gmail', reason: 'Gmail is fenced by account policy.',
+            });
+            json(req, res, 403, { error: 'Gmail is fenced by your account policy.' });
+            return;
+          }
+          const gmail = new GoogleUserGmailTool(() => googleAccessToken(store, accountId));
+          if (!await gmail.verifyMessage(proposal.source.id.replace(/^gmail:/, ''))) {
+            json(req, res, 409, { error: 'This Gmail source is no longer available. Refresh proposals before reviewing it.' });
+            return;
+          }
         }
       }
       const result = await store.reviewGraphProposal(
@@ -1226,4 +1276,5 @@ function friendlyError(err: unknown): string {
 server.listen(PORT, () => {
   console.log(`dira-orchestrator listening on :${PORT} (mode: ${MODE})`);
   startConfiguredCalendarPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
+  startConfiguredGmailPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
 });

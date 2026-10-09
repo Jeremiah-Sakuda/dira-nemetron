@@ -85,6 +85,7 @@ async function performAccountCalendarSync(
         if (saved?.source.version === change.version && saved.status === 'PENDING_REVIEW') continue;
         const previous = commitmentSnapshot(commitment, state.horizonStartIso, state.timezone ?? 'UTC');
         const result = await store.saveGraphProposal(accountId, {
+          sourceType: 'google-calendar',
           source: { id: sourceId, ...previous, version: change.version, etag: change.etag, changeType: 'CANCELLED', previous },
           draft: draftFromCommitment(commitment, 'Google Calendar reports that this event was cancelled.'),
           model: { provider: 'calendar-source-sync', generatedAtIso: new Date().toISOString() },
@@ -95,6 +96,7 @@ async function performAccountCalendarSync(
       if (saved?.status === 'PENDING_REVIEW') {
         const previous = saved.source;
         const result = await store.saveGraphProposal(accountId, {
+          sourceType: 'google-calendar',
           source: { ...previous, version: change.version, changeType: 'CANCELLED' },
           draft: saved.draft,
           model: saved.model,
@@ -127,6 +129,7 @@ async function performAccountCalendarSync(
 
     if (commitment) {
       const result = await store.saveGraphProposal(accountId, {
+        sourceType: 'google-calendar',
         source,
         draft: draftFromCommitment(commitment, 'This Calendar event changed. Review the new source details before updating its graph commitment.'),
         model: { provider: 'calendar-source-sync', generatedAtIso: new Date().toISOString() },
@@ -138,6 +141,7 @@ async function performAccountCalendarSync(
     const builder = new CalendarGraphBuilder();
     const result = await builder.propose(source);
     const savedResult = await store.saveGraphProposal(accountId, {
+      sourceType: 'google-calendar',
       source: result.source,
       draft: result.draft,
       model: result.model,
@@ -154,6 +158,7 @@ async function performAccountCalendarSync(
         || commitment.status === 'DROPPED' || commitment.status === 'COMPLETE') continue;
       const previous = commitmentSnapshot(commitment, state.horizonStartIso, state.timezone ?? 'UTC');
       const result = await store.saveGraphProposal(accountId, {
+        sourceType: 'google-calendar',
         source: {
           id: `google:${commitment.externalId}`,
           ...previous,
@@ -171,6 +176,7 @@ async function performAccountCalendarSync(
       const externalId = saved.sourceId.slice('google:'.length);
       if (fullSyncEventIds.has(externalId) || commitmentsByExternalId.has(externalId)) continue;
       const result = await store.saveGraphProposal(accountId, {
+        sourceType: 'google-calendar',
         source: { ...saved.source, version: `missing:${delta.nextSyncToken}`, changeType: 'CANCELLED' },
         draft: saved.draft,
         model: saved.model,

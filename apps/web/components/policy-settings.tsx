@@ -24,7 +24,9 @@ type RuleId = typeof OPTIONS[number]['rule'];
 interface PolicySettings {
   schemaVersion: 1;
   fencedCalendarIds: ('primary')[];
+  fencedGmail: boolean;
   calendarAutoSync: boolean;
+  gmailAutoSync: boolean;
   requireApproval: { rule: RuleId; scope?: { domain?: string; commitmentId?: string } }[];
 }
 interface PolicyBlockEvent {
@@ -36,7 +38,7 @@ interface PolicyBlockEvent {
   createdAtIso: string;
 }
 
-const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], calendarAutoSync: false, requireApproval: [] };
+const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], fencedGmail: false, calendarAutoSync: false, gmailAutoSync: false, requireApproval: [] };
 
 export function PolicySettingsForm() {
   const [policy, setPolicy] = useState<PolicySettings>(DEFAULT_POLICY);
@@ -91,6 +93,16 @@ export function PolicySettingsForm() {
     setNotice('');
   }
 
+  function setGmailFenced(enabled: boolean) {
+    setPolicy((current) => ({ ...current, fencedGmail: enabled, ...(enabled ? { gmailAutoSync: false } : {}) }));
+    setNotice('');
+  }
+
+  function setGmailAutoSync(enabled: boolean) {
+    setPolicy((current) => ({ ...current, gmailAutoSync: enabled }));
+    setNotice('');
+  }
+
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -105,7 +117,7 @@ export function PolicySettingsForm() {
       const result = await response.json() as { policy?: PolicySettings; error?: string };
       if (!response.ok) throw new Error(result.error ?? 'Policy settings could not be saved.');
       setPolicy(result.policy ?? policy);
-      setNotice('Your approval rules are saved and will apply to the next schedule check.');
+      setNotice('Your approval and source settings are saved.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Policy settings could not be saved.');
     } finally {
@@ -152,6 +164,17 @@ export function PolicySettingsForm() {
                 <small>Stops future reads and changes through Dira. Previously confirmed Calendar facts stay stored but are excluded from schedule checks and approvals until you re-enable access.</small>
               </span>
             </label>
+            <label className="policy-rule">
+              <input
+                type="checkbox"
+                checked={policy.fencedGmail}
+                onChange={(event) => setGmailFenced(event.currentTarget.checked)}
+              />
+              <span>
+                <strong>Fence Gmail</strong>
+                <small>Stops future Gmail reads and extraction. Email-derived graph commitments already confirmed remain in your graph until you remove them.</small>
+              </span>
+            </label>
           </fieldset>
           <fieldset className="policy-rule-list policy-fence-list" disabled={saving}>
             <legend>Automatic source checks</legend>
@@ -164,6 +187,18 @@ export function PolicySettingsForm() {
               <span>
                 <strong>Check Calendar for changes every five minutes</strong>
                 <small>When this deployment has background checks enabled for your account, new Calendar items are sent to Nebius Token Factory for draft extraction. Changes to confirmed commitments are proposed for your review. Turn this off to stop scheduled reads; use Sync Calendar changes for a one-time check.</small>
+              </span>
+            </label>
+            <label className="policy-rule">
+              <input
+                type="checkbox"
+                checked={policy.gmailAutoSync}
+                disabled={policy.fencedGmail}
+                onChange={(event) => setGmailAutoSync(event.currentTarget.checked)}
+              />
+              <span>
+                <strong>Check new Gmail messages every five minutes</strong>
+                <small>When enabled for your account by this deployment, recent inbox messages and new arrivals are checked. The subject and up to 8,000 body characters are sent to Nebius Token Factory for extraction; Dira stores only the subject, sender, date, short evidence quote, and proposal.</small>
               </span>
             </label>
           </fieldset>
