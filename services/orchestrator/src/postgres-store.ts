@@ -280,8 +280,13 @@ export class PostgresAccountStore {
         sourceReference: `google-calendar:${proposal.source_snapshot.id}`,
         status: 'PLANNED',
         kind: edits.kind,
-        startMin,
-        durationMin: endMin - startMin,
+        ...(edits.kind === 'effort'
+          ? {
+              deadlineMin: /^\d{4}-\d{2}-\d{2}$/.test(proposal.source_snapshot.startIso) ? endMin : startMin,
+              requiredEffortMin: edits.estimatedEffortMin ?? undefined,
+              completedEffortMin: 0,
+            }
+          : { startMin, durationMin: endMin - startMin }),
         flexibility: edits.flexibility,
         criticality: edits.criticality,
         owner: accountId,
@@ -301,6 +306,7 @@ export class PostgresAccountStore {
         title: commitment.title,
         domain: commitment.domain,
         kind: edits.kind,
+        estimatedEffortMin: edits.kind === 'effort' ? edits.estimatedEffortMin : null,
         flexibility: edits.flexibility,
         criticality: commitment.criticality,
       };

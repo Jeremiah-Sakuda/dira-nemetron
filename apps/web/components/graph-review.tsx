@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 type Domain = 'academic' | 'career' | 'organization' | 'personal';
-type Kind = 'event' | 'block';
+type Kind = 'event' | 'block' | 'effort';
 type Flexibility = 'FIXED' | 'MOVE_WITHIN_WINDOW' | 'FLEXIBLE' | 'OPTIONAL';
 type Criticality = 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW';
 
@@ -148,6 +148,7 @@ export function GraphReview({
             kind: proposal.draft.kind,
             flexibility: proposal.draft.flexibility,
             criticality: proposal.draft.criticality,
+            estimatedEffortMin: proposal.draft.kind === 'effort' ? proposal.draft.estimatedEffortMin : null,
           } : undefined,
         }),
       });
@@ -232,12 +233,13 @@ export function GraphReview({
             <div className="proposal-fields">
               <label>Title<input value={proposal.draft.title} maxLength={200} onChange={(event) => edit(proposal.proposalId, 'title', event.target.value)} /></label>
               <label>Area<select value={proposal.draft.domain} onChange={(event) => edit(proposal.proposalId, 'domain', event.target.value)}>{DOMAINS.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>
-              <label>Type<select value={proposal.draft.kind} onChange={(event) => edit(proposal.proposalId, 'kind', event.target.value)}><option value="event">Event</option><option value="block">Time block</option></select></label>
+              <label>Type<select value={proposal.draft.kind} onChange={(event) => edit(proposal.proposalId, 'kind', event.target.value)}><option value="event">Event</option><option value="block">Time block</option><option value="effort">Task with deadline</option></select></label>
+              {proposal.draft.kind === 'effort' && <label>Estimated focus time (minutes)<input type="number" min={1} max={10080} step={15} value={proposal.draft.estimatedEffortMin ?? ''} onChange={(event) => setProposals((current) => current.map((item) => item.proposalId === proposal.proposalId ? { ...item, draft: { ...item.draft, estimatedEffortMin: event.target.value === '' ? null : Number(event.target.value) } } : item))} /><span className="muted">Required before this deadline can be scheduled.</span></label>}
               <label>Flexibility<select value={proposal.draft.flexibility} onChange={(event) => edit(proposal.proposalId, 'flexibility', event.target.value)}>{FLEXIBILITY.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>
               <label>Importance<select value={proposal.draft.criticality} onChange={(event) => edit(proposal.proposalId, 'criticality', event.target.value)}>{CRITICALITY.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>
             </div>
             <div className="proposal-actions">
-              <button className="btn" type="button" disabled={busyId === proposal.proposalId} onClick={() => review(proposal, 'CONFIRMED')}>
+              <button className="btn" type="button" disabled={busyId === proposal.proposalId || (proposal.draft.kind === 'effort' && (!proposal.draft.estimatedEffortMin || proposal.draft.estimatedEffortMin < 1))} onClick={() => review(proposal, 'CONFIRMED')}>
                 {busyId === proposal.proposalId ? 'Saving…' : 'Confirm commitment'}
               </button>
               <button className="btn btn-secondary" type="button" disabled={busyId === proposal.proposalId} onClick={() => review(proposal, 'REJECTED')}>Reject</button>
