@@ -81,6 +81,8 @@ To keep implementation moving, use these reversible defaults until the owner cha
 
 **Exit:** a source change enters the same verified repair path without a manual trigger; source failures are visible and recoverable.
 
+**Current:** Google Calendar sync now uses paginated `syncToken` reads, persists per-account cursors under RLS, recovers from expired tokens with a full resync, and turns new/changed/cancelled events into graph-review proposals. The cursor advances only after every delta is durably processed. Confirming an update or cancellation re-reads Calendar and rejects a stale proposal. A five-minute worker is available for host-configured account ids, but remains off unless the account owner enables automatic checks in Policies. `DIRA_CALENDAR_SYNC_ACCOUNT_IDS` must be configured on the trusted orchestrator host. Gmail consent is separate, but message retrieval/history polling and `handleEvent` routing remain unimplemented; LMS feeds, nightly recomputation, and morning summaries also remain open.
+
 ### 5. Graph builder and user review (P0.7)
 
 - Use Nemotron 3 Nano to extract commitment drafts and Nemotron 3 Ultra to propose typed edges.

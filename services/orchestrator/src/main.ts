@@ -17,6 +17,7 @@ import { revalidateAccountApproval } from './account-approval.js';
 import { resumeApprovedAccountWorkflow } from './account-broker.js';
 import { exportAccountMemory, importAccountMemoryBundle, syncAccountMemory } from './account-memory.js';
 import { AccountPolicySettingsSchema } from './account-policy.js';
+import { startConfiguredCalendarPolling, syncAccountCalendarChanges } from './account-calendar-sync.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -729,6 +730,30 @@ const server = createServer(async (req, res) => {
       json(req, res, 200, { timezone: account.timezone, events: await calendar.getEvents() });
       return;
     }
+    if (req.method === 'POST' && url.pathname === '/api/calendar/sync') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const store = await accountStore();
+      if (await blockFencedPrimaryCalendar(store, accountId, 'SYNC_CALENDAR')) {
+        json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
+        return;
+      }
+      const summary = await syncAccountCalendarChanges(
+        store, accountId, () => googleAccessToken(store, accountId),
+      );
+      json(req, res, 200, {
+        ...summary,
+        proposals: await store.listGraphProposals(accountId, 'PENDING_REVIEW'),
+      });
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/api/graph/proposals') {
       const accountId = getSessionAccountId(req);
       if (!accountId) {
@@ -776,9 +801,9 @@ const server = createServer(async (req, res) => {
       const horizonEnd = now + 90 * 24 * 60 * 60_000;
       const candidates = events.filter((event) => {
         const start = Date.parse(event.startIso);
-        const sourceId = event.id;
+        const sourceId = event.metadata?.googleEventId ? `google:${event.metadata.googleEventId}` : event.id;
         return Number.isFinite(start) && start >= now && start < horizonEnd
-          && !seenSourceIds.has(sourceId)
+          && !seenSourceIds.has(sourceId) && !seenSourceIds.has(event.id)
           && !confirmedSourceIds.has(event.metadata?.googleEventId);
       }).slice(0, 25);
       const builder = new CalendarGraphBuilder();
@@ -789,10 +814,13 @@ const server = createServer(async (req, res) => {
       for (const event of candidates) {
         try {
           const result = await builder.propose({
-            id: event.id,
+            id: event.metadata?.googleEventId ? `google:${event.metadata.googleEventId}` : event.id,
             title: event.title,
             startIso: event.startIso,
             endIso: event.endIso,
+            version: event.metadata?.etag ?? `${event.metadata?.googleEventId ?? event.id}:${event.startIso}:${event.endIso}:${event.title}`,
+            etag: event.metadata?.etag,
+            changeType: 'NEW',
           });
           modelCalls.push(result.model);
           if (!result.draft.include) {
@@ -844,7 +872,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       let edits: ReturnType<typeof GraphProposalEditsSchema.parse> | undefined;
-      if (body.decision === 'CONFIRMED') {
+      if (body.decision === 'CONFIRMED' && body.edits !== undefined) {
         const parsed = GraphProposalEditsSchema.safeParse(body.edits);
         if (!parsed.success) {
           json(req, res, 400, { error: 'invalid_commitment_edits', issues: parsed.error.issues });
@@ -856,6 +884,48 @@ const server = createServer(async (req, res) => {
       if (body.decision === 'CONFIRMED' && await blockFencedPrimaryCalendar(store, accountId, 'CONFIRM_CALENDAR_PROPOSAL')) {
         json(req, res, 403, { error: 'Primary Google Calendar is fenced by your account policy.' });
         return;
+      }
+      if (body.decision === 'CONFIRMED') {
+        const proposal = (await store.listGraphProposals(accountId, 'PENDING_REVIEW'))
+          .find((item) => item.proposalId === body.proposalId);
+        if (!proposal) {
+          json(req, res, 409, { error: 'This Calendar proposal is no longer pending review.' });
+          return;
+        }
+        if (proposal.source.changeType === 'UPDATED' || proposal.source.changeType === 'CANCELLED') {
+          const state = await store.ensureDomainState(accountId);
+          const externalId = proposal.source.id.replace(/^google:/, '');
+          const commitment = Object.values(state.commitments).find(
+            (item) => item.externalSystem === 'calendar' && item.externalId === externalId,
+          );
+          if (!commitment || commitment.status === 'COMPLETE' || commitment.status === 'DROPPED') {
+            json(req, res, 409, { error: 'The graph commitment changed after this proposal was created. Refresh proposals before reviewing it.' });
+            return;
+          }
+        }
+        const calendar = new GoogleUserCalendarTool(
+          () => googleAccessToken(store, accountId),
+          undefined,
+          async () => (await store.getAccountPolicySettings(accountId)).fencedCalendarIds.includes('primary'),
+        );
+        let currentEvent;
+        try {
+          currentEvent = await calendar.verifyEvent({ id: proposal.source.id });
+        } catch (error) {
+          const code = error instanceof Error && 'code' in error ? String((error as Error & { code?: string }).code) : '';
+          if (proposal.source.changeType !== 'CANCELLED' || !['HTTP_404', 'HTTP_410'].includes(code)) throw error;
+          currentEvent = null;
+        }
+        if (proposal.source.changeType === 'CANCELLED') {
+          if (currentEvent && currentEvent.metadata?.status !== 'cancelled') {
+            json(req, res, 409, { error: 'Calendar changed again after this cancellation was proposed. Sync changes and review the new version.' });
+            return;
+          }
+        } else if (!currentEvent || currentEvent.metadata?.status === 'cancelled'
+          || (proposal.source.etag && currentEvent.metadata?.etag && proposal.source.etag !== currentEvent.metadata.etag)) {
+          json(req, res, 409, { error: 'Calendar changed again after this proposal was prepared. Sync changes and review the new version.' });
+          return;
+        }
       }
       const result = await store.reviewGraphProposal(
         accountId,
@@ -1153,4 +1223,7 @@ function friendlyError(err: unknown): string {
 }
 
 
-server.listen(PORT, () => console.log(`dira-orchestrator listening on :${PORT} (mode: ${MODE})`));
+server.listen(PORT, () => {
+  console.log(`dira-orchestrator listening on :${PORT} (mode: ${MODE})`);
+  startConfiguredCalendarPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
+});

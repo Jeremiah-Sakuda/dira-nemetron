@@ -6,6 +6,10 @@ export interface CalendarSourceItem {
   title: string;
   startIso: string;
   endIso: string;
+  version?: string;
+  etag?: string;
+  changeType?: 'NEW' | 'UPDATED' | 'CANCELLED';
+  previous?: { title: string; startIso: string; endIso: string };
 }
 
 export const CalendarCommitmentDraftSchema = z.object({

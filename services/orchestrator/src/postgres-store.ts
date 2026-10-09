@@ -64,7 +64,11 @@ export interface StoredGraphProposal {
   sourceId: string;
   sourceType: 'google-calendar';
   status: 'PENDING_REVIEW' | 'CONFIRMED' | 'REJECTED' | 'IGNORED';
-  source: { id: string; title: string; startIso: string; endIso: string };
+  source: {
+    id: string; title: string; startIso: string; endIso: string; version?: string; etag?: string;
+    changeType?: 'NEW' | 'UPDATED' | 'CANCELLED';
+    previous?: { title: string; startIso: string; endIso: string };
+  };
   draft: CalendarCommitmentDraft;
   model: Record<string, unknown>;
 }
@@ -97,7 +101,7 @@ export class PostgresAccountStore {
       '003_graph_proposals.sql', '004_graph_edge_proposals.sql',
       '005_account_availability.sql', '006_action_approvals.sql', '007_action_ledger_identity.sql',
       '008_workflow_execution_evidence.sql', '009_account_policy_settings.sql',
-      '010_policy_block_events.sql',
+      '010_policy_block_events.sql', '011_source_sync_cursors.sql',
     ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
@@ -167,6 +171,50 @@ export class PostgresAccountStore {
         expiresAt: row.expires_at ?? undefined,
       } : undefined;
     });
+  }
+
+  async getSourceSyncCursor(accountId: string, source: 'google-calendar' | 'gmail'): Promise<string | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ cursor: string }>(
+        'SELECT cursor FROM dira_source_sync_cursors WHERE account_id = $1 AND source = $2',
+        [accountId, source],
+      );
+      return result.rows[0]?.cursor;
+    });
+  }
+
+  async saveSourceSyncCursor(accountId: string, source: 'google-calendar' | 'gmail', cursor: string): Promise<void> {
+    if (!cursor || cursor.length > 4096) throw new Error('invalid source sync cursor');
+    await this.withAccount(accountId, async (client) => {
+      await client.query(
+        `INSERT INTO dira_source_sync_cursors (account_id, source, cursor) VALUES ($1, $2, $3)
+         ON CONFLICT (account_id, source) DO UPDATE SET cursor = EXCLUDED.cursor, updated_at = now()`,
+        [accountId, source, cursor],
+      );
+    });
+  }
+
+  async withAdvisoryJobLock<T>(
+    accountId: string,
+    job: string,
+    operation: () => Promise<T>,
+  ): Promise<{ acquired: true; value: T } | { acquired: false }> {
+    const client = await this.pool.connect();
+    let acquired = false;
+    try {
+      const result = await client.query<{ locked: boolean }>(
+        'SELECT pg_try_advisory_lock(hashtext($1), hashtext($2)) AS locked',
+        [accountId, job],
+      );
+      acquired = result.rows[0]?.locked === true;
+      if (!acquired) return { acquired: false };
+      return { acquired: true, value: await operation() };
+    } finally {
+      if (acquired) {
+        await client.query('SELECT pg_advisory_unlock(hashtext($1), hashtext($2))', [accountId, job]).catch(() => undefined);
+      }
+      client.release();
+    }
   }
 
   async saveDomainState(accountId: string, state: DomainState): Promise<void> {
@@ -869,7 +917,16 @@ export class PostgresAccountStore {
            (account_id, proposal_id, source_id, source_type, status, source_snapshot, draft, model_telemetry, decided_at)
          VALUES ($1, $2, $3, 'google-calendar', $4, $5::jsonb, $6::jsonb, $7::jsonb,
                  CASE WHEN $4 = 'IGNORED' THEN now() ELSE NULL END)
-         ON CONFLICT (account_id, source_id) DO NOTHING RETURNING proposal_id`,
+         ON CONFLICT (account_id, source_id) DO UPDATE SET
+           proposal_id = EXCLUDED.proposal_id,
+           status = EXCLUDED.status,
+           source_snapshot = EXCLUDED.source_snapshot,
+           draft = EXCLUDED.draft,
+           model_telemetry = EXCLUDED.model_telemetry,
+           created_at = now(), updated_at = now(),
+           decided_at = CASE WHEN EXCLUDED.status = 'IGNORED' THEN now() ELSE NULL END
+         WHERE dira_graph_proposals.source_snapshot->>'version' IS DISTINCT FROM EXCLUDED.source_snapshot->>'version'
+         RETURNING proposal_id`,
         [accountId, randomUUID(), input.source.id, status, JSON.stringify(input.source), JSON.stringify(input.draft), JSON.stringify(input.model)],
       );
       return result.rowCount === 1;
@@ -901,7 +958,6 @@ export class PostgresAccountStore {
         );
         return { status: 'REJECTED' };
       }
-      if (!edits || !edits.title.trim() || edits.title.length > 200) throw new Error('valid edited commitment fields are required');
 
       const stateResult = await client.query<{ state: DomainState }>(
         'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
@@ -910,40 +966,68 @@ export class PostgresAccountStore {
       const state = stateResult.rows[0]?.state;
       if (!state) throw new Error('account state is not initialized');
       assertAccountMatch(accountId, state.userId);
+      const source = proposal.source_snapshot;
+      const externalId = source.id.replace(/^google:/, '');
+      const existingCommitment = Object.values(state.commitments).find(
+        (item) => item.externalSystem === 'calendar' && item.externalId === externalId,
+      );
+      if (source.changeType === 'CANCELLED') {
+        if (!existingCommitment) throw new Error('cancelled Calendar commitment is no longer in the graph');
+        existingCommitment.status = 'DROPPED';
+        existingCommitment.updatedAtIso = new Date().toISOString();
+        await client.query(
+          'UPDATE dira_account_state SET state = $2::jsonb, updated_at = now() WHERE account_id = $1',
+          [accountId, JSON.stringify(state)],
+        );
+        await client.query(
+          `UPDATE dira_graph_proposals SET status = 'CONFIRMED', decided_at = now(), updated_at = now()
+           WHERE account_id = $1 AND proposal_id = $2`,
+          [accountId, proposalId],
+        );
+        return { status: 'CONFIRMED', commitment: existingCommitment };
+      }
+      if (!edits || !edits.title.trim() || edits.title.length > 200) throw new Error('valid edited commitment fields are required');
       const startIso = calendarValueToIso(proposal.source_snapshot.startIso, state.timezone ?? 'UTC');
       const endIso = calendarValueToIso(proposal.source_snapshot.endIso, state.timezone ?? 'UTC');
       const startMin = isoToMinutes(startIso, state.horizonStartIso);
       const endMin = isoToMinutes(endIso, state.horizonStartIso);
       if (endMin <= startMin) throw new Error('calendar source has an invalid time range');
       const nowIso = new Date().toISOString();
-      const commitment: Commitment = {
-        id: `commitment_${randomUUID()}`,
-        userId: accountId,
-        title: edits.title.trim(),
-        domain: edits.domain,
-        source: 'google-calendar',
-        sourceReference: `google-calendar:${proposal.source_snapshot.id}`,
-        status: 'PLANNED',
-        kind: edits.kind,
-        ...(edits.kind === 'effort'
-          ? {
-              deadlineMin: /^\d{4}-\d{2}-\d{2}$/.test(proposal.source_snapshot.startIso) ? endMin : startMin,
-              requiredEffortMin: edits.estimatedEffortMin ?? undefined,
-              completedEffortMin: 0,
-            }
-          : { startMin, durationMin: endMin - startMin }),
-        flexibility: edits.flexibility,
-        criticality: edits.criticality,
-        owner: accountId,
-        participants: [accountId],
-        goalIds: [],
-        resourceRequirements: ['user-time'],
-        externalSystem: 'calendar',
-        externalId: proposal.source_snapshot.id.replace(/^google:/, ''),
-        confidence: proposal.draft.confidence,
-        createdAtIso: nowIso,
-        updatedAtIso: nowIso,
+      const commitment: Commitment = existingCommitment ?? {
+        id: `commitment_${randomUUID()}`, userId: accountId, title: edits.title.trim(), domain: edits.domain,
+        source: 'google-calendar', sourceReference: `google-calendar:${source.id}`, status: 'PLANNED',
+        kind: edits.kind, flexibility: edits.flexibility, criticality: edits.criticality, owner: accountId,
+        participants: [accountId], goalIds: [], resourceRequirements: ['user-time'], externalSystem: 'calendar',
+        externalId, confidence: proposal.draft.confidence, createdAtIso: nowIso, updatedAtIso: nowIso,
       };
+      commitment.title = edits.title.trim();
+      commitment.domain = edits.domain;
+      commitment.source = 'google-calendar';
+      commitment.sourceReference = `google-calendar:${source.id}`;
+      commitment.status = 'PLANNED';
+      commitment.kind = edits.kind;
+      commitment.flexibility = existingCommitment?.flexibility === 'DELEGATABLE'
+        ? 'DELEGATABLE'
+        : edits.flexibility;
+      commitment.criticality = edits.criticality;
+      commitment.externalSystem = 'calendar';
+      commitment.externalId = externalId;
+      commitment.confidence = proposal.draft.confidence;
+      commitment.updatedAtIso = nowIso;
+      if (edits.kind === 'effort') {
+        delete commitment.startMin;
+        delete commitment.durationMin;
+        commitment.deadlineMin = /^\d{4}-\d{2}-\d{2}$/.test(source.startIso) ? endMin : startMin;
+        commitment.requiredEffortMin = edits.estimatedEffortMin ?? undefined;
+        commitment.completedEffortMin ??= 0;
+      } else {
+        delete commitment.deadlineMin;
+        delete commitment.releaseMin;
+        delete commitment.requiredEffortMin;
+        delete commitment.completedEffortMin;
+        commitment.startMin = startMin;
+        commitment.durationMin = endMin - startMin;
+      }
       state.commitments[commitment.id] = commitment;
       state.horizonEndMin = Math.max(state.horizonEndMin, endMin + 1);
       const reviewedDraft: CalendarCommitmentDraft = {
@@ -952,7 +1036,7 @@ export class PostgresAccountStore {
         domain: commitment.domain,
         kind: edits.kind,
         estimatedEffortMin: edits.kind === 'effort' ? edits.estimatedEffortMin : null,
-        flexibility: edits.flexibility,
+        flexibility: commitment.flexibility === 'DELEGATABLE' ? 'FIXED' : commitment.flexibility,
         criticality: commitment.criticality,
       };
       await client.query(

@@ -175,6 +175,14 @@ settings only add friction: they cannot turn a denial into permission, and
 the same versioned settings are checked during approval and again in the
 broker. The onboarding screen supports authenticated Git memory export and
 restore for the confirmed graph, focus hours, and supported policy settings.
+Calendar changes can be synced on demand and reviewed as graph proposals. The
+five-minute background Calendar poller is opt-in, defaults off, and only runs
+for account ids configured on the trusted orchestrator host; primary-calendar
+fences take precedence. It uses per-account sync cursors and keeps those
+cursors unchanged if proposal processing fails.
+Deployments must configure `DIRA_CALENDAR_SYNC_ACCOUNT_IDS` on the orchestrator
+to enable background checks for specific accounts; `DIRA_CALENDAR_POLL_INTERVAL_MS`
+can adjust the interval from one minute to one hour (default five minutes).
 Gmail read-only consent can be granted separately from Calendar access, but
 Gmail message retrieval and automatic intake remain unimplemented. Gmail/person
 fences, OpenShell egress controls, and imported correction rules remain

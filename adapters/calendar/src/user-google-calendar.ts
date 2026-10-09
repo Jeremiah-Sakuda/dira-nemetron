@@ -27,7 +27,13 @@ export class GoogleUserCalendarTool implements CalendarTool {
       title: event.summary ?? '(untitled event)',
       startIso: event.start?.dateTime ?? event.start?.date ?? '',
       endIso: event.end?.dateTime ?? event.end?.date ?? '',
-      metadata: { googleEventId, source: 'google-calendar' },
+      metadata: {
+        googleEventId,
+        source: 'google-calendar',
+        ...(event.etag ? { etag: event.etag } : {}),
+        ...(event.updated ? { updatedIso: event.updated } : {}),
+        ...(event.status ? { status: event.status } : {}),
+      },
     };
   }
 
@@ -45,6 +51,56 @@ export class GoogleUserCalendarTool implements CalendarTool {
       return (response.data.items ?? []).map((event) => this.toCalendarEvent(event));
     } catch (error) {
       throw asToolError(error, 'getEvents');
+    }
+  }
+
+  /** Full or incremental primary-calendar sync. Persist the token only after all changes are handled. */
+  async syncEvents(syncToken?: string): Promise<{
+    changes: { eventId: string; version: string; etag?: string; deleted: boolean; event?: CalendarEvent }[];
+    nextSyncToken: string;
+    reset: boolean;
+  }> {
+    const api = await this.client();
+    let activeToken = syncToken;
+    // No cursor means this is the initial full sync; callers must reconcile
+    // persisted commitments against the complete event set as well.
+    let reset = !syncToken;
+    for (;;) {
+      const changes: { eventId: string; version: string; etag?: string; deleted: boolean; event?: CalendarEvent }[] = [];
+      let pageToken: string | undefined;
+      let nextSyncToken: string | undefined;
+      try {
+        do {
+          const response = await api.events.list({
+            calendarId: 'primary',
+            maxResults: 2500,
+            singleEvents: true,
+            showDeleted: true,
+            ...(activeToken ? { syncToken: activeToken } : {}),
+            ...(pageToken ? { pageToken } : {}),
+          });
+          for (const raw of response.data.items ?? []) {
+            if (!raw.id) continue;
+            const version = raw.etag ?? `${raw.status ?? 'confirmed'}:${raw.updated ?? raw.id}`;
+            if (raw.status === 'cancelled') {
+              changes.push({ eventId: raw.id, version, etag: raw.etag ?? undefined, deleted: true });
+            } else {
+              changes.push({ eventId: raw.id, version, etag: raw.etag ?? undefined, deleted: false, event: this.toCalendarEvent(raw) });
+            }
+          }
+          pageToken = response.data.nextPageToken ?? undefined;
+          nextSyncToken = response.data.nextSyncToken ?? nextSyncToken;
+        } while (pageToken);
+      } catch (error) {
+        if (activeToken && !reset && isGone(error)) {
+          activeToken = undefined;
+          reset = true;
+          continue;
+        }
+        throw asToolError(error, 'syncEvents');
+      }
+      if (!nextSyncToken) throw new ToolError('Google Calendar sync returned no nextSyncToken', 'INVALID_RESPONSE', true);
+      return { changes, nextSyncToken, reset };
     }
   }
 
@@ -137,6 +193,12 @@ export class GoogleUserCalendarTool implements CalendarTool {
 
 function googleEventIdFor(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 40);
+}
+
+function isGone(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const value = error as { code?: number; response?: { status?: number } };
+  return value.code === 410 || value.response?.status === 410;
 }
 
 function asToolError(error: unknown, operation: string): ToolError {

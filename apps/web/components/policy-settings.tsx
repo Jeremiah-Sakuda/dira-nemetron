@@ -24,6 +24,7 @@ type RuleId = typeof OPTIONS[number]['rule'];
 interface PolicySettings {
   schemaVersion: 1;
   fencedCalendarIds: ('primary')[];
+  calendarAutoSync: boolean;
   requireApproval: { rule: RuleId; scope?: { domain?: string; commitmentId?: string } }[];
 }
 interface PolicyBlockEvent {
@@ -35,7 +36,7 @@ interface PolicyBlockEvent {
   createdAtIso: string;
 }
 
-const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], requireApproval: [] };
+const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], calendarAutoSync: false, requireApproval: [] };
 
 export function PolicySettingsForm() {
   const [policy, setPolicy] = useState<PolicySettings>(DEFAULT_POLICY);
@@ -82,6 +83,11 @@ export function PolicySettingsForm() {
       ...current,
       fencedCalendarIds: enabled ? ['primary'] : [],
     }));
+    setNotice('');
+  }
+
+  function setCalendarAutoSync(enabled: boolean) {
+    setPolicy((current) => ({ ...current, calendarAutoSync: enabled }));
     setNotice('');
   }
 
@@ -144,6 +150,20 @@ export function PolicySettingsForm() {
               <span>
                 <strong>Fence my primary Google Calendar</strong>
                 <small>Stops future reads and changes through Dira. Previously confirmed Calendar facts stay stored but are excluded from schedule checks and approvals until you re-enable access.</small>
+              </span>
+            </label>
+          </fieldset>
+          <fieldset className="policy-rule-list policy-fence-list" disabled={saving}>
+            <legend>Automatic source checks</legend>
+            <label className="policy-rule">
+              <input
+                type="checkbox"
+                checked={policy.calendarAutoSync}
+                onChange={(event) => setCalendarAutoSync(event.currentTarget.checked)}
+              />
+              <span>
+                <strong>Check Calendar for changes every five minutes</strong>
+                <small>When this deployment has background checks enabled for your account, new Calendar items are sent to Nebius Token Factory for draft extraction. Changes to confirmed commitments are proposed for your review. Turn this off to stop scheduled reads; use Sync Calendar changes for a one-time check.</small>
               </span>
             </label>
           </fieldset>

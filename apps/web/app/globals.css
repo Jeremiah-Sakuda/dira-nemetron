@@ -892,6 +892,13 @@ table.data td:first-child {
   gap: 20px;
 }
 
+.graph-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .graph-review h2 {
   font-size: 20px;
   margin-bottom: 5px;
@@ -1005,6 +1012,10 @@ table.data td:first-child {
   margin-bottom: 2px;
 }
 
+.proposal-source p {
+  margin: 0;
+}
+
 .proposal-source strong {
   overflow-wrap: anywhere;
 }
@@ -1089,6 +1100,11 @@ table.data td:first-child {
 
   .graph-review-heading {
     display: grid;
+  }
+
+  .graph-review-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .approvals-heading {
