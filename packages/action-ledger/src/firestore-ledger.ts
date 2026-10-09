@@ -123,7 +123,7 @@ export class FirestoreActionLedger implements LedgerApi {
   async transition(
     actionId: string,
     to: ActionStatus,
-    patch: Partial<Pick<ActionRecord, 'externalResponse' | 'failureReason' | 'verification'>> = {},
+    patch: Partial<Pick<ActionRecord, 'externalResponse' | 'failureReason' | 'verification' | 'approval'>> = {},
     note?: string,
   ): Promise<ActionRecord> {
     const current = this.mirror.get(actionId);

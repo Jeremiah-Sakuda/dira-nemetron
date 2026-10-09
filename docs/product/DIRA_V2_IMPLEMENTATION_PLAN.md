@@ -67,6 +67,8 @@ To keep implementation moving, use these reversible defaults until the owner cha
 - Add `AWAITING_APPROVAL`; re-read external state and re-run feasibility and policy when approval resumes.
 - Store editable per-user policy and confirmed correction rules in the memory repo.
 
+**Current:** The action ledger recognizes `AWAITING_APPROVAL` and `REJECTED`. A forced-RLS Postgres approval audit table and signed-in account inbox record only owner-sourced approve/reject decisions; approval moves an action to `AUTHORIZED`, which is not claimable for execution. The planner does not yet emit approval-waiting intents, and workflow resume/revalidation is not wired, so the inbox currently has no connected action producer.
+
 **Exit:** adversarial model proposals, forged provenance, outside recipients, fenced sources, and stale approvals are rejected or safely held; only user-sourced approval records can authorize an approval-required action.
 
 ### 4. Real read sources and always-on intake (P0.6)

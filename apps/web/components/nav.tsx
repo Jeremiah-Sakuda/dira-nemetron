@@ -7,6 +7,7 @@ const LINKS = [
   { href: '/', label: 'System' },
   { href: '/commitments', label: 'Commitments' },
   { href: '/interventions', label: 'Interventions' },
+  { href: '/approvals', label: 'Approvals' },
   { href: '/graph', label: 'Graph' },
   { href: '/policies', label: 'Policies' },
   { href: '/activity', label: 'Activity' },

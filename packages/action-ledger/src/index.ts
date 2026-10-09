@@ -14,6 +14,7 @@ import type { PlannedAction } from '@dira/event-schema';
 
 export type ActionStatus =
   | 'PLANNED'
+  | 'AWAITING_APPROVAL'
   | 'AUTHORIZED'
   | 'PENDING_EXECUTION'
   | 'EXECUTING'
@@ -22,10 +23,12 @@ export type ActionStatus =
   | 'FAILED_TRANSIENT'
   | 'FAILED_PERMANENT'
   | 'STALE'
-  | 'REPLAN_REQUIRED';
+  | 'REPLAN_REQUIRED'
+  | 'REJECTED';
 
 const LEGAL_TRANSITIONS: Record<ActionStatus, ActionStatus[]> = {
-  PLANNED: ['AUTHORIZED', 'STALE'],
+  PLANNED: ['AWAITING_APPROVAL', 'AUTHORIZED', 'STALE'],
+  AWAITING_APPROVAL: ['AUTHORIZED', 'REJECTED', 'STALE'],
   AUTHORIZED: ['PENDING_EXECUTION', 'STALE'],
   PENDING_EXECUTION: ['EXECUTING', 'STALE'],
   EXECUTING: ['EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT', 'FAILED_PERMANENT'],
@@ -38,7 +41,16 @@ const LEGAL_TRANSITIONS: Record<ActionStatus, ActionStatus[]> = {
   // through AUTHORIZED rather than duplicated.
   STALE: ['AUTHORIZED'],
   REPLAN_REQUIRED: [],
+  REJECTED: [],
 };
+
+export interface ActionApproval {
+  requestedAtIso?: string;
+  decisionAtIso?: string;
+  decision?: 'APPROVED' | 'REJECTED';
+  actorAccountId?: string;
+  source?: 'authenticated-web';
+}
 
 export interface ActionRecord {
   actionId: string;
@@ -56,6 +68,7 @@ export interface ActionRecord {
   externalResponse?: unknown;
   failureReason?: string;
   verification?: { verifiedAtIso: string; observed: unknown };
+  approval?: ActionApproval;
   history: { status: ActionStatus; atIso: string; note?: string }[];
 }
 
@@ -182,7 +195,7 @@ export class ActionLedger {
   async transition(
     actionId: string,
     to: ActionStatus,
-    patch: Partial<Pick<ActionRecord, 'externalResponse' | 'failureReason' | 'verification'>> = {},
+    patch: Partial<Pick<ActionRecord, 'externalResponse' | 'failureReason' | 'verification' | 'approval'>> = {},
     note?: string,
   ): Promise<ActionRecord> {
     const record = this.records.find((r) => r.actionId === actionId);

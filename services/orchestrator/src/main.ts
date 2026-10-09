@@ -277,6 +277,57 @@ const server = createServer(async (req, res) => {
       json(req, res, 200, analyzeAccountSchedule(state));
       return;
     }
+    if (url.pathname === '/api/approvals' && req.method === 'GET') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const approvals = await (await accountStore()).listPendingApprovals(accountId);
+      json(req, res, 200, {
+        approvals: approvals.map((record) => ({
+          actionId: record.actionId,
+          workflowId: record.workflowId,
+          type: record.action.type,
+          target: record.action.target,
+          summary: record.action.summary,
+          externalSystem: record.action.external_system,
+          policyRule: record.policyRule,
+          requestedAtIso: record.approval?.requestedAtIso
+            ?? record.history.find((entry) => entry.status === 'AWAITING_APPROVAL')?.atIso,
+        })),
+      });
+      return;
+    }
+    if (url.pathname === '/api/approvals' && req.method === 'POST') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const body = safeJson(await readBody(req)) as { actionId?: string; decision?: string } | null;
+      if (typeof body?.actionId !== 'string' || body.actionId.length < 1 || body.actionId.length > 500
+        || (body.decision !== 'APPROVED' && body.decision !== 'REJECTED')) {
+        json(req, res, 400, { error: 'invalid_approval_decision' });
+        return;
+      }
+      try {
+        const record = await (await accountStore()).reviewActionApproval(accountId, body.actionId, body.decision);
+        json(req, res, 200, {
+          actionId: record.actionId,
+          status: record.status,
+          decision: body.decision,
+          execution: 'held; workflow revalidation and execution are not connected to this account inbox yet',
+        });
+      } catch (error) {
+        json(req, res, 409, { error: error instanceof Error ? error.message : 'approval_conflict' });
+      }
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/api/calendar/events') {
       const accountId = getSessionAccountId(req);
       if (!accountId) {

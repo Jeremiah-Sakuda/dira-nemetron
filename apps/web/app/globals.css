@@ -662,6 +662,63 @@ table.data td:first-child {
   margin: 12px 0 0;
 }
 
+.approvals-panel {
+  max-width: 900px;
+}
+
+.approvals-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.approvals-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.approvals-panel > .privacy-note {
+  max-width: 74ch;
+  margin: 14px 0 20px;
+}
+
+.approvals-empty {
+  padding: 20px 0;
+}
+
+.approval-card h3 {
+  margin: 5px 0 0;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.approval-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+}
+
+.approval-details div {
+  min-width: 0;
+}
+
+.approval-details dt {
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.approval-details dd {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
 .graph-review-heading {
   display: flex;
   align-items: flex-start;
@@ -866,6 +923,10 @@ table.data td:first-child {
 
   .graph-review-heading {
     display: grid;
+  }
+
+  .approvals-heading {
+    align-items: stretch;
   }
 
   .edge-review-heading {

@@ -68,7 +68,7 @@ export class PostgresAccountStore {
     for (const name of [
       '001_account_state.sql', '002_google_credentials.sql',
       '003_graph_proposals.sql', '004_graph_edge_proposals.sql',
-      '005_account_availability.sql',
+      '005_account_availability.sql', '006_action_approvals.sql',
     ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
@@ -228,6 +228,69 @@ export class PostgresAccountStore {
          ON CONFLICT (account_id) DO UPDATE SET profile = EXCLUDED.profile, updated_at = now()`,
         [accountId, JSON.stringify(profile)],
       );
+    });
+  }
+
+  async listPendingApprovals(accountId: string): Promise<ActionRecord[]> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ record: ActionRecord }>(
+        `SELECT record FROM dira_action_ledger
+         WHERE account_id = $1 AND status = 'AWAITING_APPROVAL'
+         ORDER BY updated_at ASC, record_index ASC`,
+        [accountId],
+      );
+      return result.rows.map((row) => row.record);
+    });
+  }
+
+  /** A web decision only records authorization; workflow resume must revalidate before execution. */
+  async reviewActionApproval(
+    accountId: string,
+    actionId: string,
+    decision: 'APPROVED' | 'REJECTED',
+  ): Promise<ActionRecord> {
+    return this.withAccount(accountId, async (client) => {
+      const selected = await client.query<{ record_index: number; record: ActionRecord }>(
+        `SELECT record_index, record FROM dira_action_ledger
+         WHERE account_id = $1 AND action_id = $2 FOR UPDATE`,
+        [accountId, actionId],
+      );
+      const row = selected.rows[0];
+      if (!row) throw new Error('approval action not found');
+      if (row.record.status !== 'AWAITING_APPROVAL') throw new Error('action is no longer awaiting approval');
+      if (row.record.policyVerdict !== 'REQUIRE_APPROVAL') throw new Error('action policy does not require approval');
+
+      const now = new Date().toISOString();
+      const nextStatus = decision === 'APPROVED' ? 'AUTHORIZED' : 'REJECTED';
+      const record: ActionRecord = {
+        ...row.record,
+        status: nextStatus,
+        approval: {
+          ...row.record.approval,
+          requestedAtIso: row.record.approval?.requestedAtIso
+            ?? row.record.history.find((entry) => entry.status === 'AWAITING_APPROVAL')?.atIso,
+          decisionAtIso: now,
+          decision,
+          actorAccountId: accountId,
+          source: 'authenticated-web',
+        },
+        history: [...row.record.history, {
+          status: nextStatus,
+          atIso: now,
+          note: `${decision.toLowerCase()} by authenticated account owner; execution requires resume-time revalidation`,
+        }],
+      };
+      await client.query(
+        `UPDATE dira_action_ledger SET status = $3, record = $4::jsonb, updated_at = now()
+         WHERE account_id = $1 AND action_id = $2`,
+        [accountId, actionId, nextStatus, JSON.stringify(record)],
+      );
+      await client.query(
+        `INSERT INTO dira_action_approvals (account_id, action_id, decision, actor_account_id, source, decided_at)
+         VALUES ($1, $2, $3, $1, 'authenticated-web', $4)`,
+        [accountId, actionId, decision, now],
+      );
+      return record;
     });
   }
 
