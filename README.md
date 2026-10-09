@@ -175,8 +175,10 @@ settings only add friction: they cannot turn a denial into permission, and
 the same versioned settings are checked during approval and again in the
 broker. The onboarding screen supports authenticated Git memory export and
 restore for the confirmed graph, focus hours, and supported policy settings.
-Gmail/person fences, OpenShell egress controls, and imported correction rules
-remain unimplemented.
+Gmail read-only consent can be granted separately from Calendar access, but
+Gmail message retrieval and automatic intake remain unimplemented. Gmail/person
+fences, OpenShell egress controls, and imported correction rules remain
+unimplemented.
 
 Monorepo map: engines in [`packages/`](packages), the agent loop in
 [`agents/dira`](agents/dira), scoped tool adapters in [`adapters/`](adapters),

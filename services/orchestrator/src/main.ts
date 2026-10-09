@@ -243,6 +243,17 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
+    if (req.method === 'GET' && url.pathname === '/auth/google/gmail-read/start') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const start = beginGoogleOAuth({ accountId, gmailRead: true });
+      res.writeHead(302, { location: start.authorizationUrl, 'set-cookie': start.stateCookie });
+      res.end();
+      return;
+    }
     if (req.method === 'POST' && url.pathname === '/auth/google/complete') {
       const body = safeJson(await readBody(req)) as { code?: string; state?: string } | null;
       if (!body?.code || !body.state) {
@@ -300,6 +311,7 @@ const server = createServer(async (req, res) => {
         account,
         permissions: {
           calendarWrite: credential?.scopes.includes('https://www.googleapis.com/auth/calendar.events') ?? false,
+          gmailRead: credential?.scopes.includes('https://www.googleapis.com/auth/gmail.readonly') ?? false,
         },
         stateSummary: {
           commitmentCount: Object.keys(state.commitments).length,

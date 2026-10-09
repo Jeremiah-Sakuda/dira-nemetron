@@ -30,7 +30,7 @@ interface SignedPayload {
 interface OAuthState extends SignedPayload {
   verifier: string;
   accountId?: string;
-  purpose?: 'sign-in' | 'calendar-write';
+  purpose?: 'sign-in' | 'calendar-write' | 'gmail-read';
 }
 
 export interface GoogleIdentity {
@@ -58,7 +58,7 @@ interface StoredGoogleTokens {
   expiresAt?: number;
 }
 
-export function beginGoogleOAuth(options: { accountId?: string; calendarWrite?: boolean } = {}): OAuthStart {
+export function beginGoogleOAuth(options: { accountId?: string; calendarWrite?: boolean; gmailRead?: boolean } = {}): OAuthStart {
   const state = randomBytes(32).toString('base64url');
   const verifier = randomBytes(48).toString('base64url');
   const challenge = createHash('sha256').update(verifier).digest('base64url');
@@ -66,12 +66,14 @@ export function beginGoogleOAuth(options: { accountId?: string; calendarWrite?: 
     value: state,
     verifier,
     accountId: options.accountId,
-    purpose: options.calendarWrite ? 'calendar-write' : 'sign-in',
+    purpose: options.calendarWrite ? 'calendar-write' : options.gmailRead ? 'gmail-read' : 'sign-in',
     expiresAt: Math.floor(Date.now() / 1000) + OAUTH_STATE_TTL_SECONDS,
   };
-  const scopes = options.calendarWrite
-    ? [...GOOGLE_SCOPES, 'https://www.googleapis.com/auth/calendar.events']
-    : GOOGLE_SCOPES;
+  const scopes = options.gmailRead
+    ? ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly']
+    : options.calendarWrite
+      ? [...GOOGLE_SCOPES, 'https://www.googleapis.com/auth/calendar.events']
+      : GOOGLE_SCOPES;
   const authorizationUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   authorizationUrl.search = new URLSearchParams({
     client_id: requiredEnv('GOOGLE_CLIENT_ID'),
@@ -132,17 +134,24 @@ export async function completeGoogleOAuth(
   if (!user.sub || !user.email || user.email_verified !== true) {
     throw new Error('Google account identity is missing a verified email');
   }
-  if (signedState.purpose === 'calendar-write' && signedState.accountId !== user.sub) {
-    throw new Error('Calendar write consent must be granted by the connected Google account');
+  if (signedState.purpose !== 'sign-in' && signedState.accountId !== user.sub) {
+    throw new Error('Additional Google permissions must be granted by the connected Google account');
   }
 
-  const timezoneResponse = await fetch(
-    'https://www.googleapis.com/calendar/v3/users/me/settings/timezone',
-    { headers: { authorization: `Bearer ${token.access_token}` } },
-  );
-  if (!timezoneResponse.ok) throw new Error(`Google Calendar timezone lookup failed (${timezoneResponse.status})`);
-  const timezoneSetting = await timezoneResponse.json() as { value?: string };
-  const timezone = timezoneSetting.value;
+  const existingAccount = signedState.purpose === 'sign-in' ? undefined : await store.getAccount(user.sub);
+  if (signedState.purpose !== 'sign-in' && !existingAccount) {
+    throw new Error('Additional Google permissions require an existing connected account');
+  }
+  let timezone = existingAccount?.timezone;
+  if (!timezone) {
+    const timezoneResponse = await fetch(
+      'https://www.googleapis.com/calendar/v3/users/me/settings/timezone',
+      { headers: { authorization: `Bearer ${token.access_token}` } },
+    );
+    if (!timezoneResponse.ok) throw new Error(`Google Calendar timezone lookup failed (${timezoneResponse.status})`);
+    const timezoneSetting = await timezoneResponse.json() as { value?: string };
+    timezone = timezoneSetting.value;
+  }
   if (!timezone || !isValidTimeZone(timezone)) throw new Error('Google returned an invalid calendar timezone');
 
   const existingCredential = await store.getCredential(user.sub, PROVIDER);

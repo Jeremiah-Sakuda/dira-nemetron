@@ -26,6 +26,7 @@ export function AccountSetup() {
   const [account, setAccount] = useState<Account | null>(null);
   const [stateSummary, setStateSummary] = useState<AccountStateSummary | null>(null);
   const [calendarWriteEnabled, setCalendarWriteEnabled] = useState(false);
+  const [gmailReadEnabled, setGmailReadEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
@@ -48,10 +49,11 @@ export function AccountSetup() {
         const result = await response.json() as {
           account?: Account;
           stateSummary?: AccountStateSummary;
-          permissions?: { calendarWrite?: boolean };
+          permissions?: { calendarWrite?: boolean; gmailRead?: boolean };
         };
         setStateSummary(result.stateSummary ?? null);
         setCalendarWriteEnabled(result.permissions?.calendarWrite ?? false);
+        setGmailReadEnabled(result.permissions?.gmailRead ?? false);
         return result.account ?? null;
       })
       .then(setAccount)
@@ -86,11 +88,12 @@ export function AccountSetup() {
     const result = await response.json() as {
       account?: Account;
       stateSummary?: AccountStateSummary;
-      permissions?: { calendarWrite?: boolean };
+      permissions?: { calendarWrite?: boolean; gmailRead?: boolean };
     };
     if (result.account) setAccount(result.account);
     setStateSummary(result.stateSummary ?? null);
     setCalendarWriteEnabled(result.permissions?.calendarWrite ?? false);
+    setGmailReadEnabled(result.permissions?.gmailRead ?? false);
     setScheduleRevision((revision) => revision + 1);
   }
 
@@ -153,6 +156,12 @@ export function AccountSetup() {
               {!calendarWriteEnabled && (
                 <a className="btn btn-secondary" href="/api/auth/google/calendar-write">
                   Enable Calendar changes
+                </a>
+              )}
+              <p className="muted">Gmail: {gmailReadEnabled ? 'read permission granted' : 'not connected'}</p>
+              {!gmailReadEnabled && (
+                <a className="btn btn-secondary" href="/api/auth/google/gmail-read">
+                  Connect Gmail (read-only)
                 </a>
               )}
               {stateSummary && (
