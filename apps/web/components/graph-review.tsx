@@ -9,7 +9,7 @@ type Criticality = 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW';
 
 interface Proposal {
   proposalId: string;
-  sourceType: 'google-calendar' | 'gmail';
+  sourceType: 'google-calendar' | 'gmail' | 'ical-feed';
   source: {
     id: string; title: string; startIso: string; endIso: string;
     etag?: string;
@@ -18,6 +18,9 @@ interface Proposal {
     sender?: string;
     receivedAtIso?: string;
     evidenceQuote?: string;
+    feedId?: string;
+    feedUid?: string;
+    feedLabel?: string;
   };
   draft: {
     include: boolean;
@@ -52,11 +55,13 @@ export function GraphReview({
   timezone,
   commitmentCount,
   edgeCount,
+  revision = 0,
   onConfirmed,
 }: {
   timezone: string;
   commitmentCount: number;
   edgeCount: number;
+  revision?: number;
   onConfirmed: () => void;
 }) {
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -71,6 +76,7 @@ export function GraphReview({
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
       fetch('/api/graph/proposals', { cache: 'no-store' }),
       fetch('/api/graph/edges', { cache: 'no-store' }),
@@ -85,7 +91,7 @@ export function GraphReview({
       })
       .catch(() => setError('Could not load saved graph proposals.'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [revision]);
 
   async function generate() {
     setGenerating(true);
@@ -278,7 +284,7 @@ export function GraphReview({
         </div>
       </div>
       <p className="privacy-note graph-consent">
-        Calendar analysis sends event titles and dates (not descriptions or attendee lists) to Nebius Token Factory. Gmail sync sends each candidate subject and up to 8,000 body characters; Dira stores only its subject, sender, date, short evidence quote, and proposal. New commitments remain outside your graph until you confirm them.
+        Calendar and iCalendar analysis send event titles and dates (not descriptions or attendee lists) to Nebius Token Factory. Gmail sync sends each candidate subject and up to 8,000 body characters; Dira stores only its subject, sender, date, short evidence quote, and proposal. New commitments remain outside your graph until you confirm them.
       </p>
       {loading && <p role="status" className="muted">Loading saved proposals…</p>}
       {notice && <p role="status" className="graph-notice">{notice}</p>}
@@ -288,7 +294,8 @@ export function GraphReview({
         {proposals.map((proposal) => (
           <article className="proposal-card" key={proposal.proposalId}>
             <div className="proposal-source">
-              <span className="section-label">{proposal.source.changeType === 'UPDATED' ? 'Calendar update · review graph change' : proposal.source.changeType === 'CANCELLED' ? 'Calendar cancellation · review graph change' : proposal.sourceType === 'gmail' ? 'Gmail message · review commitment' : 'Google Calendar source'}</span>
+              <span className="section-label">{proposal.source.changeType === 'UPDATED' ? `${proposal.sourceType === 'ical-feed' ? 'Deadline feed' : 'Calendar'} update · review graph change` : proposal.source.changeType === 'CANCELLED' ? `${proposal.sourceType === 'ical-feed' ? 'Deadline feed' : 'Calendar'} cancellation · review graph change` : proposal.sourceType === 'gmail' ? 'Gmail message · review commitment' : proposal.sourceType === 'ical-feed' ? 'iCalendar feed · review commitment' : 'Google Calendar source'}</span>
+              {proposal.sourceType === 'ical-feed' && proposal.source.feedLabel && <p className="muted">Feed: {proposal.source.feedLabel}</p>}
               {proposal.sourceType === 'gmail' && <p className="muted">From {proposal.source.sender ?? 'unknown sender'} · received {formatDate(proposal.source.receivedAtIso ?? proposal.source.startIso, timezone)}</p>}
               {proposal.source.previous && <p className="muted">Previously: {proposal.source.previous.title} · {formatDate(proposal.source.previous.startIso, timezone)}</p>}
               <strong>{proposal.source.title}</strong>
@@ -309,7 +316,7 @@ export function GraphReview({
             </div>}
             <div className="proposal-actions">
               <button className="btn" type="button" disabled={busyId === proposal.proposalId || (proposal.source.changeType !== 'CANCELLED' && proposal.draft.kind === 'effort' && (!proposal.draft.estimatedEffortMin || proposal.draft.estimatedEffortMin < 1))} onClick={() => review(proposal, 'CONFIRMED')}>
-                {busyId === proposal.proposalId ? 'Saving…' : proposal.source.changeType === 'CANCELLED' ? 'Confirm removal from graph' : proposal.source.changeType === 'UPDATED' ? 'Confirm Calendar update' : 'Confirm commitment'}
+                {busyId === proposal.proposalId ? 'Saving…' : proposal.source.changeType === 'CANCELLED' ? 'Confirm removal from graph' : proposal.source.changeType === 'UPDATED' ? `Confirm ${proposal.sourceType === 'ical-feed' ? 'feed' : 'Calendar'} update` : 'Confirm commitment'}
               </button>
               <button className="btn btn-secondary" type="button" disabled={busyId === proposal.proposalId} onClick={() => review(proposal, 'REJECTED')}>Reject</button>
             </div>

@@ -36,6 +36,7 @@ export function AccountSetup() {
   const [memoryNotice, setMemoryNotice] = useState('');
   const memoryFileInput = useRef<HTMLInputElement>(null);
   const [scheduleRevision, setScheduleRevision] = useState(0);
+  const [graphRevision, setGraphRevision] = useState(0);
 
   useEffect(() => {
     const authError = new URLSearchParams(window.location.search).get('auth_error');
@@ -211,11 +212,12 @@ export function AccountSetup() {
             )}
           </section>
         )}
-        {account && <DeadlineFeeds />}
+        {account && <DeadlineFeeds onProposalsChanged={() => setGraphRevision((revision) => revision + 1)} />}
         {account && <GraphReview
           timezone={account.timezone}
           commitmentCount={stateSummary?.commitmentCount ?? 0}
           edgeCount={stateSummary?.edgeCount ?? 0}
+          revision={graphRevision}
           onConfirmed={refreshAccount}
         />}
         {account && <ScheduleCheck key={scheduleRevision} />}

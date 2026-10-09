@@ -1100,7 +1100,7 @@ export class PostgresAccountStore {
       }
       if (proposal.source_type === 'ical-feed') {
         const feedResult = await client.query<{ enabled: boolean; version: string | null }>(
-          `SELECT enabled, snapshot -> $3 ->> 'version' AS version
+          `SELECT enabled, snapshot -> ($3::text) ->> 'version' AS version
            FROM dira_ical_feeds WHERE account_id = $1 AND feed_id = $2 FOR SHARE`,
           [accountId, proposal.source_snapshot.feedId, proposal.source_snapshot.feedUid],
         );

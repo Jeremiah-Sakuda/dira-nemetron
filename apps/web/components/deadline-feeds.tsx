@@ -14,7 +14,7 @@ interface Feed {
   lastError?: string;
 }
 
-export function DeadlineFeeds() {
+export function DeadlineFeeds({ onProposalsChanged }: { onProposalsChanged: () => void }) {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
@@ -93,6 +93,7 @@ export function DeadlineFeeds() {
       };
       if (!response.ok) throw new Error(result.error ?? 'The feed could not be synced.');
       setFeeds(result.feeds ?? []);
+      onProposalsChanged();
       setNotice(result.notModified
         ? `${feed.label} has no changes.`
         : `${feed.label}: ${result.proposalsCreated ?? 0} new proposal(s), ${result.updated ?? 0} update(s), ${result.cancelled ?? 0} cancellation(s), ${result.ignored ?? 0} skipped item(s)${result.partial ? ' · more items will be picked up on the next check' : ''}.`);

@@ -90,6 +90,7 @@ async function performIcalSync(
   const currentFeed = accountFeeds.find((item) => item.feedId === feedId);
   if (!currentFeed?.enabled) throw new Error('This deadline feed was disabled during sync.');
   const feedLabel = currentFeed.label;
+  const feedDomain = currentFeed.domain;
   const proposalBySource = new Map(savedProposals.map((proposal) => [proposal.sourceId, proposal]));
   const externalPrefix = `${feedId}:`;
   const commitments = Object.values(accountState.commitments).filter(
@@ -148,14 +149,17 @@ async function performIcalSync(
       if (result) { proposalsCreated += 1; updated += 1; }
     } else {
       const result = await builder.propose(source);
+      // The user chose the source domain during feed setup; model classification
+      // must not silently reclassify a whole feed.
+      const draft = { ...result.draft, domain: feedDomain };
       const saved = await store.saveGraphProposal(accountId, {
         sourceType: 'ical-feed',
         source: { ...result.source, feedId, feedUid: event.uid, feedLabel },
-        draft: result.draft,
+        draft,
         model: result.model,
-      }, result.draft.include ? 'PENDING_REVIEW' : 'IGNORED');
+      }, draft.include ? 'PENDING_REVIEW' : 'IGNORED');
       if (saved) {
-        if (result.draft.include) proposalsCreated += 1;
+        if (draft.include) proposalsCreated += 1;
         else ignored += 1;
       }
     }
