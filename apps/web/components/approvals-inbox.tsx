@@ -13,8 +13,17 @@ interface PendingApproval {
   requestedAtIso?: string;
 }
 
+interface RecentDecision {
+  actionId: string;
+  decision: 'APPROVED' | 'REJECTED';
+  decidedAtIso: string;
+  summary: string;
+  status: string | null;
+}
+
 export function ApprovalsInbox() {
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
+  const [recentDecisions, setRecentDecisions] = useState<RecentDecision[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
@@ -27,9 +36,10 @@ export function ApprovalsInbox() {
     setError('');
     try {
       const response = await fetch('/api/approvals', { cache: 'no-store' });
-      const result = await response.json() as { approvals?: PendingApproval[]; error?: string };
+      const result = await response.json() as { approvals?: PendingApproval[]; recentDecisions?: RecentDecision[]; error?: string };
       if (!response.ok) throw new Error(result.error ?? 'Approvals could not be loaded.');
       setApprovals(result.approvals ?? []);
+      setRecentDecisions(result.recentDecisions ?? []);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Approvals could not be loaded.');
     } finally {
@@ -53,6 +63,7 @@ export function ApprovalsInbox() {
       setNotice(decision === 'APPROVED'
         ? 'Authorization recorded. This account path does not execute actions yet.'
         : 'Action rejected and recorded.');
+      await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Decision could not be recorded.');
     } finally {
@@ -94,6 +105,13 @@ export function ApprovalsInbox() {
             </article>
           ))}
         </div>
+        {recentDecisions.length > 0 && <section className="recent-decisions" aria-labelledby="recent-approvals-title">
+          <h3 id="recent-approvals-title">Recent decisions</h3>
+          {recentDecisions.map((item) => <div className="recent-decision" key={`${item.actionId}-${item.decidedAtIso}`}>
+            <div><strong>{item.summary}</strong><span className="muted"> · {label(item.decision)}{item.status ? ` · ${label(item.status)}` : ''}</span></div>
+            <time dateTime={item.decidedAtIso}>{new Date(item.decidedAtIso).toLocaleString()}</time>
+          </div>)}
+        </section>}
       </section>
     </main>
   );

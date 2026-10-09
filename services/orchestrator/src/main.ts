@@ -1,17 +1,18 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { ActionLedger } from '@dira/action-ledger';
 import { FileLedgerStore } from '@dira/action-ledger/file-store';
 import { buildReplayRuntime, computeRunMetrics } from '@dira/agent';
 import { FileWorkflowStore } from '@dira/agent/file-stores';
 import { Gemma3nVoiceClient, transcriptToVoiceEvent } from '@dira/gemma-voice';
-import { RawEmailEventSchema, RawVoiceNoteSchema } from '@dira/event-schema';
+import { RawEmailEventSchema, RawVoiceNoteSchema, type PlannedAction } from '@dira/event-schema';
 import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden';
 import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAccountId, isAllowedOrigin } from './google-auth.js';
-import { PostgresAccountStore } from './postgres-store.js';
+import { PostgresAccountStore, PostgresLedgerStore, PostgresWorkflowStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
-import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema } from '@dira/agent';
-import { analyzeAccountSchedule, AvailabilityProfileSchema } from './account-planning.js';
+import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema, type WorkflowRun } from '@dira/agent';
+import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule } from './account-planning.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -277,6 +278,106 @@ const server = createServer(async (req, res) => {
       json(req, res, 200, analyzeAccountSchedule(state));
       return;
     }
+    if (url.pathname === '/api/graph/analysis' && req.method === 'POST') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const body = safeJson(await readBody(req)) as { planId?: string } | null;
+      if (typeof body?.planId !== 'string' || body.planId.length < 1 || body.planId.length > 200) {
+        json(req, res, 400, { error: 'invalid_plan_id' });
+        return;
+      }
+      const store = await accountStore();
+      if (!await store.getAvailabilityProfile(accountId)) {
+        json(req, res, 409, { error: 'Set your focus hours before requesting plan approval.' });
+        return;
+      }
+      const state = await store.ensureDomainState(accountId);
+      const prepared = prepareAccountSchedule(state);
+      const validation = prepared.ranked.find((candidate) => candidate.plan.id === body.planId);
+      if (!validation || !validation.acceptable) {
+        json(req, res, 409, { error: 'The selected plan is no longer feasible. Check the schedule again.' });
+        return;
+      }
+      const denied = validation.policy.decisions.find((decision) => decision.verdict === 'DENY');
+      if (denied) {
+        json(req, res, 409, { error: `Policy does not allow this action: ${denied.reason}` });
+        return;
+      }
+      const pending = validation.plan.actions
+        .map((action, index) => ({ action, decision: validation.policy.decisions[index]! }))
+        .filter(({ decision }) => decision.verdict === 'REQUIRE_APPROVAL');
+      if (pending.length === 0) {
+        json(req, res, 409, { error: 'This plan has no approval-required actions.' });
+        return;
+      }
+
+      const eventId = `account-plan-${randomUUID()}`;
+      const workflowId = `wf-${eventId}`;
+      const requestedAtIso = new Date().toISOString();
+      const ledger = await ActionLedger.open(new PostgresLedgerStore(store, accountId));
+      const existingPendingKeys = new Set(ledger.all()
+        .filter((record) => ['AWAITING_APPROVAL', 'AUTHORIZED', 'PENDING_EXECUTION', 'EXECUTING'].includes(record.status))
+        .map((record) => actionIntentKey(record.action)));
+      if (pending.some(({ action }) => existingPendingKeys.has(actionIntentKey(action)))) {
+        json(req, res, 409, { error: 'A matching action is already awaiting approval or authorized.' });
+        return;
+      }
+      const actionIds: string[] = [];
+      for (const [index, { action, decision }] of pending.entries()) {
+        const persisted = await ledger.persistIntent(
+          workflowId,
+          action,
+          decision.verdict,
+          decision.rule,
+          { planId: validation.plan.id, seq: index },
+        );
+        if (persisted.record.status === 'PLANNED') {
+          const awaiting = await ledger.transition(persisted.record.actionId, 'AWAITING_APPROVAL', {
+            approval: { requestedAtIso },
+          }, 'feasible plan held for authenticated account-owner decision');
+          actionIds.push(awaiting.actionId);
+        } else if (persisted.record.status === 'AWAITING_APPROVAL') {
+          actionIds.push(persisted.record.actionId);
+        }
+      }
+      if (actionIds.length === 0) {
+        json(req, res, 409, { error: 'The selected plan already has a terminal action record.' });
+        return;
+      }
+      const run: WorkflowRun = {
+        id: workflowId,
+        eventId,
+        status: 'AWAITING_APPROVAL',
+        statusReason: 'A feasible schedule plan contains action(s) requiring the account owner’s approval.',
+        mutationSummary: `Schedule review: ${validation.plan.label}`,
+        impacts: [],
+        affected: [],
+        planningRounds: [[{
+          id: validation.plan.id,
+          label: validation.plan.label,
+          acceptable: false,
+          autonomous: false,
+          costTotal: validation.cost.total,
+          slackMinutes: validation.feasibility.global_slack_minutes,
+          rejectionReason: 'Awaiting authenticated account-owner approval.',
+          actionCount: validation.plan.actions.length,
+        }]],
+        selectedPlanIds: [validation.plan.id],
+        failuresRecovered: 0,
+        replans: 0,
+        userInterventions: 0,
+      };
+      await new PostgresWorkflowStore(store, accountId).save(run);
+      json(req, res, 202, { workflowId, status: run.status, approvalCount: actionIds.length, actionIds });
+      return;
+    }
     if (url.pathname === '/api/approvals' && req.method === 'GET') {
       const accountId = getSessionAccountId(req);
       if (!accountId) {
@@ -296,6 +397,7 @@ const server = createServer(async (req, res) => {
           requestedAtIso: record.approval?.requestedAtIso
             ?? record.history.find((entry) => entry.status === 'AWAITING_APPROVAL')?.atIso,
         })),
+        recentDecisions: await (await accountStore()).listRecentApprovalDecisions(accountId),
       });
       return;
     }
@@ -744,6 +846,14 @@ function friendlyError(err: unknown): string {
     return 'This event is already being processed by another run — wait for it to finish, then run again.';
   }
   return String(err);
+}
+
+function actionIntentKey(action: PlannedAction): string {
+  const desired = Object.entries(action.desired_state)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(',');
+  return `${action.type}:${action.target}:${desired}`;
 }
 
 server.listen(PORT, () => console.log(`dira-orchestrator listening on :${PORT} (mode: ${MODE})`));

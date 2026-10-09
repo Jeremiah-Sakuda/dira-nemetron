@@ -1,10 +1,24 @@
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request): Promise<Response> {
+  return proxy(request, 'GET');
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return proxy(request, 'POST', await request.text());
+}
+
+async function proxy(request: Request, method: 'GET' | 'POST', body?: string): Promise<Response> {
   const base = process.env.DIRA_CLOUD_RUN_URL?.replace(/\/$/, '');
   if (!base) return Response.json({ error: 'Account service is not configured' }, { status: 503 });
   const upstream = await fetch(`${base}/api/graph/analysis`, {
-    headers: { cookie: request.headers.get('cookie') ?? '' },
+    method,
+    headers: {
+      cookie: request.headers.get('cookie') ?? '',
+      ...(request.headers.get('origin') ? { origin: request.headers.get('origin')! } : {}),
+      ...(body ? { 'content-type': 'application/json' } : {}),
+    },
+    body,
     cache: 'no-store',
     signal: AbortSignal.timeout(20_000),
   });

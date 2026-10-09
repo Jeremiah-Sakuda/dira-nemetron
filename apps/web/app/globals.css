@@ -719,6 +719,37 @@ table.data td:first-child {
   overflow-wrap: anywhere;
 }
 
+.recent-decisions {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.recent-decisions h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.recent-decision {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.recent-decision strong {
+  color: var(--text-primary);
+}
+
+.recent-decision time {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .graph-review-heading {
   display: flex;
   align-items: flex-start;
@@ -927,6 +958,10 @@ table.data td:first-child {
 
   .approvals-heading {
     align-items: stretch;
+  }
+
+  .recent-decision {
+    display: grid;
   }
 
   .edge-review-heading {

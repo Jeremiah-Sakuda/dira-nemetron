@@ -6,7 +6,7 @@ type AvailabilityProfile = { weekdays: number[]; startMinute: number; endMinute:
 type ScheduleAnalysis = {
   checkedAtIso: string;
   feasibility: { globalSlackMinutes: number; violations: { type: string; detail: string }[] };
-  plans: { id: string; label: string; acceptable: boolean; rejectionReason?: string; slackMinutes: number; actions: { type: string; summary: string }[] }[];
+  plans: { id: string; label: string; acceptable: boolean; requestable: boolean; approvalRequired: boolean; rejectionReason?: string; slackMinutes: number; actions: { type: string; summary: string; policyVerdict: string }[] }[];
 };
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -16,6 +16,8 @@ export function ScheduleCheck() {
   const [configured, setConfigured] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [requestingPlanId, setRequestingPlanId] = useState('');
+  const [requestedPlans, setRequestedPlans] = useState<string[]>([]);
   const [analysis, setAnalysis] = useState<ScheduleAnalysis | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -81,6 +83,28 @@ export function ScheduleCheck() {
     }
   }
 
+  async function requestApproval(planId: string) {
+    setRequestingPlanId(planId);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/graph/analysis', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ planId }),
+      });
+      const result = await response.json() as { error?: string; approvalCount?: number };
+      if (!response.ok) throw new Error(result.error ?? 'Approval request could not be created.');
+      setRequestedPlans((current) => [...new Set([...current, planId])]);
+      setNotice(`${result.approvalCount ?? 0} approval request(s) saved. No external action has run.`);
+      await check();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Approval request could not be created.');
+    } finally {
+      setRequestingPlanId('');
+    }
+  }
+
   return (
     <section className="schedule-check" aria-labelledby="schedule-check-title">
       <div className="section-label">Make plans usable</div>
@@ -116,7 +140,10 @@ export function ScheduleCheck() {
               <h3>Deterministic repair candidates</h3>
               {analysis.plans.map((plan) => <article className="schedule-plan" key={plan.id}>
                 <strong>{plan.label}</strong><span className={plan.acceptable ? 'schedule-plan-status good' : 'schedule-plan-status'}>{plan.acceptable ? 'Feasible under current policy' : plan.rejectionReason ?? 'Needs review'}</span>
-                {plan.actions.map((action, index) => <p key={`${action.type}-${index}`}>{action.summary}</p>)}
+                {plan.actions.map((action, index) => <p key={`${action.type}-${index}`}>{action.summary}<span className="muted"> · {label(action.policyVerdict)}</span></p>)}
+                {plan.requestable && (requestedPlans.includes(plan.id)
+                  ? <span className="schedule-plan-status">Approval request recorded · no execution</span>
+                  : <button type="button" className="btn btn-secondary" disabled={requestingPlanId === plan.id} onClick={() => void requestApproval(plan.id)}>{requestingPlanId === plan.id ? 'Saving request…' : 'Request user approval'}</button>)}
               </article>)}
             </div>}
             <p className="footnote">Checked {new Date(analysis.checkedAtIso).toLocaleString()}. Suggestions are previews; external changes still need an approval workflow and write access.</p>

@@ -76,22 +76,24 @@ export function rebaseDomainState(state: DomainState, now = new Date()): DomainS
 }
 
 export function analyzeAccountSchedule(state: DomainState) {
-  const feasibility = computeFeasibility(state);
-  const nowMin = Math.max(0, isoToMinutes(new Date().toISOString(), state.horizonStartIso));
-  const candidates = generateCandidatePlans({ state, feasibility, liveSlots: {}, nowMin });
-  const validations = candidates.map((plan) => validatePlan(state, plan));
-  const ranked = rankValidations(validations);
+  const { feasibility, ranked } = prepareAccountSchedule(state);
   const plans = ranked.slice(0, 5).map((validation) => {
-    const policy = evaluatePlanActions(state, validation.plan.actions);
+    const policy = validation.policy;
+    const denied = policy.decisions.find((decision) => decision.verdict === 'DENY');
+    const approvalRequired = policy.decisions.some((decision) => decision.verdict === 'REQUIRE_APPROVAL');
     return {
       id: validation.plan.id,
       label: validation.plan.label,
-      acceptable: validation.acceptable && policy.autonomous,
-      rejectionReason: !policy.autonomous
-        ? policy.decisions.find((decision) => decision.verdict === 'DENY' || decision.verdict === 'REQUIRE_APPROVAL')?.reason
-        : validation.rejectionReason,
+      acceptable: validation.acceptable && !denied && !approvalRequired,
+      requestable: validation.acceptable && !denied && approvalRequired,
+      approvalRequired,
+      rejectionReason: denied?.reason ?? (approvalRequired ? 'User approval is required for one or more actions.' : validation.rejectionReason),
       slackMinutes: validation.feasibility.global_slack_minutes,
-      actions: validation.plan.actions.map((action) => ({ summary: action.summary, type: action.type })),
+      actions: validation.plan.actions.map((action, index) => ({
+        summary: action.summary,
+        type: action.type,
+        policyVerdict: policy.decisions[index]?.verdict ?? 'DENY',
+      })),
     };
   });
   return {
@@ -104,6 +106,18 @@ export function analyzeAccountSchedule(state: DomainState) {
     plans,
     checkedAtIso: new Date().toISOString(),
   };
+}
+
+export function prepareAccountSchedule(state: DomainState) {
+  const feasibility = computeFeasibility(state);
+  const nowMin = Math.max(0, isoToMinutes(new Date().toISOString(), state.horizonStartIso));
+  const candidates = generateCandidatePlans({ state, feasibility, liveSlots: {}, nowMin });
+  const validations = candidates.map((plan) => validatePlan(state, plan));
+  const ranked = rankValidations(validations).map((validation) => ({
+    ...validation,
+    policy: evaluatePlanActions(state, validation.plan.actions),
+  }));
+  return { feasibility, ranked };
 }
 
 function localDate(date: Date, timezone: string): string {

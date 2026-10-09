@@ -149,10 +149,11 @@ require user confirmation before they affect propagation. Ownership and
 delegation links are excluded without explicit person evidence. Users can set
 their recurring focus hours and run an account-private feasibility check with
 the deterministic solver and policy engine; candidate repairs are previews
-and cannot mutate services. This remains separate from the shared synthetic
-judge world. The hosted dashboard does not yet have these Google/Postgres
-secrets configured, and account preview results are not yet connected to an
-approval and execution workflow.
+and cannot mutate services. A feasible candidate with policy-held actions can
+be sent to the per-account approval inbox; owner decisions are audited, but
+this account path does not resume or execute those actions yet. This remains
+separate from the shared synthetic judge world. The hosted dashboard does not
+yet have these Google/Postgres secrets configured.
 
 Monorepo map: engines in [`packages/`](packages), the agent loop in
 [`agents/dira`](agents/dira), scoped tool adapters in [`adapters/`](adapters),

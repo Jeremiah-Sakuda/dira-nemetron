@@ -243,6 +243,33 @@ export class PostgresAccountStore {
     });
   }
 
+  async listRecentApprovalDecisions(accountId: string): Promise<{
+    actionId: string; decision: 'APPROVED' | 'REJECTED'; decidedAtIso: string; summary: string; status: ActionRecord['status'] | null;
+  }[]> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{
+        action_id: string; decision: 'APPROVED' | 'REJECTED'; decided_at: Date;
+        record: ActionRecord | null;
+      }>(
+        `SELECT a.action_id, a.decision, a.decided_at, l.record
+         FROM dira_action_approvals a
+         LEFT JOIN dira_action_ledger l
+           ON l.account_id = a.account_id AND l.action_id = a.action_id
+         WHERE a.account_id = $1
+         ORDER BY a.decided_at DESC
+         LIMIT 50`,
+        [accountId],
+      );
+      return result.rows.map((row) => ({
+        actionId: row.action_id,
+        decision: row.decision,
+        decidedAtIso: row.decided_at.toISOString(),
+        summary: row.record?.action.summary ?? 'Action details are no longer available.',
+        status: row.record?.status ?? null,
+      }));
+    });
+  }
+
   /** A web decision only records authorization; workflow resume must revalidate before execution. */
   async reviewActionApproval(
     accountId: string,

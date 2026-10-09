@@ -44,7 +44,7 @@ import { generateCandidatePlans, type LiveSlot } from './planner.js';
  * orchestrator handed the same stores continues instead of duplicating.
  */
 
-export type WorkflowStatus = 'RUNNING' | 'RESOLVED' | 'WAITING_REVIEW' | 'NO_ACTION_NEEDED';
+export type WorkflowStatus = 'RUNNING' | 'AWAITING_APPROVAL' | 'RESOLVED' | 'WAITING_REVIEW' | 'NO_ACTION_NEEDED';
 
 export interface CandidateSummary {
   id: string;
