@@ -143,7 +143,10 @@ signed HttpOnly sessions, encrypted credential storage, Postgres RLS, and a
 read-only Google Calendar preview on `/onboarding`. Sign-in creates an
 account-scoped, timezone-aware empty commitment state. On an explicit user
 action, Nemotron Nano prepares drafts from upcoming event titles and times;
-each draft must be edited or confirmed before it enters the graph. This is a
+each draft must be edited or confirmed before it enters the graph. After two
+commitments are confirmed, Nemotron Ultra can suggest typed links, which also
+require user confirmation before they affect propagation. Ownership and
+delegation links are excluded without explicit person evidence. This is a
 separate account path from the shared synthetic judge world. The hosted
 dashboard does not yet have these Google/Postgres secrets configured, and
 confirmed account state is not yet connected to repair execution.

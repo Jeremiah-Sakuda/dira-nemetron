@@ -10,7 +10,7 @@ import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAc
 import { PostgresAccountStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
-import { CalendarGraphBuilder, GraphProposalEditsSchema } from '@dira/agent';
+import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema } from '@dira/agent';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -369,6 +369,72 @@ const server = createServer(async (req, res) => {
           edgeCount: state.edges.length,
         },
       });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/api/graph/edges') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const proposals = await (await accountStore()).listGraphEdgeProposals(accountId, 'PENDING_REVIEW');
+      json(req, res, 200, { proposals });
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/graph/edges') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const store = await accountStore();
+      const state = await store.ensureDomainState(accountId);
+      if (Object.keys(state.commitments).length < 2) {
+        json(req, res, 409, { error: 'Add and confirm at least two commitments before suggesting graph links.' });
+        return;
+      }
+      const existing = await store.listGraphEdgeProposals(accountId);
+      const existingKeys = new Set([
+        ...state.edges.map((edge) => `${edge.type}:${edge.from}:${edge.to}`),
+        ...existing.map((edge) => `${edge.type}:${edge.from}:${edge.to}`),
+      ]);
+      const builder = new GraphEdgeBuilder();
+      const result = await builder.propose(state);
+      const candidates = result.edges.filter((edge) => !existingKeys.has(`${edge.type}:${edge.from}:${edge.to}`));
+      const created = await store.saveGraphEdgeProposals(accountId, candidates, result.model);
+      json(req, res, 200, {
+        created,
+        proposed: candidates.length,
+        model: result.model,
+        proposals: await store.listGraphEdgeProposals(accountId, 'PENDING_REVIEW'),
+      });
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/graph/edges/review') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const body = safeJson(await readBody(req)) as { proposalId?: string; decision?: string; data?: unknown } | null;
+      if (!body?.proposalId || (body.decision !== 'CONFIRMED' && body.decision !== 'REJECTED')) {
+        json(req, res, 400, { error: 'invalid_review_request' });
+        return;
+      }
+      let data: ReturnType<typeof GraphEdgeDataEditsSchema.parse> | undefined;
+      if (body.decision === 'CONFIRMED' && body.data !== undefined) {
+        const parsed = GraphEdgeDataEditsSchema.safeParse(body.data);
+        if (!parsed.success) {
+          json(req, res, 400, { error: 'invalid_edge_parameters', issues: parsed.error.issues });
+          return;
+        }
+        data = parsed.data;
+      }
+      const result = await (await accountStore()).reviewGraphEdgeProposal(
+        accountId, body.proposalId, body.decision, data,
+      );
+      const state = await (await accountStore()).ensureDomainState(accountId);
+      json(req, res, 200, { ...result, edgeCount: state.edges.length });
       return;
     }
     if (req.method === 'POST' && url.pathname === '/auth/logout') {

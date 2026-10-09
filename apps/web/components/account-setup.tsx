@@ -132,7 +132,12 @@ export function AccountSetup() {
             )}
           </section>
         )}
-        {account && <GraphReview timezone={account.timezone} onConfirmed={refreshAccount} />}
+        {account && <GraphReview
+          timezone={account.timezone}
+          commitmentCount={stateSummary?.commitmentCount ?? 0}
+          edgeCount={stateSummary?.edgeCount ?? 0}
+          onConfirmed={refreshAccount}
+        />}
         {error && <p className="form-error" role="alert">{error}</p>}
         <p className="privacy-note">
           Dira stores Google credentials encrypted and requests read-only Calendar access for this setup.

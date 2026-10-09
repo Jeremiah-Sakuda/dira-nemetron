@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { DEFAULT_ENGINE_CONFIG, isoToMinutes, localDateTimeToIso, type Commitment, type DomainState } from '@dira/commitment-model';
 import type { ActionRecord, LedgerStore } from '@dira/action-ledger';
 import type { WorkflowRun, WorkflowStore } from '@dira/agent';
-import type { CalendarCommitmentDraft, GraphProposalEditsInput } from '@dira/agent';
+import type { CalendarCommitmentDraft, GraphEdgeDataEditsInput, GraphEdgeDraft, GraphProposalEditsInput } from '@dira/agent';
 
 export interface DiraAccount {
   accountId: string;
@@ -46,6 +46,14 @@ export interface GraphProposalInput {
   model: Record<string, unknown>;
 }
 
+export interface StoredGraphEdgeProposal extends GraphEdgeDraft {
+  proposalId: string;
+  status: 'PENDING_REVIEW' | 'CONFIRMED' | 'REJECTED';
+  model: Record<string, unknown>;
+  fromTitle: string;
+  toTitle: string;
+}
+
 /** PostgreSQL persistence with transaction-local tenant context and RLS. */
 export class PostgresAccountStore {
   readonly pool: Pool;
@@ -55,7 +63,10 @@ export class PostgresAccountStore {
   }
 
   async initialize(): Promise<void> {
-    for (const name of ['001_account_state.sql', '002_google_credentials.sql', '003_graph_proposals.sql']) {
+    for (const name of [
+      '001_account_state.sql', '002_google_credentials.sql',
+      '003_graph_proposals.sql', '004_graph_edge_proposals.sql',
+    ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
     }
@@ -190,6 +201,11 @@ export class PostgresAccountStore {
          ORDER BY created_at DESC`,
         [accountId, status ?? null],
       );
+      const stateResult = await client.query<{ state: DomainState }>(
+        'SELECT state FROM dira_account_state WHERE account_id = $1',
+        [accountId],
+      );
+      const state = stateResult.rows[0]?.state;
       return result.rows.map((row) => ({
         proposalId: row.proposal_id, sourceId: row.source_id, sourceType: row.source_type,
         status: row.status, source: row.source_snapshot, draft: row.draft, model: row.model_telemetry,
@@ -300,6 +316,146 @@ export class PostgresAccountStore {
         [accountId, proposalId, JSON.stringify(reviewedDraft)],
       );
       return { status: 'CONFIRMED', commitment };
+    });
+  }
+
+  async listGraphEdgeProposals(accountId: string, status?: StoredGraphEdgeProposal['status']): Promise<StoredGraphEdgeProposal[]> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{
+        proposal_id: string; from_commitment_id: string; to_commitment_id: string;
+        edge_type: GraphEdgeDraft['type']; confidence: number; reason: string;
+        edge_data: GraphEdgeDraft['data'] | null; model_telemetry: Record<string, unknown>;
+        status: StoredGraphEdgeProposal['status'];
+      }>(
+        `SELECT proposal_id, from_commitment_id, to_commitment_id, edge_type, confidence,
+                reason, edge_data, model_telemetry, status
+         FROM dira_graph_edge_proposals WHERE account_id = $1 AND ($2::text IS NULL OR status = $2)
+         ORDER BY confidence DESC, created_at ASC`,
+        [accountId, status ?? null],
+      );
+      const stateResult = await client.query<{ state: DomainState }>(
+        'SELECT state FROM dira_account_state WHERE account_id = $1',
+        [accountId],
+      );
+      const state = stateResult.rows[0]?.state;
+      return result.rows.map((row) => ({
+        proposalId: row.proposal_id,
+        from: row.from_commitment_id,
+        to: row.to_commitment_id,
+        type: row.edge_type,
+        confidence: row.confidence,
+        reason: row.reason,
+        data: row.edge_data ?? undefined,
+        model: row.model_telemetry,
+        status: row.status,
+        fromTitle: state?.commitments[row.from_commitment_id]?.title ?? row.from_commitment_id,
+        toTitle: state?.commitments[row.to_commitment_id]?.title ?? row.to_commitment_id,
+      }));
+    });
+  }
+
+  async saveGraphEdgeProposals(
+    accountId: string,
+    edges: GraphEdgeDraft[],
+    model: Record<string, unknown>,
+  ): Promise<number> {
+    return this.withAccount(accountId, async (client) => {
+      let insertedCount = 0;
+      for (const edge of edges) {
+        const result = await client.query(
+          `INSERT INTO dira_graph_edge_proposals
+             (account_id, proposal_id, from_commitment_id, to_commitment_id, edge_type,
+              confidence, reason, edge_data, model_telemetry, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, 'PENDING_REVIEW')
+           ON CONFLICT (account_id, from_commitment_id, to_commitment_id, edge_type) DO NOTHING
+           RETURNING proposal_id`,
+          [accountId, randomUUID(), edge.from, edge.to, edge.type, edge.confidence,
+            edge.reason, JSON.stringify(edge.data ?? null), JSON.stringify(model)],
+        );
+        insertedCount += result.rowCount ?? 0;
+      }
+      return insertedCount;
+    });
+  }
+
+  async reviewGraphEdgeProposal(
+    accountId: string,
+    proposalId: string,
+    decision: 'CONFIRMED' | 'REJECTED',
+    edits?: GraphEdgeDataEditsInput,
+  ): Promise<{ status: StoredGraphEdgeProposal['status']; edge?: DomainState['edges'][number] }> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{
+        status: StoredGraphEdgeProposal['status']; from_commitment_id: string; to_commitment_id: string;
+        edge_type: GraphEdgeDraft['type']; reason: string; edge_data: GraphEdgeDraft['data'] | null;
+      }>(
+        `SELECT status, from_commitment_id, to_commitment_id, edge_type, reason, edge_data
+         FROM dira_graph_edge_proposals WHERE account_id = $1 AND proposal_id = $2 FOR UPDATE`,
+        [accountId, proposalId],
+      );
+      const proposal = result.rows[0];
+      if (!proposal) throw new Error('graph edge proposal not found');
+      if (proposal.status !== 'PENDING_REVIEW') throw new Error(`edge proposal is already ${proposal.status.toLowerCase()}`);
+      if (decision === 'REJECTED') {
+        await client.query(
+          `UPDATE dira_graph_edge_proposals SET status = 'REJECTED', decided_at = now(), updated_at = now()
+           WHERE account_id = $1 AND proposal_id = $2`,
+          [accountId, proposalId],
+        );
+        return { status: 'REJECTED' };
+      }
+
+      const stateResult = await client.query<{ state: DomainState }>(
+        'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
+        [accountId],
+      );
+      const state = stateResult.rows[0]?.state;
+      if (!state) throw new Error('account state is not initialized');
+      assertAccountMatch(accountId, state.userId);
+      if (!state.commitments[proposal.from_commitment_id] || !state.commitments[proposal.to_commitment_id]) {
+        throw new Error('edge endpoints are no longer present in this account graph');
+      }
+      const edgeData = edits ?? proposal.edge_data ?? undefined;
+      const allowedDataField = proposal.edge_type === 'REQUIRES_BUFFER' ? 'bufferMin'
+        : proposal.edge_type === 'REQUIRES_PREPARATION' ? 'finalBufferMin'
+          : proposal.edge_type === 'SHARES_RESOURCE_WITH' ? 'resource' : undefined;
+      if (edgeData && Object.keys(edgeData).some((key) => key !== allowedDataField)) {
+        throw new Error(`${proposal.edge_type} contains unsupported edge data`);
+      }
+      if (proposal.edge_type === 'REQUIRES_BUFFER' && edgeData?.bufferMin === undefined) {
+        throw new Error('buffer duration is required to confirm this link');
+      }
+      if (proposal.edge_type === 'REQUIRES_PREPARATION' && edgeData?.finalBufferMin === undefined) {
+        throw new Error('preparation deadline is required to confirm this link');
+      }
+      if (proposal.edge_type === 'SHARES_RESOURCE_WITH' && !edgeData?.resource) {
+        throw new Error('resource name is required to confirm this link');
+      }
+      if (state.edges.some((edge) => edge.type === proposal.edge_type
+        && edge.from === proposal.from_commitment_id && edge.to === proposal.to_commitment_id)) {
+        throw new Error('this link is already confirmed');
+      }
+      const edge: DomainState['edges'][number] = {
+        id: `edge_${randomUUID()}`,
+        from: proposal.from_commitment_id,
+        to: proposal.to_commitment_id,
+        type: proposal.edge_type,
+        data: {
+          ...(edgeData ?? {}),
+          provenance: `user-confirmation:${proposalId}`,
+        },
+      };
+      state.edges.push(edge);
+      await client.query(
+        `UPDATE dira_account_state SET state = $2::jsonb, updated_at = now() WHERE account_id = $1`,
+        [accountId, JSON.stringify(state)],
+      );
+      await client.query(
+        `UPDATE dira_graph_edge_proposals SET status = 'CONFIRMED', decided_at = now(), updated_at = now()
+         WHERE account_id = $1 AND proposal_id = $2`,
+        [accountId, proposalId],
+      );
+      return { status: 'CONFIRMED', edge };
     });
   }
 

@@ -23,23 +23,54 @@ interface Proposal {
   };
 }
 
+interface EdgeProposal {
+  proposalId: string;
+  from: string;
+  to: string;
+  fromTitle: string;
+  toTitle: string;
+  type: string;
+  confidence: number;
+  reason: string;
+  data?: { bufferMin?: number; finalBufferMin?: number; resource?: string };
+}
+
 const DOMAINS: Domain[] = ['academic', 'career', 'organization', 'personal'];
 const FLEXIBILITY: Flexibility[] = ['FIXED', 'MOVE_WITHIN_WINDOW', 'FLEXIBLE', 'DELEGATABLE', 'OPTIONAL'];
 const CRITICALITY: Criticality[] = ['CRITICAL', 'HIGH', 'NORMAL', 'LOW'];
 
-export function GraphReview({ timezone, onConfirmed }: { timezone: string; onConfirmed: () => void }) {
+export function GraphReview({
+  timezone,
+  commitmentCount,
+  edgeCount,
+  onConfirmed,
+}: {
+  timezone: string;
+  commitmentCount: number;
+  edgeCount: number;
+  onConfirmed: () => void;
+}) {
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [edgeProposals, setEdgeProposals] = useState<EdgeProposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [generatingEdges, setGeneratingEdges] = useState(false);
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    fetch('/api/graph/proposals', { cache: 'no-store' })
-      .then(async (response) => {
-        const result = await response.json() as { proposals?: Proposal[] };
-        if (response.ok) setProposals(result.proposals ?? []);
+    Promise.all([
+      fetch('/api/graph/proposals', { cache: 'no-store' }),
+      fetch('/api/graph/edges', { cache: 'no-store' }),
+    ])
+      .then(async ([commitmentsResponse, edgesResponse]) => {
+        const [commitments, edges] = await Promise.all([
+          commitmentsResponse.json() as Promise<{ proposals?: Proposal[] }>,
+          edgesResponse.json() as Promise<{ proposals?: EdgeProposal[] }>,
+        ]);
+        if (commitmentsResponse.ok) setProposals(commitments.proposals ?? []);
+        if (edgesResponse.ok) setEdgeProposals(edges.proposals ?? []);
       })
       .catch(() => setError('Could not load saved graph proposals.'))
       .finally(() => setLoading(false));
@@ -67,6 +98,31 @@ export function GraphReview({ timezone, onConfirmed }: { timezone: string; onCon
       setNotice('');
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function generateEdges() {
+    setGeneratingEdges(true);
+    setError('');
+    setNotice('Nemotron Ultra is reviewing your confirmed commitments for possible links…');
+    try {
+      const response = await fetch('/api/graph/edges', { method: 'POST' });
+      const result = await response.json() as {
+        proposals?: EdgeProposal[]; created?: number; model?: { model?: string; latencyMs?: number; totalTokens?: number };
+        error?: string;
+      };
+      if (!response.ok) throw new Error(result.error ?? 'Graph links could not be suggested.');
+      setEdgeProposals(result.proposals ?? []);
+      const model = result.model;
+      const modelNote = model
+        ? ` ${model.model ?? 'Nemotron Ultra'}: ${((model.latencyMs ?? 0) / 1000).toFixed(1)}s, ${model.totalTokens ?? 0} tokens.`
+        : '';
+      setNotice(`Prepared ${result.created ?? 0} link proposal(s); none affect planning before confirmation.${modelNote}`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Graph links could not be suggested.');
+      setNotice('');
+    } finally {
+      setGeneratingEdges(false);
     }
   }
 
@@ -105,6 +161,42 @@ export function GraphReview({ timezone, onConfirmed }: { timezone: string; onCon
     } finally {
       setBusyId('');
     }
+  }
+
+  async function reviewEdge(proposal: EdgeProposal, decision: 'CONFIRMED' | 'REJECTED') {
+    setBusyId(proposal.proposalId);
+    setError('');
+    try {
+      const response = await fetch('/api/graph/edges/review', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ proposalId: proposal.proposalId, decision, data: proposal.data }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error ?? 'Link review could not be saved.');
+      setEdgeProposals((current) => current.filter((item) => item.proposalId !== proposal.proposalId));
+      setNotice(decision === 'CONFIRMED' ? 'Link confirmed. It can now inform impact propagation.' : 'Link rejected and remembered.');
+      if (decision === 'CONFIRMED') onConfirmed();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Link review could not be saved.');
+    } finally {
+      setBusyId('');
+    }
+  }
+
+  function editEdgeData(proposalId: string, field: 'bufferMin' | 'finalBufferMin' | 'resource', value: string) {
+    setEdgeProposals((current) => current.map((proposal) => {
+      if (proposal.proposalId !== proposalId) return proposal;
+      const data = { ...proposal.data };
+      if (field === 'resource') {
+        data.resource = value;
+      } else if (value === '') {
+        delete data[field];
+      } else {
+        data[field] = Number(value);
+      }
+      return { ...proposal, data };
+    }));
   }
 
   return (
@@ -153,6 +245,53 @@ export function GraphReview({ timezone, onConfirmed }: { timezone: string; onCon
           </article>
         ))}
       </div>
+      <section className="edge-review" aria-labelledby="edge-review-title">
+        <div className="edge-review-heading">
+          <div>
+            <h3 id="edge-review-title">Suggested links</h3>
+            <p className="muted">Confirmed links are the only ones used to propagate consequences. Delegation and ownership links require explicit person evidence and are not inferred here.</p>
+          </div>
+          <button className="btn btn-secondary" type="button" onClick={generateEdges} disabled={generatingEdges || loading || commitmentCount < 2}>
+            {generatingEdges ? 'Reviewing graph…' : 'Suggest links with Ultra'}
+          </button>
+        </div>
+        {commitmentCount < 2 && <p className="muted">Confirm two commitments before suggesting links.</p>}
+        <p className="privacy-note graph-consent">
+          This sends confirmed commitment titles, areas, and dates to Nebius Token Factory for relationship proposals. Names of other people are not included.
+        </p>
+        {edgeProposals.length === 0 && commitmentCount >= 2 && edgeCount === 0 && <p className="muted">No confirmed links yet.</p>}
+        <div className="proposal-list">
+          {edgeProposals.map((proposal) => (
+            <article className="proposal-card edge-proposal" key={proposal.proposalId}>
+              <div className="edge-endpoints">
+                <strong>{proposal.fromTitle}</strong><span aria-hidden="true">→</span><strong>{proposal.toTitle}</strong>
+              </div>
+              <p className="edge-type">{label(proposal.type)} · {Math.round(proposal.confidence * 100)}% confidence</p>
+              <p className="proposal-reason">{proposal.reason}</p>
+              {edgeDataLabel(proposal) && <p className="muted edge-data">{edgeDataLabel(proposal)}</p>}
+              {proposal.type === 'REQUIRES_BUFFER' && (
+                <label className="edge-edit">Buffer duration (minutes)
+                  <input type="number" min={0} max={10080} step={15} value={proposal.data?.bufferMin ?? ''} onChange={(event) => editEdgeData(proposal.proposalId, 'bufferMin', event.target.value)} />
+                </label>
+              )}
+              {proposal.type === 'REQUIRES_PREPARATION' && (
+                <label className="edge-edit">Finish preparation this many minutes before the event
+                  <input type="number" min={0} max={10080} step={15} value={proposal.data?.finalBufferMin ?? ''} onChange={(event) => editEdgeData(proposal.proposalId, 'finalBufferMin', event.target.value)} />
+                </label>
+              )}
+              {proposal.type === 'SHARES_RESOURCE_WITH' && (
+                <label className="edge-edit">Shared resource
+                  <input type="text" maxLength={120} value={proposal.data?.resource ?? ''} onChange={(event) => editEdgeData(proposal.proposalId, 'resource', event.target.value)} />
+                </label>
+              )}
+              <div className="proposal-actions">
+                <button className="btn" type="button" disabled={busyId === proposal.proposalId} onClick={() => reviewEdge(proposal, 'CONFIRMED')}>Confirm link</button>
+                <button className="btn btn-secondary" type="button" disabled={busyId === proposal.proposalId} onClick={() => reviewEdge(proposal, 'REJECTED')}>Reject</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </section>
   );
 }
@@ -168,4 +307,11 @@ function formatDate(value: string, timezone: string): string {
   return new Intl.DateTimeFormat('en', {
     weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: timezone,
   }).format(new Date(value));
+}
+
+function edgeDataLabel(proposal: EdgeProposal): string {
+  if (proposal.data?.bufferMin !== undefined) return `Suggested buffer: ${proposal.data.bufferMin} minutes`;
+  if (proposal.data?.finalBufferMin !== undefined) return `Preparation complete ${proposal.data.finalBufferMin} minutes before the event`;
+  if (proposal.data?.resource) return `Shared resource: ${proposal.data.resource}`;
+  return '';
 }
