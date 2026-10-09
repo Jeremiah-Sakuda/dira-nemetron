@@ -15,6 +15,30 @@ export function isoToMinutes(iso: string, horizonStartIso: string): number {
   return Math.round(ms / 60_000);
 }
 
+/** Convert a local wall-clock value into an absolute ISO instant for an IANA timezone. */
+export function localDateTimeToIso(localDateTime: string, timeZone: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(localDateTime);
+  if (!match) throw new Error(`Expected local date-time YYYY-MM-DDTHH:mm, received ${localDateTime}`);
+  const targetUtc = Date.UTC(
+    Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]),
+  );
+  let candidate = targetUtc;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    candidate = targetUtc - timezoneOffsetMinutes(new Date(candidate), timeZone) * 60_000;
+  }
+  const resolved = new Date(candidate);
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(resolved);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  if (`${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}` !== localDateTime) {
+    throw new Error(`Local time ${localDateTime} does not exist in ${timeZone}`);
+  }
+  return resolved.toISOString();
+}
+
 /** ISO-8601 timestamp (fixed demo offset) for minutes past the horizon start. */
 export function minutesToIso(minutes: number, horizonStartIso: string, timeZone?: string): string {
   const startMs = Date.parse(horizonStartIso);

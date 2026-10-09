@@ -55,7 +55,7 @@ To keep implementation moving, use these reversible defaults until the owner cha
 - Add account identity, timezone, and absolute ISO timestamps; derive solver horizons from current time.
 - Move graph/policy memory to a per-user Git repository with import/export and durable commits.
 
-**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, per-user empty `DomainState` bootstrap, and a read-only signed-in Google Calendar adapter/preview are implemented. Database-backed workflow execution and the live OAuth round trip still need configured Google/Postgres secrets. Calendar entries do not enter a user's graph until the future proposal/review flow is built.
+**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, per-user `DomainState` bootstrap, and a read-only signed-in Google Calendar adapter/preview are implemented. Database-backed workflow execution and the live OAuth round trip still need configured Google/Postgres secrets. Confirmed graph proposals now enter the account state through a user decision.
 
 **Exit:** two accounts cannot read or mutate each other's state; timezone and persistence survive restarts.
 
@@ -84,6 +84,10 @@ To keep implementation moving, use these reversible defaults until the owner cha
 - Require user confirmation for all proposed commitments and edges, with authority and effort editable in review.
 - Persist rejected proposals; never propagate across an unconfirmed edge.
 - Permit delegatable edges only when a source or user explicitly names the backup.
+
+**Current:** Nemotron Nano can turn upcoming Google Calendar entries into strict, typed drafts. Drafts are stored per account, can be edited/confirmed/rejected in onboarding, and enter the working `DomainState` only in the same transaction that records user confirmation. The input to Token Factory is limited to event title and times after the user explicitly requests analysis. Ultra edge proposals and user-provided authority/effort review are still to build.
+
+Model defaults are configurable by tier: Nano `nvidia/nemotron-3-nano-30b-a3b`, Super `nvidia/nemotron-3-super-120b-a12b`, Ultra `nvidia/nemotron-3-ultra-550b-a55b`. Recheck the [Nebius Token Factory Nemotron catalog](https://nebius.com/services/token-factory/models/nvidia-nemotron-models-inference) before deployment because availability and model IDs can change.
 
 **Exit:** confirmed graph is partitioned by user; unconfirmed or rejected proposals cannot affect propagation.
 

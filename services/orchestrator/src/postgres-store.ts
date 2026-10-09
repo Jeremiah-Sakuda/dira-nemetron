@@ -1,8 +1,10 @@
 import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
-import { DEFAULT_ENGINE_CONFIG, type DomainState } from '@dira/commitment-model';
+import { DEFAULT_ENGINE_CONFIG, isoToMinutes, localDateTimeToIso, type Commitment, type DomainState } from '@dira/commitment-model';
 import type { ActionRecord, LedgerStore } from '@dira/action-ledger';
 import type { WorkflowRun, WorkflowStore } from '@dira/agent';
+import type { CalendarCommitmentDraft, GraphProposalEditsInput } from '@dira/agent';
 
 export interface DiraAccount {
   accountId: string;
@@ -28,6 +30,22 @@ export interface EventClaimInput {
 
 export type EventClaim = 'CLAIMED' | 'COMPLETED' | 'PROCESSING';
 
+export interface StoredGraphProposal {
+  proposalId: string;
+  sourceId: string;
+  sourceType: 'google-calendar';
+  status: 'PENDING_REVIEW' | 'CONFIRMED' | 'REJECTED' | 'IGNORED';
+  source: { id: string; title: string; startIso: string; endIso: string };
+  draft: CalendarCommitmentDraft;
+  model: Record<string, unknown>;
+}
+
+export interface GraphProposalInput {
+  source: StoredGraphProposal['source'];
+  draft: CalendarCommitmentDraft;
+  model: Record<string, unknown>;
+}
+
 /** PostgreSQL persistence with transaction-local tenant context and RLS. */
 export class PostgresAccountStore {
   readonly pool: Pool;
@@ -37,7 +55,7 @@ export class PostgresAccountStore {
   }
 
   async initialize(): Promise<void> {
-    for (const name of ['001_account_state.sql', '002_google_credentials.sql']) {
+    for (const name of ['001_account_state.sql', '002_google_credentials.sql', '003_graph_proposals.sql']) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
     }
@@ -158,6 +176,130 @@ export class PostgresAccountStore {
       if (!result) throw new Error('failed to initialize account state');
       assertAccountMatch(accountId, result.userId);
       return result;
+    });
+  }
+
+  async listGraphProposals(accountId: string, status?: StoredGraphProposal['status']): Promise<StoredGraphProposal[]> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{
+        proposal_id: string; source_id: string; source_type: 'google-calendar'; status: StoredGraphProposal['status'];
+        source_snapshot: StoredGraphProposal['source']; draft: CalendarCommitmentDraft; model_telemetry: Record<string, unknown>;
+      }>(
+        `SELECT proposal_id, source_id, source_type, status, source_snapshot, draft, model_telemetry
+         FROM dira_graph_proposals WHERE account_id = $1 AND ($2::text IS NULL OR status = $2)
+         ORDER BY created_at DESC`,
+        [accountId, status ?? null],
+      );
+      return result.rows.map((row) => ({
+        proposalId: row.proposal_id, sourceId: row.source_id, sourceType: row.source_type,
+        status: row.status, source: row.source_snapshot, draft: row.draft, model: row.model_telemetry,
+      }));
+    });
+  }
+
+  async saveGraphProposal(
+    accountId: string,
+    input: GraphProposalInput,
+    status: 'PENDING_REVIEW' | 'IGNORED' = 'PENDING_REVIEW',
+  ): Promise<boolean> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query(
+        `INSERT INTO dira_graph_proposals
+           (account_id, proposal_id, source_id, source_type, status, source_snapshot, draft, model_telemetry, decided_at)
+         VALUES ($1, $2, $3, 'google-calendar', $4, $5::jsonb, $6::jsonb, $7::jsonb,
+                 CASE WHEN $4 = 'IGNORED' THEN now() ELSE NULL END)
+         ON CONFLICT (account_id, source_id) DO NOTHING RETURNING proposal_id`,
+        [accountId, randomUUID(), input.source.id, status, JSON.stringify(input.source), JSON.stringify(input.draft), JSON.stringify(input.model)],
+      );
+      return result.rowCount === 1;
+    });
+  }
+
+  async reviewGraphProposal(
+    accountId: string,
+    proposalId: string,
+    decision: 'CONFIRMED' | 'REJECTED',
+    edits?: GraphProposalEditsInput,
+  ): Promise<{ status: StoredGraphProposal['status']; commitment?: Commitment }> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{
+        status: StoredGraphProposal['status']; source_snapshot: StoredGraphProposal['source']; draft: CalendarCommitmentDraft;
+      }>(
+        `SELECT status, source_snapshot, draft FROM dira_graph_proposals
+         WHERE account_id = $1 AND proposal_id = $2 FOR UPDATE`,
+        [accountId, proposalId],
+      );
+      const proposal = result.rows[0];
+      if (!proposal) throw new Error('graph proposal not found');
+      if (proposal.status !== 'PENDING_REVIEW') throw new Error(`proposal is already ${proposal.status.toLowerCase()}`);
+      if (decision === 'REJECTED') {
+        await client.query(
+          `UPDATE dira_graph_proposals SET status = 'REJECTED', decided_at = now(), updated_at = now()
+           WHERE account_id = $1 AND proposal_id = $2`,
+          [accountId, proposalId],
+        );
+        return { status: 'REJECTED' };
+      }
+      if (!edits || !edits.title.trim() || edits.title.length > 200) throw new Error('valid edited commitment fields are required');
+
+      const stateResult = await client.query<{ state: DomainState }>(
+        'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
+        [accountId],
+      );
+      const state = stateResult.rows[0]?.state;
+      if (!state) throw new Error('account state is not initialized');
+      assertAccountMatch(accountId, state.userId);
+      const startIso = calendarValueToIso(proposal.source_snapshot.startIso, state.timezone ?? 'UTC');
+      const endIso = calendarValueToIso(proposal.source_snapshot.endIso, state.timezone ?? 'UTC');
+      const startMin = isoToMinutes(startIso, state.horizonStartIso);
+      const endMin = isoToMinutes(endIso, state.horizonStartIso);
+      if (endMin <= startMin) throw new Error('calendar source has an invalid time range');
+      const nowIso = new Date().toISOString();
+      const commitment: Commitment = {
+        id: `commitment_${randomUUID()}`,
+        userId: accountId,
+        title: edits.title.trim(),
+        domain: edits.domain,
+        source: 'google-calendar',
+        sourceReference: `google-calendar:${proposal.source_snapshot.id}`,
+        status: 'PLANNED',
+        kind: edits.kind,
+        startMin,
+        durationMin: endMin - startMin,
+        flexibility: edits.flexibility,
+        criticality: edits.criticality,
+        owner: accountId,
+        participants: [accountId],
+        goalIds: [],
+        resourceRequirements: ['user-time'],
+        externalSystem: 'calendar',
+        externalId: proposal.source_snapshot.id.replace(/^google:/, ''),
+        confidence: proposal.draft.confidence,
+        createdAtIso: nowIso,
+        updatedAtIso: nowIso,
+      };
+      state.commitments[commitment.id] = commitment;
+      state.horizonEndMin = Math.max(state.horizonEndMin, endMin + 1);
+      const reviewedDraft: CalendarCommitmentDraft = {
+        ...proposal.draft,
+        title: commitment.title,
+        domain: commitment.domain,
+        kind: edits.kind,
+        flexibility: edits.flexibility,
+        criticality: commitment.criticality,
+      };
+      await client.query(
+        `UPDATE dira_account_state SET state = $2::jsonb, updated_at = now()
+         WHERE account_id = $1`,
+        [accountId, JSON.stringify(state)],
+      );
+      await client.query(
+        `UPDATE dira_graph_proposals SET status = 'CONFIRMED', draft = $3::jsonb,
+                decided_at = now(), updated_at = now()
+         WHERE account_id = $1 AND proposal_id = $2`,
+        [accountId, proposalId, JSON.stringify(reviewedDraft)],
+      );
+      return { status: 'CONFIRMED', commitment };
     });
   }
 
@@ -312,4 +454,13 @@ async function loadTimezone(client: PoolClient, accountId: string): Promise<stri
     [accountId],
   );
   return result.rows[0]?.timezone ?? 'UTC';
+}
+
+function calendarValueToIso(value: string, timezone: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return localDateTimeToIso(`${value}T00:00`, timezone);
+  }
+  const epoch = Date.parse(value);
+  if (!Number.isFinite(epoch)) throw new Error(`invalid calendar timestamp ${value}`);
+  return new Date(epoch).toISOString();
 }

@@ -134,10 +134,21 @@ export class NemotronModelClient implements ModelClient {
   ) {}
 
   async interpret(email: RawEmailEvent, context: InterpretationContext): Promise<unknown> {
+    return this.generateStructured(
+      buildInterpretationPrompt(email, context),
+      'dira_interpretation',
+      interpretationJsonSchema,
+    );
+  }
+
+  async generateStructured(
+    prompt: string,
+    schemaName: string,
+    schema: Record<string, unknown>,
+    model = this.model,
+  ): Promise<unknown> {
     this.lastCall = undefined;
     if (!this.apiKey) throw new Error('NEBIUS_API_KEY is required for Token Factory inference');
-
-    const prompt = buildInterpretationPrompt(email, context);
     const backoffsMs = [0, 2_000, 6_000];
     let lastErr: unknown;
     for (const backoff of backoffsMs) {
@@ -152,15 +163,15 @@ export class NemotronModelClient implements ModelClient {
           },
           signal: AbortSignal.timeout(60_000),
           body: JSON.stringify({
-            model: this.model,
+            model,
             messages: [{ role: 'user', content: prompt }],
             temperature: 0,
             response_format: {
               type: 'json_schema',
               json_schema: {
-                name: 'dira_interpretation',
+                name: schemaName,
                 strict: false,
-                schema: interpretationJsonSchema,
+                schema,
               },
             },
           }),
@@ -174,7 +185,7 @@ export class NemotronModelClient implements ModelClient {
         }
 
         this.lastCall = {
-          model: payload?.model ?? this.model,
+          model: payload?.model ?? model,
           latencyMs: Date.now() - startedAt,
           provider: 'Nebius Token Factory',
           promptTokens: payload?.usage?.prompt_tokens,

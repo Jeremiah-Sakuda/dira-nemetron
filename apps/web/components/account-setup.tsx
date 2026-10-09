@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { GraphReview } from './graph-review';
 
 interface Account {
   email: string;
@@ -68,6 +69,14 @@ export function AccountSetup() {
     }
   }
 
+  async function refreshAccount() {
+    const response = await fetch('/api/me', { cache: 'no-store' });
+    if (!response.ok) return;
+    const result = await response.json() as { account?: Account; stateSummary?: AccountStateSummary };
+    if (result.account) setAccount(result.account);
+    setStateSummary(result.stateSummary ?? null);
+  }
+
   return (
     <main className="onboarding-wrap">
       <section className="panel onboarding-card" aria-labelledby="onboarding-title">
@@ -123,6 +132,7 @@ export function AccountSetup() {
             )}
           </section>
         )}
+        {account && <GraphReview timezone={account.timezone} onConfirmed={refreshAccount} />}
         {error && <p className="form-error" role="alert">{error}</p>}
         <p className="privacy-note">
           Dira stores Google credentials encrypted and requests read-only Calendar access for this setup.

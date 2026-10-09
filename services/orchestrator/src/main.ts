@@ -10,6 +10,7 @@ import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAc
 import { PostgresAccountStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
+import { CalendarGraphBuilder, GraphProposalEditsSchema } from '@dira/agent';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -242,6 +243,132 @@ const server = createServer(async (req, res) => {
       }
       const calendar = new GoogleUserCalendarTool(() => googleAccessToken(store, accountId));
       json(req, res, 200, { timezone: account.timezone, events: await calendar.getEvents() });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/api/graph/proposals') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const proposals = await (await accountStore()).listGraphProposals(accountId, 'PENDING_REVIEW');
+      json(req, res, 200, { proposals });
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/graph/proposals') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const store = await accountStore();
+      const account = await store.getAccount(accountId);
+      if (!account) {
+        json(req, res, 401, { error: 'account_not_found' });
+        return;
+      }
+      const state = await store.ensureDomainState(accountId);
+      const existing = await store.listGraphProposals(accountId);
+      const seenSourceIds = new Set(existing.map((proposal) => proposal.sourceId));
+      const confirmedSourceIds = new Set(
+        Object.values(state.commitments).map((commitment) => commitment.externalId).filter(Boolean),
+      );
+      const calendar = new GoogleUserCalendarTool(() => googleAccessToken(store, accountId));
+      const events = await calendar.getEvents();
+      const now = Date.now();
+      const horizonEnd = now + 90 * 24 * 60 * 60_000;
+      const candidates = events.filter((event) => {
+        const start = Date.parse(event.startIso);
+        const sourceId = event.id;
+        return Number.isFinite(start) && start >= now && start < horizonEnd
+          && !seenSourceIds.has(sourceId)
+          && !confirmedSourceIds.has(event.metadata?.googleEventId);
+      }).slice(0, 25);
+      const builder = new CalendarGraphBuilder();
+      let created = 0;
+      let excluded = 0;
+      let failed = 0;
+      const modelCalls: { model?: string; latencyMs: number; totalTokens?: number }[] = [];
+      for (const event of candidates) {
+        try {
+          const result = await builder.propose({
+            id: event.id,
+            title: event.title,
+            startIso: event.startIso,
+            endIso: event.endIso,
+          });
+          modelCalls.push(result.model);
+          if (!result.draft.include) {
+            excluded += 1;
+            await store.saveGraphProposal(accountId, {
+              source: result.source,
+              draft: result.draft,
+              model: result.model,
+            }, 'IGNORED');
+            continue;
+          }
+          const saved = await store.saveGraphProposal(accountId, {
+            source: result.source,
+            draft: result.draft,
+            model: result.model,
+          });
+          if (saved) created += 1;
+        } catch (error) {
+          failed += 1;
+          console.error(JSON.stringify({ severity: 'WARN', msg: 'calendar graph extraction held for review', sourceId: event.id, failure: String(error) }));
+        }
+      }
+      json(req, res, 200, {
+        created,
+        excluded,
+        failed,
+        processed: candidates.length,
+        model: {
+          calls: modelCalls.length,
+          models: [...new Set(modelCalls.map((call) => call.model).filter(Boolean))],
+          latencyMs: modelCalls.reduce((total, call) => total + call.latencyMs, 0),
+          totalTokens: modelCalls.reduce((total, call) => total + (call.totalTokens ?? 0), 0),
+        },
+        proposals: await store.listGraphProposals(accountId, 'PENDING_REVIEW'),
+      });
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/graph/proposals/review') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const body = safeJson(await readBody(req)) as {
+        proposalId?: string; decision?: string; edits?: unknown;
+      } | null;
+      if (!body?.proposalId || (body.decision !== 'CONFIRMED' && body.decision !== 'REJECTED')) {
+        json(req, res, 400, { error: 'invalid_review_request' });
+        return;
+      }
+      let edits: ReturnType<typeof GraphProposalEditsSchema.parse> | undefined;
+      if (body.decision === 'CONFIRMED') {
+        const parsed = GraphProposalEditsSchema.safeParse(body.edits);
+        if (!parsed.success) {
+          json(req, res, 400, { error: 'invalid_commitment_edits', issues: parsed.error.issues });
+          return;
+        }
+        edits = parsed.data;
+      }
+      const result = await (await accountStore()).reviewGraphProposal(
+        accountId,
+        body.proposalId,
+        body.decision,
+        edits,
+      );
+      const state = await (await accountStore()).ensureDomainState(accountId);
+      json(req, res, 200, {
+        ...result,
+        stateSummary: {
+          commitmentCount: Object.keys(state.commitments).length,
+          edgeCount: state.edges.length,
+        },
+      });
       return;
     }
     if (req.method === 'POST' && url.pathname === '/auth/logout') {

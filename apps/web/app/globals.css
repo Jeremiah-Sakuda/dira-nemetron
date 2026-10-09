@@ -505,6 +505,120 @@ table.data td:first-child {
   font-size: 13px;
 }
 
+.graph-review {
+  margin-top: 32px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border);
+}
+
+.graph-review-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.graph-review h2 {
+  font-size: 20px;
+  margin-bottom: 5px;
+}
+
+.graph-review-heading p {
+  max-width: 62ch;
+}
+
+.graph-consent {
+  margin: 16px 0;
+}
+
+.graph-notice {
+  margin: 12px 0;
+  color: var(--text-secondary);
+}
+
+.graph-empty {
+  padding: 18px 0;
+}
+
+.proposal-list {
+  display: grid;
+  gap: 14px;
+}
+
+.proposal-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.proposal-source {
+  display: grid;
+  gap: 3px;
+}
+
+.proposal-source .section-label {
+  margin-bottom: 2px;
+}
+
+.proposal-source strong {
+  overflow-wrap: anywhere;
+}
+
+.proposal-source time,
+.proposal-reason {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+}
+
+.proposal-reason {
+  margin-top: 12px;
+}
+
+.proposal-reason span {
+  color: var(--text-muted);
+}
+
+.proposal-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.proposal-fields label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.proposal-fields input,
+.proposal-fields select {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid #53534f;
+  border-radius: 6px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.proposal-fields input:focus-visible,
+.proposal-fields select:focus-visible {
+  outline: 3px solid #a9cdf9;
+  outline-offset: 2px;
+}
+
+.proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .form-error {
   margin-top: 14px;
   color: #ff9d9d;
@@ -528,6 +642,19 @@ table.data td:first-child {
   .calendar-preview li {
     flex-direction: column;
     gap: 2px;
+  }
+
+  .graph-review-heading {
+    display: grid;
+  }
+
+  .proposal-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .proposal-actions .btn {
+    flex: 1;
+    justify-content: center;
   }
 }
 
