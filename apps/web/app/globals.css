@@ -511,6 +511,157 @@ table.data td:first-child {
   border-top: 1px solid var(--border);
 }
 
+.schedule-check {
+  margin-top: 32px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border);
+}
+
+.schedule-check h2 {
+  margin: 0 0 5px;
+  font-size: 20px;
+}
+
+.schedule-check > p {
+  max-width: 68ch;
+}
+
+.weekday-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 14px;
+  padding: 0;
+  border: 0;
+}
+
+.weekday-picker legend {
+  width: 100%;
+  margin-bottom: 7px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.weekday-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.weekday-option:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.weekday-option input {
+  accent-color: var(--accent);
+}
+
+.availability-times {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.availability-times label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.availability-times select {
+  min-height: 44px;
+  min-width: 150px;
+  padding: 8px 10px;
+  border: 1px solid #53534f;
+  border-radius: 6px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.availability-times select:focus-visible,
+.weekday-option:focus-within {
+  outline: 3px solid #a9cdf9;
+  outline-offset: 2px;
+}
+
+.schedule-results {
+  margin-top: 18px;
+}
+
+.schedule-result {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.schedule-result-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.schedule-slack,
+.schedule-plan-status {
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.schedule-slack.negative,
+.schedule-plan-status {
+  color: #ffb1a8;
+}
+
+.schedule-violation {
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+}
+
+.schedule-plans {
+  margin-top: 18px;
+}
+
+.schedule-plans h3 {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.schedule-plan {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.schedule-plan-status.good {
+  color: #8ce0b0;
+}
+
+.schedule-plan p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.schedule-result .footnote {
+  margin: 12px 0 0;
+}
+
 .graph-review-heading {
   display: flex;
   align-items: flex-start;
@@ -719,6 +870,16 @@ table.data td:first-child {
 
   .edge-review-heading {
     display: grid;
+  }
+
+  .availability-times {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .availability-times .btn {
+    grid-column: 1 / -1;
+    justify-content: center;
   }
 
   .proposal-fields {

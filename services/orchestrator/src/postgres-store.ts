@@ -5,6 +5,8 @@ import { DEFAULT_ENGINE_CONFIG, isoToMinutes, localDateTimeToIso, type Commitmen
 import type { ActionRecord, LedgerStore } from '@dira/action-ledger';
 import type { WorkflowRun, WorkflowStore } from '@dira/agent';
 import type { CalendarCommitmentDraft, GraphEdgeDataEditsInput, GraphEdgeDraft, GraphProposalEditsInput } from '@dira/agent';
+import type { AvailabilityProfile } from './account-planning.js';
+import { availabilityIntervals, rebaseDomainState } from './account-planning.js';
 
 export interface DiraAccount {
   accountId: string;
@@ -66,6 +68,7 @@ export class PostgresAccountStore {
     for (const name of [
       '001_account_state.sql', '002_google_credentials.sql',
       '003_graph_proposals.sql', '004_graph_edge_proposals.sql',
+      '005_account_availability.sql',
     ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
@@ -187,6 +190,44 @@ export class PostgresAccountStore {
       if (!result) throw new Error('failed to initialize account state');
       assertAccountMatch(accountId, result.userId);
       return result;
+    });
+  }
+
+  async getAvailabilityProfile(accountId: string): Promise<AvailabilityProfile | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ profile: AvailabilityProfile }>(
+        'SELECT profile FROM dira_availability_profiles WHERE account_id = $1',
+        [accountId],
+      );
+      return result.rows[0]?.profile;
+    });
+  }
+
+  async saveAvailabilityProfile(
+    accountId: string,
+    profile: AvailabilityProfile,
+    now = new Date(),
+  ): Promise<void> {
+    await this.withAccount(accountId, async (client) => {
+      const stateResult = await client.query<{ state: DomainState }>(
+        'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
+        [accountId],
+      );
+      const state = stateResult.rows[0]?.state;
+      if (!state) throw new Error('account state is not initialized');
+      assertAccountMatch(accountId, state.userId);
+      const rebased = rebaseDomainState(state, now);
+      rebased.availability = availabilityIntervals(profile, rebased, now);
+      await client.query(
+        'UPDATE dira_account_state SET state = $2::jsonb, updated_at = now() WHERE account_id = $1',
+        [accountId, JSON.stringify(rebased)],
+      );
+      await client.query(
+        `INSERT INTO dira_availability_profiles (account_id, profile)
+         VALUES ($1, $2::jsonb)
+         ON CONFLICT (account_id) DO UPDATE SET profile = EXCLUDED.profile, updated_at = now()`,
+        [accountId, JSON.stringify(profile)],
+      );
     });
   }
 

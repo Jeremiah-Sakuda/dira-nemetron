@@ -146,10 +146,13 @@ action, Nemotron Nano prepares drafts from upcoming event titles and times;
 each draft must be edited or confirmed before it enters the graph. After two
 commitments are confirmed, Nemotron Ultra can suggest typed links, which also
 require user confirmation before they affect propagation. Ownership and
-delegation links are excluded without explicit person evidence. This is a
-separate account path from the shared synthetic judge world. The hosted
-dashboard does not yet have these Google/Postgres secrets configured, and
-confirmed account state is not yet connected to repair execution.
+delegation links are excluded without explicit person evidence. Users can set
+their recurring focus hours and run an account-private feasibility check with
+the deterministic solver and policy engine; candidate repairs are previews
+and cannot mutate services. This remains separate from the shared synthetic
+judge world. The hosted dashboard does not yet have these Google/Postgres
+secrets configured, and account preview results are not yet connected to an
+approval and execution workflow.
 
 Monorepo map: engines in [`packages/`](packages), the agent loop in
 [`agents/dira`](agents/dira), scoped tool adapters in [`adapters/`](adapters),

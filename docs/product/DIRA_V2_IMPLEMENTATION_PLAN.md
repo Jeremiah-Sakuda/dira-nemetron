@@ -55,7 +55,7 @@ To keep implementation moving, use these reversible defaults until the owner cha
 - Add account identity, timezone, and absolute ISO timestamps; derive solver horizons from current time.
 - Move graph/policy memory to a per-user Git repository with import/export and durable commits.
 
-**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, per-user `DomainState` bootstrap, and a read-only signed-in Google Calendar adapter/preview are implemented. Database-backed workflow execution and the live OAuth round trip still need configured Google/Postgres secrets. Confirmed graph proposals now enter the account state through a user decision.
+**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, per-user `DomainState` bootstrap, and a read-only signed-in Google Calendar adapter/preview are implemented. Users can save recurring focus hours in their calendar timezone; the service expands them into a re-anchored 90-day solver horizon. A private schedule check runs the existing deterministic feasibility, candidate generation, validation, and policy engines and displays repair candidates without mutating external systems. Database-backed workflow execution and the live OAuth round trip still need configured Google/Postgres secrets. Confirmed graph proposals now enter the account state through a user decision.
 
 **Exit:** two accounts cannot read or mutate each other's state; timezone and persistence survive restarts.
 
@@ -86,6 +86,8 @@ To keep implementation moving, use these reversible defaults until the owner cha
 - Permit delegatable edges only when a source or user explicitly names the backup.
 
 **Current:** Nemotron Nano can turn upcoming Google Calendar entries into strict, typed drafts. Drafts are stored per account, can be edited/confirmed/rejected in onboarding, and enter the working `DomainState` only in the same transaction that records user confirmation. A user can classify a calendar item as deadline-driven effort and enter the required focus-time estimate; the model cannot invent that amount. After at least two commitments are confirmed, Nemotron Ultra can propose typed edges; proposals are validated against the user's graph and stay inert until confirmed. Both model calls require an explicit user action and send only commitment titles, domain, and dates. Ownership and delegation edges are excluded because no person evidence is available. Authority fields, non-Calendar extraction, and edge source evidence remain to build.
+
+**Current schedule preview:** The authenticated account path now executes deterministic feasibility analysis and plan validation over its confirmed graph and user-declared focus windows. Results are previews only; no action ledger workflow, approval, external mutation, or fresh-read verification is connected to this account path yet.
 
 Model defaults are configurable by tier: Nano `nvidia/nemotron-3-nano-30b-a3b`, Super `nvidia/nemotron-3-super-120b-a12b`, Ultra `nvidia/nemotron-3-ultra-550b-a55b`. Recheck the [Nebius Token Factory Nemotron catalog](https://nebius.com/services/token-factory/models/nvidia-nemotron-models-inference) before deployment because availability and model IDs can change.
 

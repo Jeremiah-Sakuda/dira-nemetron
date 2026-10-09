@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { GraphReview } from './graph-review';
+import { ScheduleCheck } from './schedule-check';
 
 interface Account {
   email: string;
@@ -28,6 +29,7 @@ export function AccountSetup() {
   const [error, setError] = useState('');
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [scheduleRevision, setScheduleRevision] = useState(0);
 
   useEffect(() => {
     const authError = new URLSearchParams(window.location.search).get('auth_error');
@@ -75,6 +77,7 @@ export function AccountSetup() {
     const result = await response.json() as { account?: Account; stateSummary?: AccountStateSummary };
     if (result.account) setAccount(result.account);
     setStateSummary(result.stateSummary ?? null);
+    setScheduleRevision((revision) => revision + 1);
   }
 
   return (
@@ -138,6 +141,7 @@ export function AccountSetup() {
           edgeCount={stateSummary?.edgeCount ?? 0}
           onConfirmed={refreshAccount}
         />}
+        {account && <ScheduleCheck key={scheduleRevision} />}
         {error && <p className="form-error" role="alert">{error}</p>}
         <p className="privacy-note">
           Dira stores Google credentials encrypted and requests read-only Calendar access for this setup.

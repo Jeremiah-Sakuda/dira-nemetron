@@ -11,6 +11,7 @@ import { PostgresAccountStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema } from '@dira/agent';
+import { analyzeAccountSchedule, AvailabilityProfileSchema } from './account-planning.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -227,6 +228,53 @@ const server = createServer(async (req, res) => {
           horizonEndMin: state.horizonEndMin,
         },
       });
+      return;
+    }
+    if (url.pathname === '/api/availability' && req.method === 'GET') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      json(req, res, 200, { profile: await (await accountStore()).getAvailabilityProfile(accountId) ?? null });
+      return;
+    }
+    if (url.pathname === '/api/availability' && req.method === 'POST') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const parsed = AvailabilityProfileSchema.safeParse(safeJson(await readBody(req)));
+      if (!parsed.success) {
+        json(req, res, 400, { error: 'invalid_availability_profile', issues: parsed.error.issues });
+        return;
+      }
+      const store = await accountStore();
+      await store.ensureDomainState(accountId);
+      await store.saveAvailabilityProfile(accountId, parsed.data);
+      const state = await store.loadDomainState(accountId);
+      json(req, res, 200, { saved: true, profile: parsed.data, focusWindows: state?.availability.length ?? 0 });
+      return;
+    }
+    if (url.pathname === '/api/graph/analysis' && req.method === 'GET') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const store = await accountStore();
+      const profile = await store.getAvailabilityProfile(accountId);
+      if (!profile) {
+        json(req, res, 409, { error: 'Set your focus hours before checking schedule feasibility.' });
+        return;
+      }
+      const state = await store.ensureDomainState(accountId);
+      json(req, res, 200, analyzeAccountSchedule(state));
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/calendar/events') {
