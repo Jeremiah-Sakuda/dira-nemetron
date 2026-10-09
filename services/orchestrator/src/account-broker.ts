@@ -102,7 +102,7 @@ export async function resumeApprovedAccountWorkflow(
         'Grant Google Calendar event access in Account setup before resuming this plan.');
     }
     for (const record of records) {
-      const decision = evaluateAction(snapshot.state, record.action);
+      const decision = evaluateAction(snapshot.state, record.action, snapshot.policy.requireApproval);
       if (decision.verdict !== record.policyVerdict || decision.rule !== record.policyRule) {
         return waitForReview(workflowStore, run, workflowId, records.length,
           `Policy changed for “${record.action.summary}”. Request a fresh plan.`);

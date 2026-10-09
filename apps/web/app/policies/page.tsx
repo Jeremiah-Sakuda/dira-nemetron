@@ -1,5 +1,6 @@
 import { DEMO_POLICY_TABLE } from '@dira/policy-engine';
 import { StatusPill } from '../../components/status';
+import { PolicySettingsForm } from '../../components/policy-settings';
 
 const VERDICT_TONE: Record<string, string> = {
   ALLOW: 'good',
@@ -18,6 +19,7 @@ export default function PoliciesPage() {
         output, can widen Dira&rsquo;s authority. Actions without provenance are denied
         unconditionally.
       </p>
+      <PolicySettingsForm />
       <div className="grid-2">
         {DEMO_POLICY_TABLE.map((group) => (
           <div className="panel" key={group.verdict}>

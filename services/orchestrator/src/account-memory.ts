@@ -4,9 +4,10 @@ import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { isoToMinutes, minutesToIso, type DomainState } from '@dira/commitment-model';
+import { DEFAULT_ENGINE_CONFIG, isoToMinutes, minutesToIso, type DomainState } from '@dira/commitment-model';
 import { z } from 'zod';
 import { AvailabilityProfileSchema, type AvailabilityProfile } from './account-planning.js';
+import { AccountPolicySettingsSchema, DEFAULT_ACCOUNT_POLICY, type AccountPolicySettings } from './account-policy.js';
 
 const execFile = promisify(execFileCallback);
 const repositoryRoot = process.env.DIRA_MEMORY_ROOT ?? '.dira-memory';
@@ -54,15 +55,15 @@ const ApprovedSlotSchema = z.object({ startMin: Int, durationMin: Int.positive()
 const ConfigSchema = z.object({ sessionOverheadMin: Int.nonnegative(), repairSlackMarginMin: Int.nonnegative(),
   minInterpretationConfidence: z.number().min(0).max(1), maxTransientRetries: Int.nonnegative() });
 const GraphSnapshotSchema = z.object({
-  schemaVersion: z.literal(1), ownerAccountId: z.string().min(1), timezone: z.string().min(1),
+  schemaVersion: z.literal(1), ownerAccountId: z.string().min(1).optional(), timezone: z.string().min(1),
   horizonStartIso: z.string().datetime({ offset: true }), horizonEndMin: Int.positive().max(5_256_000),
   commitments: z.record(SafeId, CommitmentSchema), edges: z.array(EdgeSchema),
   people: z.record(SafeId, PersonSchema), constraints: z.record(SafeId, ConstraintSchema),
-  approvedSlots: z.record(SafeId, z.array(ApprovedSlotSchema)), config: ConfigSchema,
+  approvedSlots: z.record(SafeId, z.array(ApprovedSlotSchema)), config: ConfigSchema.optional(),
 }).superRefine((graph, context) => {
   for (const [id, commitment] of Object.entries(graph.commitments)) {
     if (id !== commitment.id) context.addIssue({ code: 'custom', path: ['commitments', id, 'id'], message: 'Commitment key does not match its id.' });
-    if (commitment.userId !== graph.ownerAccountId) context.addIssue({ code: 'custom', path: ['commitments', id, 'userId'], message: 'Commitment belongs to another account.' });
+    if (graph.ownerAccountId && commitment.userId !== graph.ownerAccountId) context.addIssue({ code: 'custom', path: ['commitments', id, 'userId'], message: 'Commitment belongs to another account.' });
   }
   for (const [id, person] of Object.entries(graph.people)) {
     if (id !== person.id) context.addIssue({ code: 'custom', path: ['people', id, 'id'], message: 'Person key does not match its id.' });
@@ -82,12 +83,6 @@ const GraphSnapshotSchema = z.object({
 const AvailabilitySnapshotSchema = z.object({
   schemaVersion: z.literal(1), timezone: z.string().min(1),
   profile: AvailabilityProfileSchema.nullable(), focusWindows: z.array(IntervalSchema),
-});
-const PolicySnapshotSchema = z.object({
-  schemaVersion: z.literal(1), autonomy: z.literal('approval-required'),
-  allowedActions: z.tuple([z.literal('google-calendar')]),
-  blockedActions: z.tuple([z.literal('gmail'), z.literal('recruiter'), z.literal('organization')]),
-  note: z.literal('Policy snapshot only; enforcement remains in the Dira account service.'),
 });
 const RulesSnapshotSchema = z.object({ schemaVersion: z.literal(1), rules: z.array(z.unknown()) });
 
@@ -123,11 +118,15 @@ async function writePrivateFile(path: string, contents: string): Promise<void> {
 
 export async function syncAccountMemory(
   accountId: string,
-  state: DomainState,
-  profile: AvailabilityProfile | undefined,
+  loadSnapshot: () => Promise<{
+    state: DomainState;
+    profile: AvailabilityProfile | undefined;
+    policy?: AccountPolicySettings;
+  }>,
 ): Promise<{ commit: string; changed: boolean }> {
   const directory = accountDirectory(accountId);
   return withAccountLock(directory, async () => {
+    const { state, profile, policy = DEFAULT_ACCOUNT_POLICY } = await loadSnapshot();
     await mkdir(repositoryRoot, { recursive: true, mode: 0o700 });
     await chmod(repositoryRoot, 0o700);
     await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -177,17 +176,11 @@ export async function syncAccountMemory(
       profile: profile ?? null,
       focusWindows: state.availability,
     };
-    const policy = {
-      schemaVersion: 1,
-      autonomy: 'approval-required',
-      allowedActions: ['google-calendar'],
-      blockedActions: ['gmail', 'recruiter', 'organization'],
-      note: 'Policy snapshot only; enforcement remains in the Dira account service.',
-    };
+    const validatedPolicy = AccountPolicySettingsSchema.parse(policy);
     await Promise.all([
       writePrivateFile(join(directory, 'graph.json'), `${JSON.stringify(graph, null, 2)}\n`),
       writePrivateFile(join(directory, 'availability.json'), `${JSON.stringify(availability, null, 2)}\n`),
-      writePrivateFile(join(directory, 'policy.json'), `${JSON.stringify(policy, null, 2)}\n`),
+      writePrivateFile(join(directory, 'policy.json'), `${JSON.stringify(validatedPolicy, null, 2)}\n`),
       mkdir(join(directory, 'rules'), { recursive: true, mode: 0o700 }),
     ]);
     const rulesPath = join(directory, 'rules', 'correction-rules.json');
@@ -221,6 +214,7 @@ export async function exportAccountMemory(accountId: string): Promise<Buffer> {
 export interface ImportedAccountMemory {
   state: DomainState;
   profile: AvailabilityProfile | undefined;
+  policy: AccountPolicySettings;
   sourceCommit: string;
 }
 
@@ -248,9 +242,13 @@ export async function importAccountMemoryBundle(accountId: string, bundle: Buffe
     ]);
     const graph = GraphSnapshotSchema.parse(JSON.parse(rawGraph));
     const availability = AvailabilitySnapshotSchema.parse(JSON.parse(rawAvailability));
-    PolicySnapshotSchema.parse(JSON.parse(rawPolicy));
+    const rawPolicyValue = JSON.parse(rawPolicy) as unknown;
+    const policy = parseMemoryPolicy(rawPolicyValue);
     const rules = RulesSnapshotSchema.parse(JSON.parse(rawRules));
-    if (graph.ownerAccountId !== accountId) throw new Error('This memory bundle belongs to a different Dira account.');
+    const inferredOwner = graph.ownerAccountId ?? Object.values(graph.commitments)[0]?.userId;
+    if (inferredOwner !== accountId || Object.values(graph.commitments).some((commitment) => commitment.userId !== accountId)) {
+      throw new Error('This memory bundle belongs to a different Dira account or does not identify its owner.');
+    }
     if (availability.timezone !== graph.timezone) throw new Error('Memory bundle timezone values do not match.');
     if (rules.rules.length !== 0) {
       throw new Error('This Dira version cannot restore correction rules stored in this bundle.');
@@ -278,14 +276,32 @@ export async function importAccountMemoryBundle(accountId: string, bundle: Buffe
       constraints: graph.constraints,
       availability: [],
       approvedSlots: graph.approvedSlots,
-      config: graph.config,
+      config: graph.config ?? { ...DEFAULT_ENGINE_CONFIG },
     };
     const directory = accountDirectory(accountId);
     await withAccountLock(directory, async () => {
       await git(directory, 'fetch', '--quiet', '--no-tags', bundlePath, `+${sourceCommit}:refs/imported/${sourceCommit}`);
     });
-    return { state, profile: availability.profile ?? undefined, sourceCommit };
+    return { state, profile: availability.profile ?? undefined, policy, sourceCommit };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
+}
+
+function parseMemoryPolicy(value: unknown): AccountPolicySettings {
+  const current = AccountPolicySettingsSchema.safeParse(value);
+  if (current.success) return current.data;
+  // Older v2 backups stored only the conservative baseline and no override data.
+  const legacy = z.object({
+    schemaVersion: z.literal(1), autonomy: z.literal('approval-required'),
+    allowedActions: z.array(z.literal('google-calendar')),
+    blockedActions: z.array(z.enum(['gmail', 'recruiter', 'organization'])),
+    note: z.literal('Policy snapshot only; enforcement remains in the Dira account service.'),
+  }).safeParse(value);
+  if (legacy.success
+    && legacy.data.allowedActions.length === 1
+    && ['gmail', 'recruiter', 'organization'].every((item) => legacy.data.blockedActions.includes(item as 'gmail' | 'recruiter' | 'organization'))) {
+    return structuredClone(DEFAULT_ACCOUNT_POLICY);
+  }
+  throw current.error;
 }

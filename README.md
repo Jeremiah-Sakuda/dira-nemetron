@@ -161,6 +161,17 @@ connected to this account broker yet. It remains separate from the shared
 synthetic judge world. The hosted dashboard does not yet have these
 Google/Postgres secrets configured.
 
+The Policies page now includes account-specific approval rules. Users can
+require approval before flexible-calendar moves, study-block restructuring,
+or delegation that the deterministic baseline would otherwise permit. These
+settings only add friction: they cannot turn a denial into permission, and
+the same versioned settings are checked during approval and again in the
+broker. Policy-denied plan actions are retained in an account-isolated audit
+list on that page. The onboarding screen supports authenticated Git memory
+export and restore for the confirmed graph, focus hours, and supported approval
+rules. OpenShell egress fences and imported correction rules remain
+unimplemented.
+
 Monorepo map: engines in [`packages/`](packages), the agent loop in
 [`agents/dira`](agents/dira), scoped tool adapters in [`adapters/`](adapters),
 the Cloud Run service in [`services/`](services), the golden fixture in

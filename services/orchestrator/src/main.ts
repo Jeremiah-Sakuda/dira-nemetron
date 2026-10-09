@@ -16,6 +16,7 @@ import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedu
 import { revalidateAccountApproval } from './account-approval.js';
 import { resumeApprovedAccountWorkflow } from './account-broker.js';
 import { exportAccountMemory, importAccountMemoryBundle, syncAccountMemory } from './account-memory.js';
+import { AccountPolicySettingsSchema } from './account-policy.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -78,22 +79,28 @@ function accountStore(): Promise<PostgresAccountStore> {
 
 async function syncMemoryFromStore(store: PostgresAccountStore, accountId: string): Promise<void> {
   try {
-    const [state, profile] = await Promise.all([
-      store.ensureDomainState(accountId),
-      store.getAvailabilityProfile(accountId),
-    ]);
-    await syncAccountMemory(accountId, state, profile);
+    await syncAccountMemory(accountId, async () => {
+      const [state, profile, policy] = await Promise.all([
+        store.ensureDomainState(accountId),
+        store.getAvailabilityProfile(accountId),
+        store.getAccountPolicySettings(accountId),
+      ]);
+      return { state, profile, policy };
+    });
   } catch (error) {
     console.error('account memory mirror sync failed', error);
   }
 }
 
 async function syncMemoryFromStoreStrict(store: PostgresAccountStore, accountId: string): Promise<void> {
-  const [state, profile] = await Promise.all([
-    store.ensureDomainState(accountId),
-    store.getAvailabilityProfile(accountId),
-  ]);
-  await syncAccountMemory(accountId, state, profile);
+  await syncAccountMemory(accountId, async () => {
+    const [state, profile, policy] = await Promise.all([
+      store.ensureDomainState(accountId),
+      store.getAvailabilityProfile(accountId),
+      store.getAccountPolicySettings(accountId),
+    ]);
+    return { state, profile, policy };
+  });
 }
 
 function json(req: IncomingMessage, res: ServerResponse, code: number, body: unknown): void {
@@ -296,6 +303,45 @@ const server = createServer(async (req, res) => {
       json(req, res, 200, { profile: await (await accountStore()).getAvailabilityProfile(accountId) ?? null });
       return;
     }
+    if (url.pathname === '/api/policy/settings' && req.method === 'GET') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      json(req, res, 200, { policy: await (await accountStore()).getAccountPolicySettings(accountId) });
+      return;
+    }
+    if (url.pathname === '/api/policy/blocked-events' && req.method === 'GET') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      json(req, res, 200, { events: await (await accountStore()).listPolicyBlockEvents(accountId) });
+      return;
+    }
+    if (url.pathname === '/api/policy/settings' && req.method === 'POST') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const parsed = AccountPolicySettingsSchema.safeParse(safeJson(await readBody(req)));
+      if (!parsed.success) {
+        json(req, res, 400, { error: 'invalid_policy_settings', issues: parsed.error.issues });
+        return;
+      }
+      const store = await accountStore();
+      const policy = await store.saveAccountPolicySettings(accountId, parsed.data);
+      await syncMemoryFromStoreStrict(store, accountId);
+      json(req, res, 200, { saved: true, policy });
+      return;
+    }
     if (url.pathname === '/api/memory/export' && req.method === 'GET') {
       const accountId = getSessionAccountId(req);
       if (!accountId) {
@@ -339,7 +385,7 @@ const server = createServer(async (req, res) => {
         await store.ensureDomainState(accountId);
         await syncMemoryFromStoreStrict(store, accountId);
         const imported = await importAccountMemoryBundle(accountId, bundle);
-        await store.restoreAccountMemory(accountId, imported.state, imported.profile);
+        await store.restoreAccountMemory(accountId, imported.state, imported.profile, imported.policy);
         await syncMemoryFromStoreStrict(store, accountId);
         json(req, res, 200, {
           restored: true,
@@ -376,11 +422,7 @@ const server = createServer(async (req, res) => {
       await store.saveAvailabilityProfile(accountId, parsed.data);
       const state = await store.loadDomainState(accountId);
       if (state) {
-        try {
-          await syncAccountMemory(accountId, state, parsed.data);
-        } catch (error) {
-          console.error('account memory mirror sync failed', error);
-        }
+        await syncMemoryFromStore(store, accountId);
       }
       json(req, res, 200, { saved: true, profile: parsed.data, focusWindows: state?.availability.length ?? 0 });
       return;
@@ -398,7 +440,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       const state = await store.ensureDomainState(accountId);
-      json(req, res, 200, analyzeAccountSchedule(state));
+      json(req, res, 200, analyzeAccountSchedule(state, await store.getAccountPolicySettings(accountId)));
       return;
     }
     if (url.pathname === '/api/graph/analysis' && req.method === 'POST') {
@@ -421,8 +463,11 @@ const server = createServer(async (req, res) => {
         json(req, res, 409, { error: 'Set your focus hours before requesting plan approval.' });
         return;
       }
-      const state = await store.ensureDomainState(accountId);
-      const prepared = prepareAccountSchedule(state);
+      const [state, policy] = await Promise.all([
+        store.ensureDomainState(accountId),
+        store.getAccountPolicySettings(accountId),
+      ]);
+      const prepared = prepareAccountSchedule(state, policy);
       const validation = prepared.ranked.find((candidate) => candidate.plan.id === body.planId);
       if (!validation || !validation.acceptable) {
         json(req, res, 409, { error: 'The selected plan is no longer feasible. Check the schedule again.' });
@@ -430,6 +475,15 @@ const server = createServer(async (req, res) => {
       }
       const denied = validation.policy.decisions.find((decision) => decision.verdict === 'DENY');
       if (denied) {
+        const blockedAction = validation.plan.actions[validation.policy.decisions.indexOf(denied)];
+        if (blockedAction) {
+          await store.recordPolicyBlock(accountId, {
+            actionType: blockedAction.type,
+            targetId: blockedAction.target,
+            policyRule: denied.rule,
+            reason: denied.reason,
+          });
+        }
         json(req, res, 409, { error: `Policy does not allow this action: ${denied.reason}` });
         return;
       }

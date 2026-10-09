@@ -6,6 +6,7 @@ import type { ActionRecord, LedgerStore } from '@dira/action-ledger';
 import type { WorkflowRun, WorkflowStore } from '@dira/agent';
 import type { CalendarCommitmentDraft, GraphEdgeDataEditsInput, GraphEdgeDraft, GraphProposalEditsInput } from '@dira/agent';
 import type { AvailabilityProfile } from './account-planning.js';
+import { AccountPolicySettingsSchema, DEFAULT_ACCOUNT_POLICY, type AccountPolicySettings } from './account-policy.js';
 import { availabilityIntervals, rebaseDomainState } from './account-planning.js';
 
 export interface DiraAccount {
@@ -28,6 +29,8 @@ export interface AccountPlanningSnapshot {
   stateVersion: string;
   profile: AvailabilityProfile;
   profileVersion: string;
+  policy: AccountPolicySettings;
+  policyVersion: string;
 }
 
 export interface ApprovalRevalidationEvidence {
@@ -35,6 +38,16 @@ export interface ApprovalRevalidationEvidence {
   evidenceHash: string;
   stateVersion: string;
   profileVersion: string;
+  policyVersion: string;
+}
+
+export interface PolicyBlockEvent {
+  eventId: string;
+  actionType: string;
+  targetId: string;
+  policyRule: string;
+  reason: string;
+  createdAtIso: string;
 }
 
 export interface EventClaimInput {
@@ -218,14 +231,85 @@ export class PostgresAccountStore {
     });
   }
 
-  async loadAccountPlanningSnapshot(accountId: string): Promise<AccountPlanningSnapshot | undefined> {
+  async getAccountPolicySettings(accountId: string): Promise<AccountPolicySettings> {
+    return this.withAccount(accountId, async (client) => {
+      await client.query(
+        `INSERT INTO dira_account_policy_settings (account_id, policy) VALUES ($1, $2::jsonb)
+         ON CONFLICT (account_id) DO NOTHING`,
+        [accountId, JSON.stringify(DEFAULT_ACCOUNT_POLICY)],
+      );
+      const result = await client.query<{ policy: unknown }>(
+        'SELECT policy FROM dira_account_policy_settings WHERE account_id = $1',
+        [accountId],
+      );
+      if (!result.rows[0]) return structuredClone(DEFAULT_ACCOUNT_POLICY);
+      return AccountPolicySettingsSchema.parse(result.rows[0].policy);
+    });
+  }
+
+  async saveAccountPolicySettings(accountId: string, input: unknown): Promise<AccountPolicySettings> {
+    const policy = AccountPolicySettingsSchema.parse(input);
+    return this.withAccount(accountId, async (client) => {
+      await client.query(
+        `INSERT INTO dira_account_policy_settings (account_id, policy) VALUES ($1, $2::jsonb)
+         ON CONFLICT (account_id) DO UPDATE SET policy = EXCLUDED.policy, updated_at = now()`,
+        [accountId, JSON.stringify(policy)],
+      );
+      return policy;
+    });
+  }
+
+  async recordPolicyBlock(accountId: string, event: Omit<PolicyBlockEvent, 'eventId' | 'createdAtIso'>): Promise<void> {
+    const actionType = event.actionType.slice(0, 80);
+    const targetId = event.targetId.slice(0, 256);
+    const policyRule = event.policyRule.slice(0, 120);
+    const reason = event.reason.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 500);
+    if (!actionType || !targetId || !policyRule || !reason) throw new Error('invalid policy block event');
+    await this.withAccount(accountId, async (client) => {
+      await client.query(
+        `INSERT INTO dira_policy_block_events (account_id, event_id, action_type, target_id, policy_rule, reason)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [accountId, randomUUID(), actionType, targetId, policyRule, reason],
+      );
+    });
+  }
+
+  async listPolicyBlockEvents(accountId: string): Promise<PolicyBlockEvent[]> {
     return this.withAccount(accountId, async (client) => {
       const result = await client.query<{
-        state: DomainState; profile: AvailabilityProfile;
+        event_id: string; action_type: string; target_id: string; policy_rule: string;
+        reason: string; created_at: Date;
       }>(
-        `SELECT s.state, p.profile
+        `SELECT event_id, action_type, target_id, policy_rule, reason, created_at
+         FROM dira_policy_block_events WHERE account_id = $1
+         ORDER BY created_at DESC LIMIT 50`,
+        [accountId],
+      );
+      return result.rows.map((row) => ({
+        eventId: row.event_id,
+        actionType: row.action_type,
+        targetId: row.target_id,
+        policyRule: row.policy_rule,
+        reason: row.reason,
+        createdAtIso: row.created_at.toISOString(),
+      }));
+    });
+  }
+
+  async loadAccountPlanningSnapshot(accountId: string): Promise<AccountPlanningSnapshot | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      await client.query(
+        `INSERT INTO dira_account_policy_settings (account_id, policy) VALUES ($1, $2::jsonb)
+         ON CONFLICT (account_id) DO NOTHING`,
+        [accountId, JSON.stringify(DEFAULT_ACCOUNT_POLICY)],
+      );
+      const result = await client.query<{
+        state: DomainState; profile: AvailabilityProfile; policy: AccountPolicySettings | null;
+      }>(
+        `SELECT s.state, p.profile, ps.policy
          FROM dira_account_state s
          JOIN dira_availability_profiles p USING (account_id)
+         LEFT JOIN dira_account_policy_settings ps USING (account_id)
          WHERE s.account_id = $1`,
         [accountId],
       );
@@ -237,6 +321,8 @@ export class PostgresAccountStore {
         stateVersion: contentHash(snapshot.state),
         profile: snapshot.profile,
         profileVersion: contentHash(snapshot.profile),
+        policy: snapshot.policy ? AccountPolicySettingsSchema.parse(snapshot.policy) : structuredClone(DEFAULT_ACCOUNT_POLICY),
+        policyVersion: contentHash(snapshot.policy ? AccountPolicySettingsSchema.parse(snapshot.policy) : DEFAULT_ACCOUNT_POLICY),
       };
     });
   }
@@ -273,9 +359,11 @@ export class PostgresAccountStore {
     accountId: string,
     state: DomainState,
     profile: AvailabilityProfile | undefined,
+    policy: AccountPolicySettings,
     now = new Date(),
   ): Promise<void> {
     assertAccountMatch(accountId, state.userId);
+    const validatedPolicy = AccountPolicySettingsSchema.parse(policy);
     await this.withAccount(accountId, async (client) => {
       const current = await client.query<{ state: DomainState }>(
         'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
@@ -319,6 +407,12 @@ export class PostgresAccountStore {
       } else {
         await client.query('DELETE FROM dira_availability_profiles WHERE account_id = $1', [accountId]);
       }
+      await client.query(
+        `INSERT INTO dira_account_policy_settings (account_id, policy)
+         VALUES ($1, $2::jsonb)
+         ON CONFLICT (account_id) DO UPDATE SET policy = EXCLUDED.policy, updated_at = now()`,
+        [accountId, JSON.stringify(validatedPolicy)],
+      );
       await client.query(
         `UPDATE dira_graph_proposals SET status = 'IGNORED', decided_at = now(), updated_at = now()
          WHERE account_id = $1 AND status = 'PENDING_REVIEW'`,
@@ -625,7 +719,12 @@ export class PostgresAccountStore {
         throw new Error('approval requires fresh-read and policy revalidation evidence');
       }
       if (decision === 'APPROVED') {
-        const [stateResult, profileResult] = await Promise.all([
+        await client.query(
+          `INSERT INTO dira_account_policy_settings (account_id, policy) VALUES ($1, $2::jsonb)
+           ON CONFLICT (account_id) DO NOTHING`,
+          [accountId, JSON.stringify(DEFAULT_ACCOUNT_POLICY)],
+        );
+        const [stateResult, profileResult, policyResult] = await Promise.all([
           client.query<{ state: DomainState }>(
             'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
             [accountId],
@@ -634,11 +733,17 @@ export class PostgresAccountStore {
             'SELECT profile FROM dira_availability_profiles WHERE account_id = $1 FOR SHARE',
             [accountId],
           ),
+          client.query<{ policy: unknown }>(
+            'SELECT policy FROM dira_account_policy_settings WHERE account_id = $1 FOR SHARE',
+            [accountId],
+          ),
         ]);
         if (!stateResult.rows[0] || !profileResult.rows[0]
           || contentHash(stateResult.rows[0].state) !== evidence!.stateVersion
-          || contentHash(profileResult.rows[0].profile) !== evidence!.profileVersion) {
-          throw new Error('account graph or focus hours changed during approval revalidation; check again');
+          || contentHash(profileResult.rows[0].profile) !== evidence!.profileVersion
+          || !policyResult.rows[0]
+          || contentHash(AccountPolicySettingsSchema.parse(policyResult.rows[0].policy)) !== evidence!.policyVersion) {
+          throw new Error('account graph, focus hours, or policy changed during approval revalidation; check again');
         }
       }
       const selected = await client.query<{ record_index: number; record: ActionRecord }>(

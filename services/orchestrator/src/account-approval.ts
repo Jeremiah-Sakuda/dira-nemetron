@@ -78,7 +78,7 @@ export async function revalidateAccountApproval(
 
   const state = rebaseDomainState(oldState, now);
   state.availability = availabilityIntervals(snapshot.profile, state, now);
-  const { ranked } = prepareAccountSchedule(state);
+  const { ranked } = prepareAccountSchedule(state, snapshot.policy);
   const expectedKeys = workflowRecords.map((item) => stableActionIntentKey(item.action)).sort();
   const matching = ranked.find((validation) => {
     if (!validation.acceptable) return false;
@@ -108,6 +108,7 @@ export async function revalidateAccountApproval(
     planId: matching.plan.id,
     stateVersion: snapshot.stateVersion,
     profileVersion: snapshot.profileVersion,
+    policyVersion: snapshot.policyVersion,
     revalidatedAtIso,
   };
   return {
@@ -117,6 +118,7 @@ export async function revalidateAccountApproval(
       evidenceHash: createHash('sha256').update(JSON.stringify(evidence)).digest('hex'),
       stateVersion: snapshot.stateVersion,
       profileVersion: snapshot.profileVersion,
+      policyVersion: snapshot.policyVersion,
     },
     checkedCalendarEvents: freshReads.length,
     planLabel: matching.plan.label,

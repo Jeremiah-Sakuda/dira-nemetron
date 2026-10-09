@@ -4,6 +4,7 @@ import { computeFeasibility, rankValidations, validatePlan } from '@dira/constra
 import { evaluatePlanActions } from '@dira/policy-engine';
 import { generateCandidatePlans } from '@dira/agent';
 import type { PlannedAction } from '@dira/event-schema';
+import type { AccountPolicySettings } from './account-policy.js';
 
 export const AvailabilityProfileSchema = z.object({
   weekdays: z.array(z.number().int().min(0).max(6)).max(7)
@@ -76,8 +77,8 @@ export function rebaseDomainState(state: DomainState, now = new Date()): DomainS
   return next;
 }
 
-export function analyzeAccountSchedule(state: DomainState) {
-  const { feasibility, ranked } = prepareAccountSchedule(state);
+export function analyzeAccountSchedule(state: DomainState, policy?: AccountPolicySettings) {
+  const { feasibility, ranked } = prepareAccountSchedule(state, policy);
   const plans = ranked.slice(0, 5).map((validation) => {
     const policy = validation.policy;
     const denied = policy.decisions.find((decision) => decision.verdict === 'DENY');
@@ -109,14 +110,14 @@ export function analyzeAccountSchedule(state: DomainState) {
   };
 }
 
-export function prepareAccountSchedule(state: DomainState) {
+export function prepareAccountSchedule(state: DomainState, policy?: AccountPolicySettings) {
   const feasibility = computeFeasibility(state);
   const nowMin = Math.max(0, isoToMinutes(new Date().toISOString(), state.horizonStartIso));
   const candidates = generateCandidatePlans({ state, feasibility, liveSlots: {}, nowMin });
   const validations = candidates.map((plan) => validatePlan(state, plan));
   const ranked = rankValidations(validations).map((validation) => ({
     ...validation,
-    policy: evaluatePlanActions(state, validation.plan.actions),
+    policy: evaluatePlanActions(state, validation.plan.actions, policy?.requireApproval),
   }));
   return { feasibility, ranked };
 }

@@ -22,7 +22,30 @@ export interface PolicyDecision {
   reason: string;
 }
 
-export function evaluateAction(state: DomainState, action: PlannedAction): PolicyDecision {
+export interface PolicyRuleOverride {
+  rule: string;
+  scope?: { domain?: string; commitmentId?: string; personId?: string };
+}
+
+export function evaluateAction(
+  state: DomainState,
+  action: PlannedAction,
+  requireApproval: readonly PolicyRuleOverride[] = [],
+): PolicyDecision {
+  const decision = evaluateActionBase(state, action);
+  if (decision.verdict !== 'ALLOW' && decision.verdict !== 'ALLOW_AND_NOTIFY') return decision;
+  const target = state.commitments[action.target];
+  const desired = action.desired_state as { new_owner?: unknown };
+  const override = requireApproval.find((entry) => entry.rule === decision.rule
+    && (!entry.scope?.domain || entry.scope.domain === target?.domain)
+    && (!entry.scope?.commitmentId || entry.scope.commitmentId === action.target)
+    && (!entry.scope?.personId || entry.scope.personId === desired.new_owner));
+  return override
+    ? { ...decision, verdict: 'REQUIRE_APPROVAL', reason: `User policy requires approval. ${decision.reason}` }
+    : decision;
+}
+
+function evaluateActionBase(state: DomainState, action: PlannedAction): PolicyDecision {
   // Universal gate: no provenance → no authority → DENY (PRD §22).
   if (!action.provenance || action.provenance.length === 0) {
     return { verdict: 'DENY', rule: 'provenance-required', reason: 'action lacks provenance' };
@@ -180,8 +203,9 @@ export function evaluateAction(state: DomainState, action: PlannedAction): Polic
 export function evaluatePlanActions(
   state: DomainState,
   actions: PlannedAction[],
+  requireApproval: readonly PolicyRuleOverride[] = [],
 ): { decisions: PolicyDecision[]; autonomous: boolean } {
-  const decisions = actions.map((a) => evaluateAction(state, a));
+  const decisions = actions.map((a) => evaluateAction(state, a, requireApproval));
   const autonomous = decisions.every(
     (d) => d.verdict === 'ALLOW' || d.verdict === 'ALLOW_AND_NOTIFY',
   );
