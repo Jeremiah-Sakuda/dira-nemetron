@@ -12,6 +12,7 @@ const execFile = promisify(execFileCallback);
 const repositoryRoot = process.env.DIRA_MEMORY_ROOT ?? '.dira-memory';
 const locks = new Map<string, Promise<unknown>>();
 const Int = z.number().int().safe();
+const SafeId = z.string().min(1).max(256).refine((value) => !['__proto__', 'constructor', 'prototype'].includes(value));
 const IntervalSchema = z.object({ start: Int, end: Int }).refine((value) => value.end > value.start);
 const AbsoluteTimesSchema = z.object({
   startIso: z.string().datetime({ offset: true }).optional(),
@@ -20,7 +21,7 @@ const AbsoluteTimesSchema = z.object({
   releaseIso: z.string().datetime({ offset: true }).optional(),
 });
 const CommitmentSchema = z.object({
-  id: z.string().min(1), userId: z.string().min(1), title: z.string(),
+  id: SafeId, userId: z.string().min(1), title: z.string(),
   domain: z.enum(['academic', 'career', 'organization', 'personal']),
   source: z.string(), sourceReference: z.string().optional(),
   status: z.enum(['PLANNED', 'READY', 'IN_PROGRESS', 'COMPLETE', 'AT_RISK', 'DROPPED']),
@@ -36,18 +37,18 @@ const CommitmentSchema = z.object({
   updatedAtIso: z.string().datetime({ offset: true }), absoluteTimes: AbsoluteTimesSchema.optional(),
 });
 const EdgeSchema = z.object({
-  id: z.string().min(1), type: z.enum([
+  id: SafeId, type: z.enum([
     'DEPENDS_ON', 'REQUIRES_PREPARATION', 'REQUIRES_BUFFER', 'CONFLICTS_WITH', 'SUPPORTS_GOAL',
     'OWNED_BY', 'DELEGATABLE_TO', 'BLOCKED_BY', 'MUST_PRECEDE', 'MUST_FOLLOW', 'SHARES_RESOURCE_WITH',
-  ]), from: z.string().min(1), to: z.string().min(1),
+  ]), from: SafeId, to: SafeId,
   data: z.object({ bufferMin: Int.nonnegative().optional(), finalBufferMin: Int.nonnegative().optional(),
     resource: z.string().optional(), provenance: z.string().optional() }).optional(),
 });
 const PersonSchema = z.object({
-  id: z.string().min(1), name: z.string(), email: z.string(), availability: z.array(IntervalSchema).optional(),
+  id: SafeId, name: z.string(), email: z.string(), availability: z.array(IntervalSchema).optional(),
   authorityDomains: z.array(z.enum(['academic', 'career', 'organization', 'personal'])).optional(),
 });
-const ConstraintSchema = z.object({ id: z.string().min(1), description: z.string(), key: z.string(),
+const ConstraintSchema = z.object({ id: SafeId, description: z.string(), key: z.string(),
   valueMin: Int, provenance: z.string() });
 const ApprovedSlotSchema = z.object({ startMin: Int, durationMin: Int.positive(), provenance: z.string() });
 const ConfigSchema = z.object({ sessionOverheadMin: Int.nonnegative(), repairSlackMarginMin: Int.nonnegative(),
@@ -55,9 +56,9 @@ const ConfigSchema = z.object({ sessionOverheadMin: Int.nonnegative(), repairSla
 const GraphSnapshotSchema = z.object({
   schemaVersion: z.literal(1), ownerAccountId: z.string().min(1), timezone: z.string().min(1),
   horizonStartIso: z.string().datetime({ offset: true }), horizonEndMin: Int.positive().max(5_256_000),
-  commitments: z.record(z.string(), CommitmentSchema), edges: z.array(EdgeSchema),
-  people: z.record(z.string(), PersonSchema), constraints: z.record(z.string(), ConstraintSchema),
-  approvedSlots: z.record(z.string(), z.array(ApprovedSlotSchema)), config: ConfigSchema,
+  commitments: z.record(SafeId, CommitmentSchema), edges: z.array(EdgeSchema),
+  people: z.record(SafeId, PersonSchema), constraints: z.record(SafeId, ConstraintSchema),
+  approvedSlots: z.record(SafeId, z.array(ApprovedSlotSchema)), config: ConfigSchema,
 }).superRefine((graph, context) => {
   for (const [id, commitment] of Object.entries(graph.commitments)) {
     if (id !== commitment.id) context.addIssue({ code: 'custom', path: ['commitments', id, 'id'], message: 'Commitment key does not match its id.' });
@@ -65,6 +66,12 @@ const GraphSnapshotSchema = z.object({
   }
   for (const [id, person] of Object.entries(graph.people)) {
     if (id !== person.id) context.addIssue({ code: 'custom', path: ['people', id, 'id'], message: 'Person key does not match its id.' });
+  }
+  for (const [id, constraint] of Object.entries(graph.constraints)) {
+    if (id !== constraint.id) context.addIssue({ code: 'custom', path: ['constraints', id, 'id'], message: 'Constraint key does not match its id.' });
+  }
+  for (const id of Object.keys(graph.approvedSlots)) {
+    if (!graph.commitments[id]) context.addIssue({ code: 'custom', path: ['approvedSlots', id], message: 'Approved slots target an unknown commitment.' });
   }
   for (const edge of graph.edges) {
     const fromExists = graph.commitments[edge.from] || graph.people[edge.from];
