@@ -25,6 +25,7 @@ interface CalendarEvent {
 export function AccountSetup() {
   const [account, setAccount] = useState<Account | null>(null);
   const [stateSummary, setStateSummary] = useState<AccountStateSummary | null>(null);
+  const [calendarWriteEnabled, setCalendarWriteEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
@@ -41,8 +42,13 @@ export function AccountSetup() {
     fetch('/api/me', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) return null;
-        const result = await response.json() as { account?: Account; stateSummary?: AccountStateSummary };
+        const result = await response.json() as {
+          account?: Account;
+          stateSummary?: AccountStateSummary;
+          permissions?: { calendarWrite?: boolean };
+        };
         setStateSummary(result.stateSummary ?? null);
+        setCalendarWriteEnabled(result.permissions?.calendarWrite ?? false);
         return result.account ?? null;
       })
       .then(setAccount)
@@ -74,9 +80,14 @@ export function AccountSetup() {
   async function refreshAccount() {
     const response = await fetch('/api/me', { cache: 'no-store' });
     if (!response.ok) return;
-    const result = await response.json() as { account?: Account; stateSummary?: AccountStateSummary };
+    const result = await response.json() as {
+      account?: Account;
+      stateSummary?: AccountStateSummary;
+      permissions?: { calendarWrite?: boolean };
+    };
     if (result.account) setAccount(result.account);
     setStateSummary(result.stateSummary ?? null);
+    setCalendarWriteEnabled(result.permissions?.calendarWrite ?? false);
     setScheduleRevision((revision) => revision + 1);
   }
 
@@ -102,6 +113,14 @@ export function AccountSetup() {
               <strong>Google account connected</strong>
               <p>{account.email}</p>
               <p className="muted">Calendar timezone: {account.timezone}</p>
+              <p className="muted">
+                Calendar changes: {calendarWriteEnabled ? 'permission granted' : 'read-only'}
+              </p>
+              {!calendarWriteEnabled && (
+                <a className="btn btn-secondary" href="/api/auth/google/calendar-write">
+                  Enable Calendar changes
+                </a>
+              )}
               {stateSummary && (
                 <p className="muted">Personal graph: {stateSummary.commitmentCount} commitments · {stateSummary.edgeCount} confirmed links</p>
               )}
@@ -144,8 +163,8 @@ export function AccountSetup() {
         {account && <ScheduleCheck key={scheduleRevision} />}
         {error && <p className="form-error" role="alert">{error}</p>}
         <p className="privacy-note">
-          Dira stores Google credentials encrypted and requests read-only Calendar access for this setup.
-          Signing out ends this device session. Disconnect controls will appear here when account settings are available.
+          Dira stores Google credentials encrypted. Calendar write permission is optional and requested only
+          when you choose to enable Calendar changes. Signing out ends this device session.
         </p>
       </section>
     </main>

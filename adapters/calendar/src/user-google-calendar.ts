@@ -1,9 +1,13 @@
+import { createHash } from 'node:crypto';
 import type { calendar_v3 } from 'googleapis';
 import { ToolError, type CalendarEvent, type CalendarTool } from '@dira/tool-contracts';
 
-/** Read-only adapter for the signed-in account's primary Google Calendar. */
+/** User Calendar adapter; mutations stay disabled unless the account has separately granted write scope. */
 export class GoogleUserCalendarTool implements CalendarTool {
-  constructor(private readonly accessToken: () => Promise<string>) {}
+  constructor(
+    private readonly accessToken: () => Promise<string>,
+    private readonly canWrite: () => Promise<boolean> = async () => false,
+  ) {}
 
   private async client(): Promise<calendar_v3.Calendar> {
     const { google } = await import('googleapis');
@@ -40,35 +44,62 @@ export class GoogleUserCalendarTool implements CalendarTool {
     }
   }
 
-  async createEvent(_event: CalendarEvent): Promise<{ id: string }> {
-    throw new ToolError('Google Calendar is connected read-only; grant write access to change events', 'INSUFFICIENT_SCOPE', false);
+  async createEvent(event: CalendarEvent): Promise<{ id: string }> {
+    await this.requireWriteAccess();
+    try {
+      const api = await this.client();
+      const response = await api.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          id: googleEventIdFor(event.id),
+          summary: event.title,
+          start: { dateTime: event.startIso },
+          end: { dateTime: event.endIso },
+          extendedProperties: { private: { diraId: event.id } },
+        },
+      });
+      if (!response.data.id) throw new ToolError('Google Calendar did not return a created event id', 'INVALID_RESPONSE', false);
+      return { id: response.data.id };
+    } catch (error) {
+      throw asToolError(error, 'createEvent');
+    }
   }
 
-  async moveEvent(_id: string, _startIso: string, _endIso: string): Promise<void> {
-    throw new ToolError('Google Calendar is connected read-only; grant write access to change events', 'INSUFFICIENT_SCOPE', false);
+  async moveEvent(id: string, startIso: string, endIso: string): Promise<void> {
+    await this.requireWriteAccess();
+    try {
+      const api = await this.client();
+      const existing = await this.findEvent(api, id);
+      if (!existing?.id) throw new ToolError(`Google Calendar event ${id} was not found`, 'NOT_FOUND', false);
+      await api.events.patch({
+        calendarId: 'primary',
+        eventId: existing.id,
+        requestBody: {
+          start: { dateTime: startIso },
+          end: { dateTime: endIso },
+        },
+      });
+    } catch (error) {
+      throw asToolError(error, 'moveEvent');
+    }
   }
 
-  async deleteEvent(_id: string): Promise<void> {
-    throw new ToolError('Google Calendar is connected read-only; grant write access to change events', 'INSUFFICIENT_SCOPE', false);
+  async deleteEvent(id: string): Promise<void> {
+    await this.requireWriteAccess();
+    try {
+      const api = await this.client();
+      const existing = await this.findEvent(api, id);
+      if (!existing?.id) return;
+      await api.events.delete({ calendarId: 'primary', eventId: existing.id });
+    } catch (error) {
+      throw asToolError(error, 'deleteEvent');
+    }
   }
 
   async verifyEvent(query: { id?: string; title?: string; startIso?: string }): Promise<CalendarEvent | null> {
     try {
       const api = await this.client();
-      let found: calendar_v3.Schema$Event | undefined;
-      if (query.id?.startsWith('google:')) {
-        const googleId = query.id.slice('google:'.length);
-        const response = await api.events.get({ calendarId: 'primary', eventId: googleId });
-        found = response.data;
-      } else if (query.id) {
-        const response = await api.events.list({
-          calendarId: 'primary',
-          privateExtendedProperty: [`diraId=${query.id}`],
-          maxResults: 1,
-          singleEvents: true,
-        });
-        found = response.data.items?.[0];
-      }
+      const found = query.id ? await this.findEvent(api, query.id) : undefined;
       if (!found) return null;
       const event = this.toCalendarEvent(found);
       if (query.title && event.title !== query.title) return null;
@@ -78,6 +109,30 @@ export class GoogleUserCalendarTool implements CalendarTool {
       throw asToolError(error, 'verifyEvent');
     }
   }
+
+  private async requireWriteAccess(): Promise<void> {
+    if (!await this.canWrite()) {
+      throw new ToolError('Google Calendar write permission has not been granted for this account', 'INSUFFICIENT_SCOPE', false);
+    }
+  }
+
+  private async findEvent(api: calendar_v3.Calendar, id: string): Promise<calendar_v3.Schema$Event | undefined> {
+    if (id.startsWith('google:')) {
+      const response = await api.events.get({ calendarId: 'primary', eventId: id.slice('google:'.length) });
+      return response.data;
+    }
+    const response = await api.events.list({
+      calendarId: 'primary',
+      privateExtendedProperty: [`diraId=${id}`],
+      maxResults: 1,
+      singleEvents: true,
+    });
+    return response.data.items?.[0];
+  }
+}
+
+function googleEventIdFor(value: string): string {
+  return createHash('sha256').update(value).digest('hex').slice(0, 40);
 }
 
 function asToolError(error: unknown, operation: string): ToolError {

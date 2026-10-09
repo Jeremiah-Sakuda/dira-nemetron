@@ -29,6 +29,8 @@ interface SignedPayload {
 
 interface OAuthState extends SignedPayload {
   verifier: string;
+  accountId?: string;
+  purpose?: 'sign-in' | 'calendar-write';
 }
 
 export interface GoogleIdentity {
@@ -56,26 +58,32 @@ interface StoredGoogleTokens {
   expiresAt?: number;
 }
 
-export function beginGoogleOAuth(): OAuthStart {
+export function beginGoogleOAuth(options: { accountId?: string; calendarWrite?: boolean } = {}): OAuthStart {
   const state = randomBytes(32).toString('base64url');
   const verifier = randomBytes(48).toString('base64url');
   const challenge = createHash('sha256').update(verifier).digest('base64url');
   const payload: OAuthState = {
     value: state,
     verifier,
+    accountId: options.accountId,
+    purpose: options.calendarWrite ? 'calendar-write' : 'sign-in',
     expiresAt: Math.floor(Date.now() / 1000) + OAUTH_STATE_TTL_SECONDS,
   };
+  const scopes = options.calendarWrite
+    ? [...GOOGLE_SCOPES, 'https://www.googleapis.com/auth/calendar.events']
+    : GOOGLE_SCOPES;
   const authorizationUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   authorizationUrl.search = new URLSearchParams({
     client_id: requiredEnv('GOOGLE_CLIENT_ID'),
     redirect_uri: requiredEnv('GOOGLE_REDIRECT_URI'),
     response_type: 'code',
-    scope: GOOGLE_SCOPES.join(' '),
+    scope: scopes.join(' '),
     state,
     code_challenge: challenge,
     code_challenge_method: 'S256',
     access_type: 'offline',
     include_granted_scopes: 'true',
+    ...(options.calendarWrite ? { prompt: 'consent' } : {}),
   }).toString();
   return {
     authorizationUrl: authorizationUrl.toString(),
@@ -124,6 +132,9 @@ export async function completeGoogleOAuth(
   if (!user.sub || !user.email || user.email_verified !== true) {
     throw new Error('Google account identity is missing a verified email');
   }
+  if (signedState.purpose === 'calendar-write' && signedState.accountId !== user.sub) {
+    throw new Error('Calendar write consent must be granted by the connected Google account');
+  }
 
   const timezoneResponse = await fetch(
     'https://www.googleapis.com/calendar/v3/users/me/settings/timezone',
@@ -149,7 +160,7 @@ export async function completeGoogleOAuth(
   await store.saveAccount({ accountId: user.sub, email: user.email, timezone });
   await store.saveCredential(user.sub, PROVIDER, {
     ...encrypted,
-    scopes: token.scope?.split(' ') ?? [],
+    scopes: token.scope?.split(' ').filter(Boolean) ?? existingCredential?.scopes ?? [],
     expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000) : undefined,
   });
   await store.ensureDomainState(user.sub);
@@ -210,6 +221,14 @@ export async function googleAccessToken(
     expiresAt: new Date(next.expiresAt!),
   });
   return next.accessToken;
+}
+
+export async function googleCalendarWriteEnabled(
+  store: PostgresAccountStore,
+  accountId: string,
+): Promise<boolean> {
+  const credential = await store.getCredential(accountId, PROVIDER);
+  return credential?.scopes.includes('https://www.googleapis.com/auth/calendar.events') ?? false;
 }
 
 export function isAllowedOrigin(origin: string | undefined): boolean {

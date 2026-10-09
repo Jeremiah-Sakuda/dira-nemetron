@@ -175,6 +175,17 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
+    if (req.method === 'GET' && url.pathname === '/auth/google/calendar-write/start') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const start = beginGoogleOAuth({ accountId, calendarWrite: true });
+      res.writeHead(302, { location: start.authorizationUrl, 'set-cookie': start.stateCookie });
+      res.end();
+      return;
+    }
     if (req.method === 'POST' && url.pathname === '/auth/google/complete') {
       const body = safeJson(await readBody(req)) as { code?: string; state?: string } | null;
       if (!body?.code || !body.state) {
@@ -215,14 +226,21 @@ const server = createServer(async (req, res) => {
         json(req, res, 401, { error: 'unauthenticated' });
         return;
       }
-      const account = await (await accountStore()).getAccount(accountId);
+      const store = await accountStore();
+      const account = await store.getAccount(accountId);
       if (!account) {
         json(req, res, 401, { error: 'account_not_found' });
         return;
       }
-      const state = await (await accountStore()).ensureDomainState(accountId);
+      const [state, credential] = await Promise.all([
+        store.ensureDomainState(accountId),
+        store.getCredential(accountId, 'google'),
+      ]);
       json(req, res, 200, {
         account,
+        permissions: {
+          calendarWrite: credential?.scopes.includes('https://www.googleapis.com/auth/calendar.events') ?? false,
+        },
         stateSummary: {
           commitmentCount: Object.keys(state.commitments).length,
           edgeCount: state.edges.length,
