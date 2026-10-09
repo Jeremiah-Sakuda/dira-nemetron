@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GraphReview } from './graph-review';
 import { ScheduleCheck } from './schedule-check';
 
@@ -30,6 +30,9 @@ export function AccountSetup() {
   const [error, setError] = useState('');
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [memoryImporting, setMemoryImporting] = useState(false);
+  const [memoryNotice, setMemoryNotice] = useState('');
+  const memoryFileInput = useRef<HTMLInputElement>(null);
   const [scheduleRevision, setScheduleRevision] = useState(0);
 
   useEffect(() => {
@@ -91,6 +94,37 @@ export function AccountSetup() {
     setScheduleRevision((revision) => revision + 1);
   }
 
+  async function importMemory(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      setError('Choose a memory bundle smaller than 25 MiB.');
+      return;
+    }
+    if (!window.confirm('Restore this backup? It replaces your confirmed graph and focus hours. Pending review proposals will be discarded.')) {
+      if (memoryFileInput.current) memoryFileInput.current.value = '';
+      return;
+    }
+    setMemoryImporting(true);
+    setError('');
+    setMemoryNotice('');
+    try {
+      const response = await fetch('/api/memory/import', {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream' },
+        body: file,
+      });
+      const result = await response.json() as { error?: string; commitmentCount?: number };
+      if (!response.ok) throw new Error(result.error ?? 'Memory restore failed.');
+      setMemoryNotice(`Memory restored · ${result.commitmentCount ?? 0} commitments`);
+      await refreshAccount();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Memory restore failed.');
+    } finally {
+      setMemoryImporting(false);
+      if (memoryFileInput.current) memoryFileInput.current.value = '';
+    }
+  }
+
   return (
     <main className="onboarding-wrap">
       <section className="panel onboarding-card" aria-labelledby="onboarding-title">
@@ -125,6 +159,18 @@ export function AccountSetup() {
                 <p className="muted">Personal graph: {stateSummary.commitmentCount} commitments · {stateSummary.edgeCount} confirmed links</p>
               )}
               <a className="btn btn-secondary" href="/api/memory/export">Download private memory backup</a>
+              <input
+                ref={memoryFileInput}
+                type="file"
+                accept=".bundle,application/octet-stream"
+                hidden
+                onChange={(event) => void importMemory(event.currentTarget.files?.[0])}
+              />
+              <button type="button" className="btn btn-secondary" disabled={memoryImporting}
+                onClick={() => memoryFileInput.current?.click()}>
+                {memoryImporting ? 'Restoring backup…' : 'Restore memory backup'}
+              </button>
+              {memoryNotice && <p className="muted" role="status">{memoryNotice}</p>}
               {stateSummary?.commitmentCount === 0 && (
                 <p className="muted">Calendar events stay outside your graph until you review and confirm them.</p>
               )}

@@ -15,7 +15,7 @@ import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, Graph
 import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule, stableActionIntentKey } from './account-planning.js';
 import { revalidateAccountApproval } from './account-approval.js';
 import { resumeApprovedAccountWorkflow } from './account-broker.js';
-import { exportAccountMemory, syncAccountMemory } from './account-memory.js';
+import { exportAccountMemory, importAccountMemoryBundle, syncAccountMemory } from './account-memory.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -128,6 +128,18 @@ const readBody = (req: NodeJS.ReadableStream): Promise<string> =>
     req.on('data', (c) => (body += c));
     req.on('end', () => resolve(body));
   });
+
+async function readBodyBuffer(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+  for await (const chunk of req) {
+    const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += data.length;
+    if (totalBytes > maxBytes) throw new Error('request_body_too_large');
+    chunks.push(data);
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
 
 const safeJson = (s: string): unknown => {
   try {
@@ -304,6 +316,43 @@ const server = createServer(async (req, res) => {
         res.end(bundle);
       } catch (error) {
         json(req, res, 503, { error: error instanceof Error ? error.message : 'memory_export_unavailable' });
+      }
+      return;
+    }
+    if (url.pathname === '/api/memory/import' && req.method === 'POST') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      if (!String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/octet-stream')) {
+        json(req, res, 415, { error: 'expected_git_bundle' });
+        return;
+      }
+      try {
+        const bundle = await readBodyBuffer(req, 25 * 1024 * 1024);
+        const store = await accountStore();
+        await store.ensureDomainState(accountId);
+        await syncMemoryFromStoreStrict(store, accountId);
+        const imported = await importAccountMemoryBundle(accountId, bundle);
+        await store.restoreAccountMemory(accountId, imported.state, imported.profile);
+        await syncMemoryFromStoreStrict(store, accountId);
+        json(req, res, 200, {
+          restored: true,
+          sourceCommit: imported.sourceCommit,
+          commitmentCount: Object.keys(imported.state.commitments).length,
+          edgeCount: imported.state.edges.length,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'memory_import_failed';
+        const status = message === 'request_body_too_large' ? 413
+          : /pending actions|active workflows/.test(message) ? 409
+            : /different Dira account|timezone differs/.test(message) ? 403 : 400;
+        json(req, res, status, { error: message });
       }
       return;
     }

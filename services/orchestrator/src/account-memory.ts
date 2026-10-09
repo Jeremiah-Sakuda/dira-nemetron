@@ -4,12 +4,85 @@ import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { minutesToIso, type DomainState } from '@dira/commitment-model';
-import type { AvailabilityProfile } from './account-planning.js';
+import { isoToMinutes, minutesToIso, type DomainState } from '@dira/commitment-model';
+import { z } from 'zod';
+import { AvailabilityProfileSchema, type AvailabilityProfile } from './account-planning.js';
 
 const execFile = promisify(execFileCallback);
 const repositoryRoot = process.env.DIRA_MEMORY_ROOT ?? '.dira-memory';
 const locks = new Map<string, Promise<unknown>>();
+const Int = z.number().int().safe();
+const IntervalSchema = z.object({ start: Int, end: Int }).refine((value) => value.end > value.start);
+const AbsoluteTimesSchema = z.object({
+  startIso: z.string().datetime({ offset: true }).optional(),
+  endIso: z.string().datetime({ offset: true }).optional(),
+  deadlineIso: z.string().datetime({ offset: true }).optional(),
+  releaseIso: z.string().datetime({ offset: true }).optional(),
+});
+const CommitmentSchema = z.object({
+  id: z.string().min(1), userId: z.string().min(1), title: z.string(),
+  domain: z.enum(['academic', 'career', 'organization', 'personal']),
+  source: z.string(), sourceReference: z.string().optional(),
+  status: z.enum(['PLANNED', 'READY', 'IN_PROGRESS', 'COMPLETE', 'AT_RISK', 'DROPPED']),
+  kind: z.enum(['event', 'effort', 'block']), startMin: Int.optional(), durationMin: Int.positive().optional(),
+  reservesEffortFor: z.string().optional(), deadlineMin: Int.optional(), releaseMin: Int.optional(),
+  requiredEffortMin: Int.nonnegative().optional(), completedEffortMin: Int.nonnegative().optional(),
+  flexibility: z.enum(['FIXED', 'MOVE_WITHIN_WINDOW', 'FLEXIBLE', 'DELEGATABLE', 'OPTIONAL']),
+  criticality: z.enum(['CRITICAL', 'HIGH', 'NORMAL', 'LOW']), owner: z.string(),
+  participants: z.array(z.string()), goalIds: z.array(z.string()), resourceRequirements: z.array(z.string()),
+  externalSystem: z.enum(['calendar', 'recruiter', 'organization', 'gmail']).optional(),
+  externalId: z.string().optional(), autonomyScope: z.string().optional(),
+  confidence: z.number().min(0).max(1), createdAtIso: z.string().datetime({ offset: true }),
+  updatedAtIso: z.string().datetime({ offset: true }), absoluteTimes: AbsoluteTimesSchema.optional(),
+});
+const EdgeSchema = z.object({
+  id: z.string().min(1), type: z.enum([
+    'DEPENDS_ON', 'REQUIRES_PREPARATION', 'REQUIRES_BUFFER', 'CONFLICTS_WITH', 'SUPPORTS_GOAL',
+    'OWNED_BY', 'DELEGATABLE_TO', 'BLOCKED_BY', 'MUST_PRECEDE', 'MUST_FOLLOW', 'SHARES_RESOURCE_WITH',
+  ]), from: z.string().min(1), to: z.string().min(1),
+  data: z.object({ bufferMin: Int.nonnegative().optional(), finalBufferMin: Int.nonnegative().optional(),
+    resource: z.string().optional(), provenance: z.string().optional() }).optional(),
+});
+const PersonSchema = z.object({
+  id: z.string().min(1), name: z.string(), email: z.string(), availability: z.array(IntervalSchema).optional(),
+  authorityDomains: z.array(z.enum(['academic', 'career', 'organization', 'personal'])).optional(),
+});
+const ConstraintSchema = z.object({ id: z.string().min(1), description: z.string(), key: z.string(),
+  valueMin: Int, provenance: z.string() });
+const ApprovedSlotSchema = z.object({ startMin: Int, durationMin: Int.positive(), provenance: z.string() });
+const ConfigSchema = z.object({ sessionOverheadMin: Int.nonnegative(), repairSlackMarginMin: Int.nonnegative(),
+  minInterpretationConfidence: z.number().min(0).max(1), maxTransientRetries: Int.nonnegative() });
+const GraphSnapshotSchema = z.object({
+  schemaVersion: z.literal(1), ownerAccountId: z.string().min(1), timezone: z.string().min(1),
+  horizonStartIso: z.string().datetime({ offset: true }), horizonEndMin: Int.positive().max(5_256_000),
+  commitments: z.record(z.string(), CommitmentSchema), edges: z.array(EdgeSchema),
+  people: z.record(z.string(), PersonSchema), constraints: z.record(z.string(), ConstraintSchema),
+  approvedSlots: z.record(z.string(), z.array(ApprovedSlotSchema)), config: ConfigSchema,
+}).superRefine((graph, context) => {
+  for (const [id, commitment] of Object.entries(graph.commitments)) {
+    if (id !== commitment.id) context.addIssue({ code: 'custom', path: ['commitments', id, 'id'], message: 'Commitment key does not match its id.' });
+    if (commitment.userId !== graph.ownerAccountId) context.addIssue({ code: 'custom', path: ['commitments', id, 'userId'], message: 'Commitment belongs to another account.' });
+  }
+  for (const [id, person] of Object.entries(graph.people)) {
+    if (id !== person.id) context.addIssue({ code: 'custom', path: ['people', id, 'id'], message: 'Person key does not match its id.' });
+  }
+  for (const edge of graph.edges) {
+    const fromExists = graph.commitments[edge.from] || graph.people[edge.from];
+    const toExists = graph.commitments[edge.to] || graph.people[edge.to];
+    if (!fromExists || !toExists) context.addIssue({ code: 'custom', path: ['edges', edge.id], message: 'Edge points to an unknown graph node.' });
+  }
+});
+const AvailabilitySnapshotSchema = z.object({
+  schemaVersion: z.literal(1), timezone: z.string().min(1),
+  profile: AvailabilityProfileSchema.nullable(), focusWindows: z.array(IntervalSchema),
+});
+const PolicySnapshotSchema = z.object({
+  schemaVersion: z.literal(1), autonomy: z.literal('approval-required'),
+  allowedActions: z.tuple([z.literal('google-calendar')]),
+  blockedActions: z.tuple([z.literal('gmail'), z.literal('recruiter'), z.literal('organization')]),
+  note: z.literal('Policy snapshot only; enforcement remains in the Dira account service.'),
+});
+const RulesSnapshotSchema = z.object({ schemaVersion: z.literal(1), rules: z.array(z.unknown()) });
 
 function accountDirectory(accountId: string): string {
   const key = createHash('sha256').update(accountId).digest('hex');
@@ -17,7 +90,7 @@ function accountDirectory(accountId: string): string {
 }
 
 async function git(directory: string, ...args: string[]): Promise<string> {
-  const { stdout } = await execFile('git', ['-C', directory, ...args], { maxBuffer: 1024 * 1024 * 8 });
+  const { stdout } = await execFile('git', ['-C', directory, ...args], { maxBuffer: 32 * 1024 * 1024 });
   return stdout.trim();
 }
 
@@ -64,6 +137,7 @@ export async function syncAccountMemory(
     const timeZone = state.timezone ?? 'UTC';
     const graph = {
       schemaVersion: 1,
+      ownerAccountId: accountId,
       timezone: timeZone,
       horizonStartIso: state.horizonStartIso,
       horizonEndMin: state.horizonEndMin,
@@ -88,6 +162,7 @@ export async function syncAccountMemory(
       people: state.people,
       constraints: state.constraints,
       approvedSlots: state.approvedSlots,
+      config: state.config,
     };
     const availability = {
       schemaVersion: 1,
@@ -131,6 +206,76 @@ export async function exportAccountMemory(accountId: string): Promise<Buffer> {
   try {
     await git(directory, 'bundle', 'create', bundlePath, '--all');
     return await readFile(bundlePath);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+export interface ImportedAccountMemory {
+  state: DomainState;
+  profile: AvailabilityProfile | undefined;
+  sourceCommit: string;
+}
+
+export async function importAccountMemoryBundle(accountId: string, bundle: Buffer): Promise<ImportedAccountMemory> {
+  if (bundle.length === 0 || bundle.length > 25 * 1024 * 1024) {
+    throw new Error('Memory bundle must be between 1 byte and 25 MiB.');
+  }
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'dira-memory-import-'));
+  await chmod(temporaryDirectory, 0o700);
+  const bundlePath = join(temporaryDirectory, 'upload.bundle');
+  const sourceRepository = join(temporaryDirectory, 'source.git');
+  try {
+    await writeFile(bundlePath, bundle, { mode: 0o600 });
+    await chmod(bundlePath, 0o600);
+    await git(temporaryDirectory, 'bundle', 'verify', bundlePath);
+    await git(temporaryDirectory, 'clone', '--quiet', '--bare', bundlePath, sourceRepository);
+    const [rawGraph, rawAvailability, rawPolicy, rawRules, sourceCommit] = await Promise.all([
+      git(sourceRepository, 'show', 'HEAD:graph.json'),
+      git(sourceRepository, 'show', 'HEAD:availability.json'),
+      git(sourceRepository, 'show', 'HEAD:policy.json'),
+      git(sourceRepository, 'show', 'HEAD:rules/correction-rules.json'),
+      git(sourceRepository, 'rev-parse', 'HEAD'),
+    ]);
+    const graph = GraphSnapshotSchema.parse(JSON.parse(rawGraph));
+    const availability = AvailabilitySnapshotSchema.parse(JSON.parse(rawAvailability));
+    PolicySnapshotSchema.parse(JSON.parse(rawPolicy));
+    const rules = RulesSnapshotSchema.parse(JSON.parse(rawRules));
+    if (graph.ownerAccountId !== accountId) throw new Error('This memory bundle belongs to a different Dira account.');
+    if (availability.timezone !== graph.timezone) throw new Error('Memory bundle timezone values do not match.');
+    if (rules.rules.length !== 0) {
+      throw new Error('This Dira version cannot restore correction rules stored in this bundle.');
+    }
+    const commitments = Object.fromEntries(Object.entries(graph.commitments).map(([id, commitment]) => {
+      const times = commitment.absoluteTimes;
+      const startMin = times?.startIso ? isoToMinutes(times.startIso, graph.horizonStartIso) : commitment.startMin;
+      const deadlineMin = times?.deadlineIso ? isoToMinutes(times.deadlineIso, graph.horizonStartIso) : commitment.deadlineMin;
+      const releaseMin = times?.releaseIso ? isoToMinutes(times.releaseIso, graph.horizonStartIso) : commitment.releaseMin;
+      let durationMin = commitment.durationMin;
+      if (times?.endIso && startMin !== undefined) {
+        durationMin = isoToMinutes(times.endIso, graph.horizonStartIso) - startMin;
+        if (durationMin <= 0) throw new Error(`Commitment ${id} has an invalid absolute interval.`);
+      }
+      return [id, { ...commitment, startMin, durationMin, deadlineMin, releaseMin }];
+    }));
+    const state: DomainState = {
+      userId: accountId,
+      timezone: graph.timezone,
+      horizonStartIso: graph.horizonStartIso,
+      horizonEndMin: graph.horizonEndMin,
+      commitments,
+      edges: graph.edges,
+      people: graph.people,
+      constraints: graph.constraints,
+      availability: [],
+      approvedSlots: graph.approvedSlots,
+      config: graph.config,
+    };
+    const directory = accountDirectory(accountId);
+    await withAccountLock(directory, async () => {
+      await git(directory, 'fetch', '--quiet', '--no-tags', bundlePath, `+${sourceCommit}:refs/imported/${sourceCommit}`);
+    });
+    return { state, profile: availability.profile ?? undefined, sourceCommit };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }

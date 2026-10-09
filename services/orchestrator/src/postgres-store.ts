@@ -269,6 +269,69 @@ export class PostgresAccountStore {
     });
   }
 
+  async restoreAccountMemory(
+    accountId: string,
+    state: DomainState,
+    profile: AvailabilityProfile | undefined,
+    now = new Date(),
+  ): Promise<void> {
+    assertAccountMatch(accountId, state.userId);
+    await this.withAccount(accountId, async (client) => {
+      const current = await client.query<{ state: DomainState }>(
+        'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
+        [accountId],
+      );
+      if (!current.rows[0]) throw new Error('account state is not initialized');
+      assertAccountMatch(accountId, current.rows[0].state.userId);
+
+      const activeActions = await client.query<{ action_id: string }>(
+        `SELECT action_id FROM dira_action_ledger WHERE account_id = $1
+         AND status IN ('AWAITING_APPROVAL', 'AUTHORIZED', 'PENDING_EXECUTION', 'EXECUTING',
+           'EXECUTED_UNVERIFIED', 'FAILED_TRANSIENT') FOR UPDATE`,
+        [accountId],
+      );
+      if (activeActions.rows.length) throw new Error('Resolve or cancel pending actions before restoring memory.');
+      const activeWorkflows = await client.query<{ workflow_id: string }>(
+        `SELECT workflow_id FROM dira_workflows WHERE account_id = $1
+         AND run->>'status' IN ('WAITING_REVIEW', 'RUNNING') FOR UPDATE`,
+        [accountId],
+      );
+      if (activeWorkflows.rows.length) throw new Error('Wait for active workflows to finish before restoring memory.');
+
+      const timezone = await loadTimezone(client, accountId);
+      if ((state.timezone ?? 'UTC') !== timezone) {
+        throw new Error('The memory timezone differs from this account. Reconnect the matching Google account before restoring.');
+      }
+      const restored = rebaseDomainState({ ...state, timezone }, now);
+      restored.userId = accountId;
+      restored.availability = profile ? availabilityIntervals(profile, restored, now) : [];
+      await client.query(
+        `UPDATE dira_account_state SET state = $2::jsonb, updated_at = now() WHERE account_id = $1`,
+        [accountId, JSON.stringify(restored)],
+      );
+      if (profile) {
+        await client.query(
+          `INSERT INTO dira_availability_profiles (account_id, profile)
+           VALUES ($1, $2::jsonb)
+           ON CONFLICT (account_id) DO UPDATE SET profile = EXCLUDED.profile, updated_at = now()`,
+          [accountId, JSON.stringify(profile)],
+        );
+      } else {
+        await client.query('DELETE FROM dira_availability_profiles WHERE account_id = $1', [accountId]);
+      }
+      await client.query(
+        `UPDATE dira_graph_proposals SET status = 'IGNORED', decided_at = now(), updated_at = now()
+         WHERE account_id = $1 AND status = 'PENDING_REVIEW'`,
+        [accountId],
+      );
+      await client.query(
+        `UPDATE dira_graph_edge_proposals SET status = 'REJECTED', decided_at = now(), updated_at = now()
+         WHERE account_id = $1 AND status = 'PENDING_REVIEW'`,
+        [accountId],
+      );
+    });
+  }
+
   async listPendingApprovals(accountId: string): Promise<ActionRecord[]> {
     return this.withAccount(accountId, async (client) => {
       const result = await client.query<{ record: ActionRecord }>(

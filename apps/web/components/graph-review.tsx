@@ -36,7 +36,7 @@ interface EdgeProposal {
 }
 
 const DOMAINS: Domain[] = ['academic', 'career', 'organization', 'personal'];
-const FLEXIBILITY: Flexibility[] = ['FIXED', 'MOVE_WITHIN_WINDOW', 'FLEXIBLE', 'DELEGATABLE', 'OPTIONAL'];
+const FLEXIBILITY: Flexibility[] = ['FIXED', 'MOVE_WITHIN_WINDOW', 'FLEXIBLE', 'OPTIONAL'];
 const CRITICALITY: Criticality[] = ['CRITICAL', 'HIGH', 'NORMAL', 'LOW'];
 
 export function GraphReview({
