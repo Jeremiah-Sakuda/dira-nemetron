@@ -124,6 +124,7 @@ export function AccountSetup() {
               {stateSummary && (
                 <p className="muted">Personal graph: {stateSummary.commitmentCount} commitments · {stateSummary.edgeCount} confirmed links</p>
               )}
+              <a className="btn btn-secondary" href="/api/memory/export">Download private memory backup</a>
               {stateSummary?.commitmentCount === 0 && (
                 <p className="muted">Calendar events stay outside your graph until you review and confirm them.</p>
               )}

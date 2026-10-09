@@ -15,6 +15,7 @@ import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, Graph
 import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule, stableActionIntentKey } from './account-planning.js';
 import { revalidateAccountApproval } from './account-approval.js';
 import { resumeApprovedAccountWorkflow } from './account-broker.js';
+import { exportAccountMemory, syncAccountMemory } from './account-memory.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -73,6 +74,26 @@ function accountStore(): Promise<PostgresAccountStore> {
     return store;
   })();
   return accountStorePromise;
+}
+
+async function syncMemoryFromStore(store: PostgresAccountStore, accountId: string): Promise<void> {
+  try {
+    const [state, profile] = await Promise.all([
+      store.ensureDomainState(accountId),
+      store.getAvailabilityProfile(accountId),
+    ]);
+    await syncAccountMemory(accountId, state, profile);
+  } catch (error) {
+    console.error('account memory mirror sync failed', error);
+  }
+}
+
+async function syncMemoryFromStoreStrict(store: PostgresAccountStore, accountId: string): Promise<void> {
+  const [state, profile] = await Promise.all([
+    store.ensureDomainState(accountId),
+    store.getAvailabilityProfile(accountId),
+  ]);
+  await syncAccountMemory(accountId, state, profile);
 }
 
 function json(req: IncomingMessage, res: ServerResponse, code: number, body: unknown): void {
@@ -194,6 +215,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       const complete = await completeGoogleOAuth(req, body.code, body.state, await accountStore());
+      await syncMemoryFromStore(await accountStore(), complete.accountId);
       json(req, res, 200, {
         accountId: complete.accountId,
         sessionCookie: complete.sessionCookie,
@@ -214,6 +236,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       const complete = await completeGoogleOAuth(req, code, state, await accountStore());
+      await syncMemoryFromStore(await accountStore(), complete.accountId);
       res.writeHead(302, {
         location: `${process.env.DIRA_WEB_ORIGIN ?? ALLOWED_ORIGIN}/?signed_in=1`,
         'set-cookie': [complete.sessionCookie, complete.clearStateCookie],
@@ -237,6 +260,7 @@ const server = createServer(async (req, res) => {
         store.ensureDomainState(accountId),
         store.getCredential(accountId, 'google'),
       ]);
+      await syncMemoryFromStore(store, accountId);
       json(req, res, 200, {
         account,
         permissions: {
@@ -260,6 +284,29 @@ const server = createServer(async (req, res) => {
       json(req, res, 200, { profile: await (await accountStore()).getAvailabilityProfile(accountId) ?? null });
       return;
     }
+    if (url.pathname === '/api/memory/export' && req.method === 'GET') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      try {
+        const store = await accountStore();
+        await syncMemoryFromStoreStrict(store, accountId);
+        const bundle = await exportAccountMemory(accountId);
+        cors(req, res);
+        res.writeHead(200, {
+          'content-type': 'application/octet-stream',
+          'content-disposition': 'attachment; filename="dira-memory.bundle"',
+          'content-length': bundle.length,
+          'cache-control': 'private, no-store',
+        });
+        res.end(bundle);
+      } catch (error) {
+        json(req, res, 503, { error: error instanceof Error ? error.message : 'memory_export_unavailable' });
+      }
+      return;
+    }
     if (url.pathname === '/api/availability' && req.method === 'POST') {
       if (!isAllowedOrigin(req.headers.origin)) {
         json(req, res, 403, { error: 'origin_not_allowed' });
@@ -279,6 +326,13 @@ const server = createServer(async (req, res) => {
       await store.ensureDomainState(accountId);
       await store.saveAvailabilityProfile(accountId, parsed.data);
       const state = await store.loadDomainState(accountId);
+      if (state) {
+        try {
+          await syncAccountMemory(accountId, state, parsed.data);
+        } catch (error) {
+          console.error('account memory mirror sync failed', error);
+        }
+      }
       json(req, res, 200, { saved: true, profile: parsed.data, focusWindows: state?.availability.length ?? 0 });
       return;
     }
@@ -446,6 +500,7 @@ const server = createServer(async (req, res) => {
       const store = await accountStore();
       try {
         const result = await resumeApprovedAccountWorkflow(store, accountId, body.workflowId, () => googleAccessToken(store, accountId));
+        await syncMemoryFromStore(store, accountId);
         json(req, res, 200, result);
       } catch (error) {
         json(req, res, 409, { error: error instanceof Error ? error.message : 'workflow_resume_conflict' });
@@ -496,6 +551,7 @@ const server = createServer(async (req, res) => {
             );
           }
         }
+        await syncMemoryFromStore(store, accountId);
         json(req, res, 200, {
           actionId: record.actionId,
           status: record.status,
@@ -642,7 +698,9 @@ const server = createServer(async (req, res) => {
         body.decision,
         edits,
       );
-      const state = await (await accountStore()).ensureDomainState(accountId);
+      const store = await accountStore();
+      const state = await store.ensureDomainState(accountId);
+      await syncMemoryFromStore(store, accountId);
       json(req, res, 200, {
         ...result,
         stateSummary: {
@@ -714,7 +772,9 @@ const server = createServer(async (req, res) => {
       const result = await (await accountStore()).reviewGraphEdgeProposal(
         accountId, body.proposalId, body.decision, data,
       );
-      const state = await (await accountStore()).ensureDomainState(accountId);
+      const store = await accountStore();
+      const state = await store.ensureDomainState(accountId);
+      await syncMemoryFromStore(store, accountId);
       json(req, res, 200, { ...result, edgeCount: state.edges.length });
       return;
     }

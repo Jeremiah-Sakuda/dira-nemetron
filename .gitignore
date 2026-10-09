@@ -10,3 +10,5 @@ dist/
 coverage/
 /tmp/
 .dira-runtime/
+.dira-memory/
+.dira-memory-export/

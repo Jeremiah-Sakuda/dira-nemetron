@@ -18,7 +18,7 @@ This plan translates [`dira-v2-prd.md`](dira-v2-prd.md) into reviewable stages. 
 To keep implementation moving, use these reversible defaults until the owner changes them:
 
 - Google-only sign-in for the first release.
-- A per-user Git repository on the Nebius VM is the source of truth for graph, rules, and policies; provide clone/download and export.
+- A private per-user Git repository on the Nebius VM mirrors graph, rules, and policies; Postgres remains the operational source of truth until authenticated restore/import is implemented.
 - Postgres runs on the VM for the first deployment, with backups documented.
 - Draft-only is enabled by default for real accounts and disabled only for the isolated synthetic demo persona.
 - Telegram is the first Hermes messaging channel; the web inbox remains the authoritative approval surface.
@@ -53,11 +53,12 @@ To keep implementation moving, use these reversible defaults until the owner cha
 - Add Postgres account, state, event, workflow, action ledger, and credential tables with forced row-level security scoped by a transaction-local account id.
 - Replace global Firestore workflow state with Postgres-backed, per-account partitions.
 - Add account identity, timezone, and absolute ISO timestamps; derive solver horizons from current time.
-- Move graph/policy memory to a per-user Git repository with import/export and durable commits.
+- Mirror graph, focus-hour profile, conservative policy defaults, and correction-rule files into a private per-user Git repository; provide authenticated bundle export and durable-volume deployment.
+- Add authenticated import/restore with schema validation and a transactional merge before promoting Git memory to source of truth.
 
-**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, per-user `DomainState` bootstrap, and signed-in Google Calendar reads are implemented. Calendar event write scope is available through a separate, identity-bound incremental consent flow; the adapter checks the stored grant before every mutation. Users can save recurring focus hours in their calendar timezone; the service expands them into a re-anchored 90-day solver horizon. A private schedule check runs the deterministic feasibility, candidate generation, validation, and policy engines. Confirmed graph proposals now enter the account state through a user decision. The service's live Google/Postgres credentials are not configured in this workspace.
+**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, per-user `DomainState` bootstrap, and signed-in Google Calendar reads are implemented. Calendar event write scope is available through a separate, identity-bound incremental consent flow; the adapter checks the stored grant before every mutation. Users can save recurring focus hours in their calendar timezone; the service expands them into a re-anchored 90-day solver horizon. A private schedule check runs the deterministic feasibility, candidate generation, validation, and policy engines. Confirmed graph changes and focus-hour updates are mirrored into private local Git repositories and users can download an authenticated Git bundle. Git mirrors are not yet importable and operational memory remains in Postgres; `DIRA_MEMORY_ROOT` must point at persistent private storage in deployment. The service's live Google/Postgres credentials are not configured in this workspace.
 
-**Exit:** two accounts cannot read or mutate each other's state; timezone and persistence survive restarts.
+**Exit:** two accounts cannot read or mutate each other's state; timezone and Postgres/Git persistence survive restarts; authenticated Git restore/import is implemented and verified.
 
 ### 3. Security boundary and policy (P0.3–5)
 
