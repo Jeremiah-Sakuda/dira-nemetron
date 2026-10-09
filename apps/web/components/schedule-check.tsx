@@ -107,7 +107,7 @@ export function ScheduleCheck() {
   }
 
   return (
-    <section className="schedule-check" aria-labelledby="schedule-check-title">
+    <section id="schedule-check" className="schedule-check" aria-labelledby="schedule-check-title">
       <div className="section-label">Make plans usable</div>
       <h2 id="schedule-check-title">Set your focus hours</h2>
       <p className="muted">Dira uses these local-time windows to estimate capacity for deadline work. Events already in your confirmed graph are treated as busy time.</p>

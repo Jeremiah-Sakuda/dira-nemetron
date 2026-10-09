@@ -205,6 +205,10 @@ rules are skipped rather than expanded. Manual sync is available; 30-minute
 polling defaults off and requires both `DIRA_ICAL_SYNC_ACCOUNT_IDS` on the
 trusted orchestrator and the user's per-feed opt-in. Feed changes currently
 join the confirmed graph but do not yet enter the production repair workflow.
+For accounts provisioned in `DIRA_DAILY_JOB_ACCOUNT_IDS`, the orchestrator
+re-anchors and recomputes schedule feasibility at 02:00 local time, then saves
+a durable 07:00 local-time report for the onboarding summary. These reports
+show deterministic findings and candidate plans; they never execute actions.
 
 Monorepo map: engines in [`packages/`](packages), the agent loop in
 [`agents/dira`](agents/dira), scoped tool adapters in [`adapters/`](adapters),

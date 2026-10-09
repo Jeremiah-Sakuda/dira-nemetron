@@ -640,6 +640,57 @@ table.data td:first-child {
   font-size: 13px;
 }
 
+.morning-summary {
+  margin-top: 32px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border);
+}
+
+.morning-summary h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.morning-summary > p {
+  max-width: 72ch;
+}
+
+.morning-summary-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 16px 0;
+  padding: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.morning-summary-plans {
+  margin-top: 18px;
+}
+
+.morning-summary-plans h3 {
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.morning-summary-plans article {
+  display: grid;
+  gap: 6px;
+  margin-top: 9px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.morning-summary-plans article p {
+  overflow-wrap: anywhere;
+}
+
 .deadline-feeds {
   margin-top: 32px;
   padding-top: 26px;

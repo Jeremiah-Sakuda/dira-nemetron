@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { GraphReview } from './graph-review';
 import { ScheduleCheck } from './schedule-check';
 import { DeadlineFeeds } from './deadline-feeds';
+import { MorningSummary } from './morning-summary';
 
 interface Account {
   email: string;
@@ -212,6 +213,7 @@ export function AccountSetup() {
             )}
           </section>
         )}
+        {account && <MorningSummary />}
         {account && <DeadlineFeeds onProposalsChanged={() => setGraphRevision((revision) => revision + 1)} />}
         {account && <GraphReview
           timezone={account.timezone}

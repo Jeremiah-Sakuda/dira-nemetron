@@ -46,6 +46,13 @@ export interface StoredIcalFeed {
   urlSecret?: EncryptedCredential;
 }
 
+export interface StoredDailyScheduleReport {
+  localDate: string;
+  reportType: 'NIGHTLY_RECOMPUTE' | 'MORNING_SUMMARY';
+  generatedAtIso: string;
+  report: Record<string, unknown>;
+}
+
 export interface AccountPlanningSnapshot {
   state: DomainState;
   stateVersion: string;
@@ -127,6 +134,7 @@ export class PostgresAccountStore {
       '005_account_availability.sql', '006_action_approvals.sql', '007_action_ledger_identity.sql',
       '008_workflow_execution_evidence.sql', '009_account_policy_settings.sql',
       '010_policy_block_events.sql', '011_source_sync_cursors.sql', '012_ical_deadline_feeds.sql',
+      '013_account_daily_reports.sql',
     ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
@@ -323,6 +331,53 @@ export class PostgresAccountStore {
          WHERE account_id = $1 AND feed_id = $2`,
         [accountId, feedId, detail],
       );
+    });
+  }
+
+  async getDailyScheduleReport(
+    accountId: string,
+    localDate: string,
+    reportType: StoredDailyScheduleReport['reportType'],
+  ): Promise<StoredDailyScheduleReport | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ local_date: string; generated_at: Date; report: Record<string, unknown> }>(
+        `SELECT local_date::text, generated_at, report FROM dira_account_daily_reports
+         WHERE account_id = $1 AND local_date = $2::date AND report_type = $3`,
+        [accountId, localDate, reportType],
+      );
+      const row = result.rows[0];
+      return row ? { localDate: row.local_date, reportType, generatedAtIso: row.generated_at.toISOString(), report: row.report } : undefined;
+    });
+  }
+
+  async getLatestDailyScheduleReport(
+    accountId: string,
+    reportType: StoredDailyScheduleReport['reportType'],
+  ): Promise<StoredDailyScheduleReport | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ local_date: string; generated_at: Date; report: Record<string, unknown> }>(
+        `SELECT local_date::text, generated_at, report FROM dira_account_daily_reports
+         WHERE account_id = $1 AND report_type = $2 ORDER BY local_date DESC LIMIT 1`,
+        [accountId, reportType],
+      );
+      const row = result.rows[0];
+      return row ? { localDate: row.local_date, reportType, generatedAtIso: row.generated_at.toISOString(), report: row.report } : undefined;
+    });
+  }
+
+  async saveDailyScheduleReport(
+    accountId: string,
+    localDate: string,
+    reportType: StoredDailyScheduleReport['reportType'],
+    report: Record<string, unknown>,
+  ): Promise<boolean> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query(
+        `INSERT INTO dira_account_daily_reports (account_id, local_date, report_type, report)
+         VALUES ($1, $2::date, $3, $4::jsonb) ON CONFLICT DO NOTHING`,
+        [accountId, localDate, reportType, JSON.stringify(report)],
+      );
+      return result.rowCount === 1;
     });
   }
 

@@ -21,6 +21,7 @@ import { AccountPolicySettingsSchema } from './account-policy.js';
 import { startConfiguredCalendarPolling, syncAccountCalendarChanges } from './account-calendar-sync.js';
 import { startConfiguredGmailPolling, syncAccountGmailChanges } from './account-gmail-sync.js';
 import { createIcalFeed, startConfiguredIcalPolling, syncAccountIcalFeed } from './account-ical-sync.js';
+import { startConfiguredAccountDailyJobs } from './account-daily-jobs.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -324,6 +325,13 @@ const server = createServer(async (req, res) => {
           horizonEndMin: state.horizonEndMin,
         },
       });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/api/account/morning-summary') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) { json(req, res, 401, { error: 'unauthenticated' }); return; }
+      const summary = await (await accountStore()).getLatestDailyScheduleReport(accountId, 'MORNING_SUMMARY');
+      json(req, res, 200, { summary: summary ?? null });
       return;
     }
     if (url.pathname === '/api/availability' && req.method === 'GET') {
@@ -1359,4 +1367,5 @@ server.listen(PORT, () => {
   startConfiguredCalendarPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
   startConfiguredGmailPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
   startConfiguredIcalPolling(accountStore);
+  startConfiguredAccountDailyJobs(accountStore, syncMemoryFromStore);
 });
