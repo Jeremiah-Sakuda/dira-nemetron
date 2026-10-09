@@ -43,7 +43,7 @@ export default async function SystemPage() {
               ▶ Run the 48-Hour Shock
             </Link>
             {productionConfigured && (
-              <StatusPill kind="good" label="LIVE CLOUD · Vertex + Calendar" />
+              <StatusPill kind="good" label="LIVE CLOUD · Nebius + Calendar" />
             )}
           </div>
         </div>

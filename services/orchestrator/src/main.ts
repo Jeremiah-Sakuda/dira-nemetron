@@ -6,6 +6,10 @@ import { FileWorkflowStore } from '@dira/agent/file-stores';
 import { Gemma3nVoiceClient, transcriptToVoiceEvent } from '@dira/gemma-voice';
 import { RawEmailEventSchema, RawVoiceNoteSchema } from '@dira/event-schema';
 import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden';
+import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAccountId, isAllowedOrigin } from './google-auth.js';
+import { PostgresAccountStore } from './postgres-store.js';
+import { googleAccessToken } from './google-auth.js';
+import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -40,23 +44,35 @@ const DEMO_TOKEN = process.env.DIRA_DEMO_TOKEN ?? '';
 const ALLOWED_ORIGIN = process.env.DIRA_ALLOWED_ORIGIN ?? 'http://localhost:3000';
 const GEMMA3N_URL = process.env.DIRA_GEMMA3N_URL ?? '';
 const GEMMA3N_TOKEN = process.env.DIRA_GEMMA3N_TOKEN ?? '';
+let accountStorePromise: Promise<PostgresAccountStore> | undefined;
 
 if (MODE === 'production' && !DEMO_TOKEN) {
   throw new Error('DIRA_DEMO_TOKEN is required in production mode');
 }
 
 function cors(req: IncomingMessage, res: ServerResponse): void {
-  if (req.headers.origin === ALLOWED_ORIGIN) {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  const allowedOrigin = process.env.DIRA_WEB_ORIGIN ?? ALLOWED_ORIGIN;
+  if (req.headers.origin === allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'content-type, x-dira-demo-token');
 }
 
+function accountStore(): Promise<PostgresAccountStore> {
+  accountStorePromise ??= (async () => {
+    const store = new PostgresAccountStore();
+    await store.initialize();
+    return store;
+  })();
+  return accountStorePromise;
+}
+
 function json(req: IncomingMessage, res: ServerResponse, code: number, body: unknown): void {
   cors(req, res);
-  res.writeHead(code, { 'content-type': 'application/json' });
+  res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'private, no-store' });
   res.end(JSON.stringify(body));
 }
 
@@ -146,6 +162,86 @@ const server = createServer(async (req, res) => {
     // locally).
     if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/healthz')) {
       json(req, res, 200, { ok: true, mode: MODE });
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/auth/google/start') {
+      const start = beginGoogleOAuth();
+      res.writeHead(302, { location: start.authorizationUrl, 'set-cookie': start.stateCookie });
+      res.end();
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/auth/google/complete') {
+      const body = safeJson(await readBody(req)) as { code?: string; state?: string } | null;
+      if (!body?.code || !body.state) {
+        json(req, res, 400, { error: 'missing_code_or_state' });
+        return;
+      }
+      const complete = await completeGoogleOAuth(req, body.code, body.state, await accountStore());
+      json(req, res, 200, {
+        accountId: complete.accountId,
+        sessionCookie: complete.sessionCookie,
+        clearStateCookie: complete.clearStateCookie,
+      });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/auth/google/callback') {
+      const googleError = url.searchParams.get('error');
+      const code = url.searchParams.get('code');
+      const state = url.searchParams.get('state');
+      if (googleError || !code || !state) {
+        res.writeHead(302, {
+          location: `${process.env.DIRA_WEB_ORIGIN ?? ALLOWED_ORIGIN}/?auth_error=google`,
+          'set-cookie': `dira_oauth_state=; Path=/auth/google; Max-Age=0; HttpOnly; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`,
+        });
+        res.end();
+        return;
+      }
+      const complete = await completeGoogleOAuth(req, code, state, await accountStore());
+      res.writeHead(302, {
+        location: `${process.env.DIRA_WEB_ORIGIN ?? ALLOWED_ORIGIN}/?signed_in=1`,
+        'set-cookie': [complete.sessionCookie, complete.clearStateCookie],
+      });
+      res.end();
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/api/me') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const account = await (await accountStore()).getAccount(accountId);
+      if (!account) {
+        json(req, res, 401, { error: 'account_not_found' });
+        return;
+      }
+      json(req, res, 200, { account });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/api/calendar/events') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const store = await accountStore();
+      const account = await store.getAccount(accountId);
+      if (!account) {
+        json(req, res, 401, { error: 'account_not_found' });
+        return;
+      }
+      const calendar = new GoogleUserCalendarTool(() => googleAccessToken(store, accountId));
+      json(req, res, 200, { timezone: account.timezone, events: await calendar.getEvents() });
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/auth/logout') {
+      if (!isAllowedOrigin(req.headers.origin)) {
+        json(req, res, 403, { error: 'origin_not_allowed' });
+        return;
+      }
+      res.setHeader('set-cookie', clearSessionCookie());
+      json(req, res, 200, { signedOut: true });
       return;
     }
 

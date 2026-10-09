@@ -45,6 +45,15 @@ protected. CORS is restricted to `DIRA_ALLOWED_ORIGIN`. Public `/health` and
 `/status` responses contain only mode/readiness/count data, never the Calendar
 ID, token, or raw workflow content.
 
+The v2 personal-account path uses Google OAuth state plus PKCE, a signed
+HttpOnly session cookie, and encrypted OAuth-token records (AES-256-GCM).
+Refresh tokens remain server-side. Account, workflow, event, state, ledger,
+and credential tables use forced Postgres row-level security with the account
+context set transaction-locally. The database connection must use a dedicated
+non-superuser role; PostgreSQL superusers can bypass row-level policies.
+Google setup currently requests read-only Calendar access. Calendar mutation
+scopes and per-user repair execution remain unimplemented.
+
 ## Auditability (PRD §48)
 
 Every workflow persists: the triggering event, interpreted mutation, impact

@@ -48,9 +48,14 @@ To keep implementation moving, use these reversible defaults until the owner cha
 
 ### 2. Accounts, persistence, and time (P0.2)
 
+- Add Google OAuth with signed HttpOnly sessions, CSRF state, PKCE, verified account identity, and Google Calendar timezone discovery. Start with read-only Calendar scopes; request write scopes in a separate step when the approval workflow is ready. The web app connects through same-origin route handlers so the session cookie stays on the app origin.
+- Store Google OAuth credentials encrypted with AES-256-GCM; keep refresh tokens server-side and refresh access tokens before adapter use.
+- Add Postgres account, state, event, workflow, action ledger, and credential tables with forced row-level security scoped by a transaction-local account id.
 - Replace global Firestore workflow state with Postgres-backed, per-account partitions.
 - Add account identity, timezone, and absolute ISO timestamps; derive solver horizons from current time.
 - Move graph/policy memory to a per-user Git repository with import/export and durable commits.
+
+**Current:** OAuth routes, web onboarding/sign-out, encrypted credential storage, token refresh, account schema, RLS migration, and a read-only signed-in Google Calendar adapter/preview are implemented. Database-backed graph/workflow execution and the live OAuth round trip still need configured Google/Postgres secrets.
 
 **Exit:** two accounts cannot read or mutate each other's state; timezone and persistence survive restarts.
 

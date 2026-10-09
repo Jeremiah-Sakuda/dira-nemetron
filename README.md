@@ -138,6 +138,13 @@ Account isolation, Postgres, the broker, and Nebius-hosted scheduling are planne
 The Vercel dashboard proxies authenticated judge actions without exposing its
 token. [Architecture details and evidence legend](docs/architecture/README.md).
 
+The personal-account v2 foundation now includes Google OAuth with PKCE,
+signed HttpOnly sessions, encrypted credential storage, Postgres RLS, and a
+read-only Google Calendar preview on `/onboarding`. It is a separate account
+path from the shared synthetic judge world. The hosted dashboard does not yet
+have these Google/Postgres secrets configured, and account state is not yet
+connected to the repair engine.
+
 Monorepo map: engines in [`packages/`](packages), the agent loop in
 [`agents/dira`](agents/dira), scoped tool adapters in [`adapters/`](adapters),
 the Cloud Run service in [`services/`](services), the golden fixture in
@@ -221,6 +228,15 @@ DIRA_ALLOWED_ORIGIN=<your-dashboard-origin> bash infrastructure/cloud-run/deploy
 # vars (vercel env add ...), then: vercel deploy --prod
 # seed + smoke-test: POST /demo/reset then /demo/trigger with the demo token
 ```
+
+For the personal-account preview, configure `DATABASE_URL`,
+`DIRA_SESSION_SECRET`, `DIRA_TOKEN_ENCRYPTION_KEY`, `GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, and `DIRA_WEB_ORIGIN` in the
+orchestrator environment. The Google OAuth redirect must exactly match
+`https://<dashboard-origin>/api/auth/google/callback`; enable the Google
+Calendar API and allow the app origin. Use a dedicated non-superuser Postgres
+role so forced row-level security remains effective. Keep these values in a
+secret manager, not in `NEXT_PUBLIC_*` variables.
 
 ## Local replay & modes
 

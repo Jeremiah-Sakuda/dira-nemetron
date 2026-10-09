@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/graph', label: 'Graph' },
   { href: '/policies', label: 'Policies' },
   { href: '/activity', label: 'Activity' },
+  { href: '/onboarding', label: 'Account' },
 ];
 
 export function Nav() {

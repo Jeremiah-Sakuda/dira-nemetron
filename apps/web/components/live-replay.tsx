@@ -185,7 +185,7 @@ export function LiveReplay() {
       )}
       {runtime && runtime.mode === 'production' && (
         <p className="evidence-note">
-          Live cloud boundary: Gemini interprets on Vertex AI and the Calendar
+          Live cloud boundary: Nemotron interprets through Nebius Token Factory and the Calendar
           mutations land on a real Google Calendar, verified by independent
           re-reads. Recruiter availability, organization ownership, and the
           notification outbox are controlled Firestore integration surfaces —

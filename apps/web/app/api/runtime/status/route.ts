@@ -24,7 +24,7 @@ export async function GET(): Promise<Response> {
       connected: true,
       seeded: detail.seeded ?? false,
       workflowRuns: detail.workflowRuns ?? 0,
-      detail: 'Cloud Run + Vertex AI + Firestore + Google Calendar',
+      detail: 'Cloud Run + Nebius Token Factory + Firestore + Google Calendar',
     });
   } catch (error) {
     return Response.json(

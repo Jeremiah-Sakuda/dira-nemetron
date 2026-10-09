@@ -377,6 +377,158 @@ table.data td:first-child {
   font-weight: 600;
   padding: 9px 16px;
   cursor: pointer;
+  min-height: 44px;
+  transition: filter 180ms ease, background-color 180ms ease;
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+}
+
+.btn:focus-visible,
+.google-connect:focus-visible {
+  outline: 3px solid #a9cdf9;
+  outline-offset: 3px;
+}
+
+.btn-secondary {
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.onboarding-wrap {
+  max-width: 720px;
+  margin: 48px auto;
+}
+
+.onboarding-card {
+  padding: clamp(24px, 5vw, 48px);
+}
+
+.onboarding-title {
+  max-width: 18ch;
+  margin-bottom: 16px;
+}
+
+.onboarding-copy {
+  max-width: 58ch;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+}
+
+.google-connect {
+  width: fit-content;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 18px;
+  background: #fff;
+  color: #1d1d1d;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background-color 180ms ease;
+}
+
+.google-connect:hover {
+  background: #f1f1f1;
+}
+
+.account-connected {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.account-connected > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-connected p {
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+}
+
+.connected-indicator {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--status-good);
+}
+
+.privacy-note {
+  max-width: 62ch;
+  margin-top: 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.calendar-preview {
+  margin-top: 26px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.calendar-preview h2 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.calendar-preview ul {
+  list-style: none;
+}
+
+.calendar-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.calendar-preview li strong {
+  overflow-wrap: anywhere;
+}
+
+.calendar-preview li time {
+  flex: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.form-error {
+  margin-top: 14px;
+  color: #ff9d9d;
+}
+
+@media (max-width: 540px) {
+  .onboarding-wrap {
+    margin: 20px auto;
+  }
+
+  .account-connected {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .account-connected .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .calendar-preview li {
+    flex-direction: column;
+    gap: 2px;
+  }
 }
 
 .btn:disabled {

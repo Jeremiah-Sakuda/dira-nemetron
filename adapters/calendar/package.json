@@ -7,7 +7,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./google": "./src/google-calendar.ts"
+    "./google": "./src/google-calendar.ts",
+    "./user-google": "./src/user-google-calendar.ts"
   },
   "dependencies": {
     "@dira/tool-contracts": "*",
