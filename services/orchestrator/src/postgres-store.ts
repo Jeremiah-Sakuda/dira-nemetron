@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { DEFAULT_ENGINE_CONFIG, isoToMinutes, localDateTimeToIso, type Commitment, type DomainState } from '@dira/commitment-model';
 import type { ActionRecord, LedgerStore } from '@dira/action-ledger';
@@ -21,6 +21,20 @@ export interface EncryptedCredential {
   keyVersion: number;
   scopes: string[];
   expiresAt?: Date;
+}
+
+export interface AccountPlanningSnapshot {
+  state: DomainState;
+  stateVersion: string;
+  profile: AvailabilityProfile;
+  profileVersion: string;
+}
+
+export interface ApprovalRevalidationEvidence {
+  revalidatedAtIso: string;
+  evidenceHash: string;
+  stateVersion: string;
+  profileVersion: string;
 }
 
 export interface EventClaimInput {
@@ -203,6 +217,29 @@ export class PostgresAccountStore {
     });
   }
 
+  async loadAccountPlanningSnapshot(accountId: string): Promise<AccountPlanningSnapshot | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{
+        state: DomainState; profile: AvailabilityProfile;
+      }>(
+        `SELECT s.state, p.profile
+         FROM dira_account_state s
+         JOIN dira_availability_profiles p USING (account_id)
+         WHERE s.account_id = $1`,
+        [accountId],
+      );
+      const snapshot = result.rows[0];
+      if (!snapshot) return undefined;
+      assertAccountMatch(accountId, snapshot.state.userId);
+      return {
+        state: snapshot.state,
+        stateVersion: contentHash(snapshot.state),
+        profile: snapshot.profile,
+        profileVersion: contentHash(snapshot.profile),
+      };
+    });
+  }
+
   async saveAvailabilityProfile(
     accountId: string,
     profile: AvailabilityProfile,
@@ -243,15 +280,38 @@ export class PostgresAccountStore {
     });
   }
 
+  async getActionRecord(accountId: string, actionId: string): Promise<ActionRecord | undefined> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ record: ActionRecord }>(
+        'SELECT record FROM dira_action_ledger WHERE account_id = $1 AND action_id = $2',
+        [accountId, actionId],
+      );
+      return result.rows[0]?.record;
+    });
+  }
+
+  async listWorkflowActionRecords(accountId: string, workflowId: string): Promise<ActionRecord[]> {
+    return this.withAccount(accountId, async (client) => {
+      const result = await client.query<{ record: ActionRecord }>(
+        `SELECT record FROM dira_action_ledger
+         WHERE account_id = $1 AND workflow_id = $2
+         ORDER BY record_index ASC`,
+        [accountId, workflowId],
+      );
+      return result.rows.map((row) => row.record);
+    });
+  }
+
   async listRecentApprovalDecisions(accountId: string): Promise<{
-    actionId: string; decision: 'APPROVED' | 'REJECTED'; decidedAtIso: string; summary: string; status: ActionRecord['status'] | null;
+    actionId: string; decision: 'APPROVED' | 'REJECTED'; decidedAtIso: string; revalidatedAtIso: string | null;
+    evidenceHash: string | null; summary: string; status: ActionRecord['status'] | null;
   }[]> {
     return this.withAccount(accountId, async (client) => {
       const result = await client.query<{
-        action_id: string; decision: 'APPROVED' | 'REJECTED'; decided_at: Date;
+        action_id: string; decision: 'APPROVED' | 'REJECTED'; decided_at: Date; revalidated_at: Date | null; evidence_hash: string | null;
         record: ActionRecord | null;
       }>(
-        `SELECT a.action_id, a.decision, a.decided_at, l.record
+        `SELECT a.action_id, a.decision, a.decided_at, a.revalidated_at, a.evidence_hash, l.record
          FROM dira_action_approvals a
          LEFT JOIN dira_action_ledger l
            ON l.account_id = a.account_id AND l.action_id = a.action_id
@@ -264,6 +324,8 @@ export class PostgresAccountStore {
         actionId: row.action_id,
         decision: row.decision,
         decidedAtIso: row.decided_at.toISOString(),
+        revalidatedAtIso: row.revalidated_at?.toISOString() ?? null,
+        evidenceHash: row.evidence_hash,
         summary: row.record?.action.summary ?? 'Action details are no longer available.',
         status: row.record?.status ?? null,
       }));
@@ -275,8 +337,29 @@ export class PostgresAccountStore {
     accountId: string,
     actionId: string,
     decision: 'APPROVED' | 'REJECTED',
+    evidence?: ApprovalRevalidationEvidence,
   ): Promise<ActionRecord> {
     return this.withAccount(accountId, async (client) => {
+      if (decision === 'APPROVED' && !evidence) {
+        throw new Error('approval requires fresh-read and policy revalidation evidence');
+      }
+      if (decision === 'APPROVED') {
+        const [stateResult, profileResult] = await Promise.all([
+          client.query<{ state: DomainState }>(
+            'SELECT state FROM dira_account_state WHERE account_id = $1 FOR UPDATE',
+            [accountId],
+          ),
+          client.query<{ profile: AvailabilityProfile }>(
+            'SELECT profile FROM dira_availability_profiles WHERE account_id = $1 FOR SHARE',
+            [accountId],
+          ),
+        ]);
+        if (!stateResult.rows[0] || !profileResult.rows[0]
+          || contentHash(stateResult.rows[0].state) !== evidence!.stateVersion
+          || contentHash(profileResult.rows[0].profile) !== evidence!.profileVersion) {
+          throw new Error('account graph or focus hours changed during approval revalidation; check again');
+        }
+      }
       const selected = await client.query<{ record_index: number; record: ActionRecord }>(
         `SELECT record_index, record FROM dira_action_ledger
          WHERE account_id = $1 AND action_id = $2 FOR UPDATE`,
@@ -300,6 +383,10 @@ export class PostgresAccountStore {
           decision,
           actorAccountId: accountId,
           source: 'authenticated-web',
+          ...(evidence ? {
+            revalidatedAtIso: evidence.revalidatedAtIso,
+            revalidationEvidenceHash: evidence.evidenceHash,
+          } : {}),
         },
         history: [...row.record.history, {
           status: nextStatus,
@@ -313,9 +400,12 @@ export class PostgresAccountStore {
         [accountId, actionId, nextStatus, JSON.stringify(record)],
       );
       await client.query(
-        `INSERT INTO dira_action_approvals (account_id, action_id, decision, actor_account_id, source, decided_at)
-         VALUES ($1, $2, $3, $1, 'authenticated-web', $4)`,
-        [accountId, actionId, decision, now],
+        `INSERT INTO dira_action_approvals
+           (account_id, action_id, decision, actor_account_id, source, decided_at, revalidated_at,
+            evidence_hash, state_version, profile_version)
+         VALUES ($1, $2, $3, $1, 'authenticated-web', $4, $5, $6, $7, $8)`,
+        [accountId, actionId, decision, now, evidence?.revalidatedAtIso ?? null,
+          evidence?.evidenceHash ?? null, evidence?.stateVersion ?? null, evidence?.profileVersion ?? null],
       );
       return record;
     });
@@ -756,4 +846,17 @@ function calendarValueToIso(value: string, timezone: string): string {
   const epoch = Date.parse(value);
   if (!Number.isFinite(epoch)) throw new Error(`invalid calendar timestamp ${value}`);
   return new Date(epoch).toISOString();
+}
+
+function contentHash(value: unknown): string {
+  return createHash('sha256').update(stableJson(value)).digest('hex');
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b));
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
 }

@@ -150,8 +150,10 @@ delegation links are excluded without explicit person evidence. Users can set
 their recurring focus hours and run an account-private feasibility check with
 the deterministic solver and policy engine; candidate repairs are previews
 and cannot mutate services. A feasible candidate with policy-held actions can
-be sent to the per-account approval inbox; owner decisions are audited, but
-this account path does not resume or execute those actions yet. This remains
+be sent to the per-account approval inbox. Before authorizing, Dira re-reads
+relevant Calendar items and reruns feasibility and policy; the decision and
+revalidation evidence hash are stored per account. This account path does not
+resume or execute those actions yet and keeps Calendar read-only. It remains
 separate from the shared synthetic judge world. The hosted dashboard does not
 yet have these Google/Postgres secrets configured.
 

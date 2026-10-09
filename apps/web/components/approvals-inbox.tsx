@@ -17,6 +17,8 @@ interface RecentDecision {
   actionId: string;
   decision: 'APPROVED' | 'REJECTED';
   decidedAtIso: string;
+  revalidatedAtIso: string | null;
+  evidenceHash: string | null;
   summary: string;
   status: string | null;
 }
@@ -57,11 +59,11 @@ export function ApprovalsInbox() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ actionId: item.actionId, decision }),
       });
-      const result = await response.json() as { error?: string };
+      const result = await response.json() as { error?: string; checkedCalendarEvents?: number; planLabel?: string };
       if (!response.ok) throw new Error(result.error ?? 'Decision could not be recorded.');
       setApprovals((current) => current.filter((approval) => approval.actionId !== item.actionId));
       setNotice(decision === 'APPROVED'
-        ? 'Authorization recorded. This account path does not execute actions yet.'
+        ? `Approved after rechecking ${result.checkedCalendarEvents ?? 0} Calendar item(s)${result.planLabel ? ` for “${result.planLabel}”` : ''}. This account path does not execute actions yet.`
         : 'Action rejected and recorded.');
       await load();
     } catch (cause) {
@@ -108,7 +110,7 @@ export function ApprovalsInbox() {
         {recentDecisions.length > 0 && <section className="recent-decisions" aria-labelledby="recent-approvals-title">
           <h3 id="recent-approvals-title">Recent decisions</h3>
           {recentDecisions.map((item) => <div className="recent-decision" key={`${item.actionId}-${item.decidedAtIso}`}>
-            <div><strong>{item.summary}</strong><span className="muted"> · {label(item.decision)}{item.status ? ` · ${label(item.status)}` : ''}</span></div>
+            <div><strong>{item.summary}</strong><span className="muted"> · {label(item.decision)}{item.status ? ` · ${label(item.status)}` : ''}{item.revalidatedAtIso ? ` · revalidated ${new Date(item.revalidatedAtIso).toLocaleString()}` : ''}</span></div>
             <time dateTime={item.decidedAtIso}>{new Date(item.decidedAtIso).toLocaleString()}</time>
           </div>)}
         </section>}

@@ -50,6 +50,8 @@ export interface ActionApproval {
   decision?: 'APPROVED' | 'REJECTED';
   actorAccountId?: string;
   source?: 'authenticated-web';
+  revalidatedAtIso?: string;
+  revalidationEvidenceHash?: string;
 }
 
 export interface ActionRecord {

@@ -5,8 +5,17 @@ CREATE TABLE IF NOT EXISTS dira_action_approvals (
   actor_account_id text NOT NULL CHECK (actor_account_id = account_id),
   source text NOT NULL CHECK (source = 'authenticated-web'),
   decided_at timestamptz NOT NULL DEFAULT now(),
+  revalidated_at timestamptz,
+  evidence_hash text,
+  state_version text,
+  profile_version text,
   PRIMARY KEY (account_id, action_id)
 );
+
+ALTER TABLE dira_action_approvals ADD COLUMN IF NOT EXISTS revalidated_at timestamptz;
+ALTER TABLE dira_action_approvals ADD COLUMN IF NOT EXISTS evidence_hash text;
+ALTER TABLE dira_action_approvals ADD COLUMN IF NOT EXISTS state_version text;
+ALTER TABLE dira_action_approvals ADD COLUMN IF NOT EXISTS profile_version text;
 
 CREATE INDEX IF NOT EXISTS dira_action_approvals_decided_at_idx
   ON dira_action_approvals(account_id, decided_at DESC);

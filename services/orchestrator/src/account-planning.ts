@@ -3,6 +3,7 @@ import { isoToMinutes, localDateTimeToIso, type DomainState, type Interval } fro
 import { computeFeasibility, rankValidations, validatePlan } from '@dira/constraint-engine';
 import { evaluatePlanActions } from '@dira/policy-engine';
 import { generateCandidatePlans } from '@dira/agent';
+import type { PlannedAction } from '@dira/event-schema';
 
 export const AvailabilityProfileSchema = z.object({
   weekdays: z.array(z.number().int().min(0).max(6)).max(7)
@@ -118,6 +119,21 @@ export function prepareAccountSchedule(state: DomainState) {
     policy: evaluatePlanActions(state, validation.plan.actions),
   }));
   return { feasibility, ranked };
+}
+
+/** Stable across horizon rebasing; ISO instants, not minute offsets, identify schedule intents. */
+export function stableActionIntentKey(action: PlannedAction): string {
+  const desired = Object.entries(action.desired_state)
+    .filter(([key]) => !['start_min', 'deadline_min', 'release_min'].includes(key))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => {
+      const normalized = key.endsWith('_iso') && typeof value === 'string'
+        ? new Date(value).toISOString()
+        : String(value);
+      return `${key}=${normalized}`;
+    })
+    .join(',');
+  return `${action.type}:${action.target}:${desired}`;
 }
 
 function localDate(date: Date, timezone: string): string {

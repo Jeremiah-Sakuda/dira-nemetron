@@ -5,14 +5,15 @@ import { FileLedgerStore } from '@dira/action-ledger/file-store';
 import { buildReplayRuntime, computeRunMetrics } from '@dira/agent';
 import { FileWorkflowStore } from '@dira/agent/file-stores';
 import { Gemma3nVoiceClient, transcriptToVoiceEvent } from '@dira/gemma-voice';
-import { RawEmailEventSchema, RawVoiceNoteSchema, type PlannedAction } from '@dira/event-schema';
+import { RawEmailEventSchema, RawVoiceNoteSchema } from '@dira/event-schema';
 import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden';
 import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAccountId, isAllowedOrigin } from './google-auth.js';
 import { PostgresAccountStore, PostgresLedgerStore, PostgresWorkflowStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema, type WorkflowRun } from '@dira/agent';
-import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule } from './account-planning.js';
+import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule, stableActionIntentKey } from './account-planning.js';
+import { revalidateAccountApproval } from './account-approval.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -324,8 +325,8 @@ const server = createServer(async (req, res) => {
       const ledger = await ActionLedger.open(new PostgresLedgerStore(store, accountId));
       const existingPendingKeys = new Set(ledger.all()
         .filter((record) => ['AWAITING_APPROVAL', 'AUTHORIZED', 'PENDING_EXECUTION', 'EXECUTING'].includes(record.status))
-        .map((record) => actionIntentKey(record.action)));
-      if (pending.some(({ action }) => existingPendingKeys.has(actionIntentKey(action)))) {
+        .map((record) => stableActionIntentKey(record.action)));
+      if (pending.some(({ action }) => existingPendingKeys.has(stableActionIntentKey(action)))) {
         json(req, res, 409, { error: 'A matching action is already awaiting approval or authorized.' });
         return;
       }
@@ -418,12 +419,28 @@ const server = createServer(async (req, res) => {
         return;
       }
       try {
-        const record = await (await accountStore()).reviewActionApproval(accountId, body.actionId, body.decision);
+        const store = await accountStore();
+        const revalidation = body.decision === 'APPROVED'
+          ? await revalidateAccountApproval(store, accountId, body.actionId, () => googleAccessToken(store, accountId))
+          : undefined;
+        if (revalidation && !revalidation.ok) {
+          json(req, res, 409, { error: revalidation.reason, refreshSchedule: true });
+          return;
+        }
+        const record = await store.reviewActionApproval(
+          accountId,
+          body.actionId,
+          body.decision,
+          revalidation?.ok ? revalidation.evidence : undefined,
+        );
         json(req, res, 200, {
           actionId: record.actionId,
           status: record.status,
           decision: body.decision,
-          execution: 'held; workflow revalidation and execution are not connected to this account inbox yet',
+          revalidatedAtIso: record.approval?.revalidatedAtIso,
+          checkedCalendarEvents: revalidation?.ok ? revalidation.checkedCalendarEvents : 0,
+          planLabel: revalidation?.ok ? revalidation.planLabel : undefined,
+          execution: 'authorized and durably recorded; write scopes and brokered execution are not connected yet',
         });
       } catch (error) {
         json(req, res, 409, { error: error instanceof Error ? error.message : 'approval_conflict' });
@@ -848,12 +865,5 @@ function friendlyError(err: unknown): string {
   return String(err);
 }
 
-function actionIntentKey(action: PlannedAction): string {
-  const desired = Object.entries(action.desired_state)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${String(value)}`)
-    .join(',');
-  return `${action.type}:${action.target}:${desired}`;
-}
 
 server.listen(PORT, () => console.log(`dira-orchestrator listening on :${PORT} (mode: ${MODE})`));
