@@ -26,8 +26,8 @@ import type { CandidatePlan, PlannedAction } from '@dira/event-schema';
  * rebuilds for any graph shaped like this, which is what makes the repair
  * derived rather than scripted (PRD §7).
  *
- * In live-model mode Gemini may propose additional plan sketches; they enter
- * the same validation pipeline and can never bypass it.
+ * Planned v2 Nemotron proposals enter the same validation pipeline and can
+ * never bypass it.
  */
 
 export interface LiveSlot {
@@ -48,7 +48,7 @@ export interface PlannerInput {
 
 export function generateCandidatePlans(input: PlannerInput): CandidatePlan[] {
   const { state, feasibility, liveSlots, nowMin } = input;
-  const iso = (m: number) => minutesToIso(m, state.horizonStartIso);
+  const iso = (m: number) => minutesToIso(m, state.horizonStartIso, state.timezone);
 
   // ---- Which events need rebooking (buffer violation / unscheduled)? ------
   const rebookTargets = new Set<string>();

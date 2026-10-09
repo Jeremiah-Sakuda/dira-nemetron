@@ -9,7 +9,7 @@ import { FlightRecorder } from '@dira/observability';
 import type { CalendarEvent, GmailMessage, OrgTask, ToolSet } from '@dira/tool-contracts';
 import {
   FixtureModelClient,
-  GeminiModelClient,
+  NemotronModelClient,
   type ModelClient,
 } from './interpreter.js';
 import {
@@ -23,7 +23,7 @@ import {
  * Credential-free replay runtime (PRD §38–§39).
  *
  * REPLAY_MODE=deterministic — stored interpretation fixtures, local adapters.
- * REPLAY_MODE=live-model    — Gemini interprets; tools stay local.
+ * REPLAY_MODE=live-model    — Nemotron interprets through Token Factory; tools stay local.
  * REPLAY_MODE=production    — real Google services (Cloud Run deployment).
  */
 
@@ -85,7 +85,7 @@ export async function buildReplayRuntime(
   const model: ModelClient =
     opts.model ??
     (mode === 'live-model'
-      ? new GeminiModelClient()
+      ? new NemotronModelClient()
       : new FixtureModelClient({
           [fixture.trigger.messageId]: fixture.interpretation,
           ...opts.extraInterpretations,

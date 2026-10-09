@@ -7,7 +7,6 @@ REGION="${DIRA_REGION:-us-central1}"
 SERVICE_ACCOUNT="dira-orchestrator@${PROJECT}.iam.gserviceaccount.com"
 
 gcloud services enable \
-  aiplatform.googleapis.com \
   artifactregistry.googleapis.com \
   calendar-json.googleapis.com \
   cloudbuild.googleapis.com \
@@ -29,7 +28,7 @@ if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT" \
     --project "$PROJECT" --display-name "Dira orchestrator"
 fi
 
-for ROLE in roles/aiplatform.user roles/datastore.user roles/logging.logWriter; do
+for ROLE in roles/datastore.user roles/logging.logWriter; do
   gcloud projects add-iam-policy-binding "$PROJECT" \
     --member "serviceAccount:${SERVICE_ACCOUNT}" \
     --role "$ROLE" --condition=None >/dev/null
@@ -52,4 +51,15 @@ gcloud secrets add-iam-policy-binding dira-demo-token \
   --member "serviceAccount:${SERVICE_ACCOUNT}" \
   --role roles/secretmanager.secretAccessor >/dev/null
 
-echo "Dira Google Cloud prerequisites are ready in ${PROJECT}/${REGION}."
+if ! gcloud secrets describe nebius-api-key --project "$PROJECT" >/dev/null 2>&1; then
+  : "${NEBIUS_API_KEY:?set NEBIUS_API_KEY before first-time Token Factory provisioning}"
+  printf '%s' "$NEBIUS_API_KEY" | gcloud secrets create nebius-api-key \
+    --project "$PROJECT" --replication-policy automatic --data-file=-
+fi
+
+gcloud secrets add-iam-policy-binding nebius-api-key \
+  --project "$PROJECT" \
+  --member "serviceAccount:${SERVICE_ACCOUNT}" \
+  --role roles/secretmanager.secretAccessor >/dev/null
+
+echo "Dira legacy service prerequisites and Token Factory credentials are ready in ${PROJECT}/${REGION}."

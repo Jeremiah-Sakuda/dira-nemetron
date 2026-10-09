@@ -287,6 +287,7 @@ export function buildGoldenFixture(variation: GoldenVariation = {}): GoldenFixtu
 
   const state: DomainState = {
     userId: USER_ID,
+    timezone: 'America/Chicago',
     horizonStartIso: HORIZON_START_ISO,
     horizonEndMin: HORIZON_END_MIN,
     commitments: Object.fromEntries(commitments.map((c) => [c.id, c])),

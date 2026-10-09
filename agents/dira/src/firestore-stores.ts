@@ -79,6 +79,7 @@ export async function saveDomainState(db: Firestore, state: DomainState): Promis
   }
   batch.set(db.collection('dira_meta').doc('config'), strip({
     userId: state.userId,
+    timezone: state.timezone,
     horizonStartIso: state.horizonStartIso,
     horizonEndMin: state.horizonEndMin,
     availability: state.availability,

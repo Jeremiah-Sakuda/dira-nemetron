@@ -8,21 +8,29 @@ import {
 /**
  * Semantic interpretation (PRD §8 + §39).
  *
- * Gemini is responsible for semantic interpretation, entity resolution and
+ * Nemotron is responsible for semantic interpretation, entity resolution and
  * ambiguity handling — never for time arithmetic, slack, or authorization.
  * Every model output must survive strict schema validation AND structural
  * entity resolution against the stored commitment graph before it can touch
  * the planning layer. Malformed output is retried, then surfaced for review.
  *
  * REPLAY_MODE=deterministic → FixtureModelClient (stored interpretations)
- * REPLAY_MODE=live-model    → GeminiModelClient (Vertex AI / Gemini API)
+ * REPLAY_MODE=live-model    → NemotronModelClient (Nebius Token Factory)
  */
 
 export interface ModelClient {
   name: string;
   interpret(email: RawEmailEvent, context: InterpretationContext): Promise<unknown>;
   /** Telemetry from the most recent call, when the client records it. */
-  lastCall?: { model: string; latencyMs: number; vertexai: boolean };
+  lastCall?: {
+    model: string;
+    latencyMs: number;
+    provider: string;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    vertexai?: boolean;
+  };
 }
 
 export interface InterpretationContext {
@@ -54,7 +62,7 @@ export class FixtureModelClient implements ModelClient {
 export class GeminiModelClient implements ModelClient {
   name = 'gemini';
   /** Telemetry from the most recent call, surfaced in eval artifacts. */
-  lastCall?: { model: string; latencyMs: number; vertexai: boolean };
+  lastCall?: ModelClient['lastCall'];
 
   // Hackathon rules require Gemini 3.5+; override with DIRA_GEMINI_MODEL.
   constructor(private readonly model = process.env.DIRA_GEMINI_MODEL ?? 'gemini-3.5-flash') {}
@@ -88,7 +96,12 @@ export class GeminiModelClient implements ModelClient {
             temperature: 0,
           },
         });
-        this.lastCall = { model: this.model, latencyMs: Date.now() - startedAt, vertexai };
+        this.lastCall = {
+          model: this.model,
+          latencyMs: Date.now() - startedAt,
+          provider: vertexai ? 'Google Vertex AI' : 'Google AI Studio',
+          vertexai,
+        };
         const text = response.text ?? '';
         try {
           return JSON.parse(text);
@@ -104,9 +117,130 @@ export class GeminiModelClient implements ModelClient {
   }
 }
 
+/**
+ * Live Nemotron client for Nebius Token Factory's OpenAI-compatible API.
+ * Token Factory receives the email only as untrusted model input; all output
+ * still passes InterpretationResultSchema, graph resolution, sender authority,
+ * feasibility, and policy checks before it can affect an action.
+ */
+export class NemotronModelClient implements ModelClient {
+  name = 'nemotron';
+  lastCall?: ModelClient['lastCall'];
+
+  constructor(
+    private readonly model = process.env.DIRA_NEMOTRON_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b',
+    private readonly baseUrl = process.env.NEBIUS_TOKEN_FACTORY_BASE_URL ?? 'https://api.tokenfactory.nebius.com/v1',
+    private readonly apiKey = process.env.NEBIUS_API_KEY,
+  ) {}
+
+  async interpret(email: RawEmailEvent, context: InterpretationContext): Promise<unknown> {
+    this.lastCall = undefined;
+    if (!this.apiKey) throw new Error('NEBIUS_API_KEY is required for Token Factory inference');
+
+    const prompt = buildInterpretationPrompt(email, context);
+    const backoffsMs = [0, 2_000, 6_000];
+    let lastErr: unknown;
+    for (const backoff of backoffsMs) {
+      if (backoff > 0) await new Promise((resolve) => setTimeout(resolve, backoff));
+      try {
+        const startedAt = Date.now();
+        const response = await fetch(`${this.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${this.apiKey}`,
+            'content-type': 'application/json',
+          },
+          signal: AbortSignal.timeout(60_000),
+          body: JSON.stringify({
+            model: this.model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0,
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'dira_interpretation',
+                strict: false,
+                schema: interpretationJsonSchema,
+              },
+            },
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as TokenFactoryResponse | null;
+        if (!response.ok) {
+          const message = `${payload?.error?.message ?? 'Token Factory inference failed'} (HTTP ${response.status})`;
+          const error = new Error(message);
+          Object.assign(error, { status: response.status });
+          throw error;
+        }
+
+        this.lastCall = {
+          model: payload?.model ?? this.model,
+          latencyMs: Date.now() - startedAt,
+          provider: 'Nebius Token Factory',
+          promptTokens: payload?.usage?.prompt_tokens,
+          completionTokens: payload?.usage?.completion_tokens,
+          totalTokens: payload?.usage?.total_tokens,
+        };
+        const content = payload?.choices?.[0]?.message?.content;
+        if (typeof content !== 'string') return { malformed: content ?? 'missing completion content' };
+        try {
+          return JSON.parse(content);
+        } catch {
+          return { malformed: content };
+        }
+      } catch (err) {
+        lastErr = err;
+        if (!isTransientModelError(err)) throw err;
+      }
+    }
+    throw lastErr;
+  }
+}
+
+const interpretationJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    relevant: { type: 'boolean' },
+    reason: { type: 'string' },
+    mutation: {
+      anyOf: [
+        { type: 'null' },
+        {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            entity_type: { type: 'string', enum: ['commitment'] },
+            entity_id: { type: 'string' },
+            mutation_type: {
+              type: 'string',
+              enum: ['schedule_change', 'deadline_change', 'cancellation', 'new_commitment', 'offer_of_alternatives', 'unrelated'],
+            },
+            old_start: { type: 'string' },
+            new_start: { type: 'string' },
+            offered_alternatives: { type: 'array', items: { type: 'string' } },
+            unchanged_constraints: { type: 'array', items: { type: 'string' } },
+            confidence: { type: 'number', minimum: 0, maximum: 1 },
+            evidence_quote: { type: 'string' },
+          },
+          required: ['entity_type', 'entity_id', 'mutation_type', 'unchanged_constraints', 'confidence'],
+        },
+      ],
+    },
+  },
+  required: ['relevant', 'reason', 'mutation'],
+} as const;
+
+interface TokenFactoryResponse {
+  model?: string;
+  choices?: { message?: { content?: unknown } }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  error?: { message?: string };
+}
+
 function isTransientModelError(err: unknown): boolean {
   const s = String(err);
-  return /429|RESOURCE_EXHAUSTED|503|UNAVAILABLE|500|INTERNAL/.test(s);
+  return /429|RESOURCE_EXHAUSTED|503|UNAVAILABLE|500|INTERNAL|ECONNRESET|ETIMEDOUT|TimeoutError|fetch failed/i.test(s);
 }
 
 export function buildInterpretationPrompt(
@@ -181,9 +315,9 @@ export async function interpretEmail(
         title: c.title,
         startIso:
           c.startMin !== undefined
-            ? minutesToIso(c.startMin, state.horizonStartIso)
+            ? minutesToIso(c.startMin, state.horizonStartIso, state.timezone)
             : c.deadlineMin !== undefined
-              ? `due ${minutesToIso(c.deadlineMin, state.horizonStartIso)}`
+              ? `due ${minutesToIso(c.deadlineMin, state.horizonStartIso, state.timezone)}`
               : undefined,
       })),
   };

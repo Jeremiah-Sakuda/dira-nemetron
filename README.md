@@ -1,12 +1,14 @@
 # Dira
 
+> **Dira v2 is under active implementation on `dira-v2/personal-ai`.** The v1 deterministic evidence path remains available while the live model path moves to Nebius Token Factory and the account, broker, and connector layers are built. See [`AGENTS.md`](AGENTS.md) for the official judging criteria and [`docs/product/DIRA_V2_IMPLEMENTATION_PLAN.md`](docs/product/DIRA_V2_IMPLEMENTATION_PLAN.md) for delivery stages and release gates.
+
 **Dira continuously detects changes to your commitments, propagates their
 consequences across your life, and autonomously takes the actions required to
 make your plans feasible again.**
 
 *One thing changes. Everything adapts.*
 
-[![ci](https://github.com/Jeremiah-Sakuda/Dira/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeremiah-Sakuda/Dira/actions/workflows/ci.yml)
+[![ci](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/workflows/ci.yml)
 &nbsp;**Interactive evidence:** [dira-phi.vercel.app](https://dira-phi.vercel.app)
 — choose a scenario and stream a fresh run. The page labels the active
 boundary as live cloud, deterministic evidence, or unavailable.
@@ -32,7 +34,7 @@ outside world moves, Dira repairs the graph.
 The canonical workflow. A professor emails: *Midterm 2 moves from Friday 2 PM
 to Wednesday 2 PM.* No one prompts Dira. It then, autonomously:
 
-1. **receives** the email event (demo: an authorized webhook carrying the professor email; Gmail Watch → Pub/Sub is a scripted seam, not exercised) and extracts a structured mutation (Gemini, strict schemas)
+1. **receives** the email event (demo: an authorized webhook carrying the professor email; Gmail Watch → Pub/Sub is a scripted seam, not exercised) and extracts a structured mutation (Nemotron via Nebius Token Factory, then strict schema validation)
 2. **propagates** consequences over typed edges — 6 commitments affected
 3. **computes** feasibility: Global Slack +4.1h → **−3.6h**, three violations
 4. **plans** 6 candidate repairs; deterministic validation + explicit cost function
@@ -96,20 +98,21 @@ Every headline claim, with where a judge can see it proven:
 
 | Claim | Judge-visible proof |
 | --- | --- |
-| Gemini 3.5 on Vertex AI (real inference) | `docs/evidence/gemini-live-eval.json` (8/8, `vertexai: true`, per-case latency) · the live `INTERPRET` flight line names the model + latency inline |
+| v1 Gemini on Vertex AI (historical inference evidence) | `docs/evidence/gemini-live-eval.json` (8/8, `vertexai: true`, per-case latency); retained as v1 evidence, not the v2 runtime |
+| v2 Nemotron via Nebius Token Factory | `npm run eval:nemotron` writes `docs/evidence/nemotron-eval.json`; each run records model, per-case latency and token usage. A live API key is required. |
 | Real Google Calendar actions | Live run's before/after table + the moved events on the shared demo calendar · [`adapters/calendar/src/google-calendar.ts`](adapters/calendar/src/google-calendar.ts) |
 | Replanning after a 409 | Live flight recorder (`ERROR → OBSERVE → REPLAN → ACTION → VERIFY`) · [`docs/evidence/production-run.json`](docs/evidence/production-run.json) |
 | Crash-safe execution | `tests/chaos/*` + the CI `chaos-tests` job |
 | 10/10 production reliability | [`docs/evidence/production-10x.json`](docs/evidence/production-10x.json) |
 | 20/20 deterministic reliability | CI `golden-replay-20x` artifact |
-| Prompt-injection & forged-sender safety | `docs/evidence/gemini-live-eval.json` (blocked cases) · `tests/integration/interpretation-pipeline.test.ts` |
+| v1 prompt-injection & forged-sender safety evidence | `docs/evidence/gemini-live-eval.json` (blocked cases) · `tests/integration/interpretation-pipeline.test.ts`; Nemotron must pass the same deterministic gates |
 | Authorization is deterministic, not model-driven | Each `POLICY` flight line names the rule and the stored fact that authorized it · [`packages/policy-engine`](packages/policy-engine) |
 
 ## What makes Dira different
 
 - **It repairs, it doesn't remind.** The deliverable is restored feasibility,
   not a notification.
-- **The model proposes; deterministic code disposes.** Gemini does semantic
+- **The model proposes; deterministic code disposes.** Nemotron does semantic
   interpretation and entity resolution. Time arithmetic, slack, constraint
   checks, policy, and feasibility are deterministic and property-tested. A
   model output can never authorize an action.
@@ -125,12 +128,13 @@ Every headline claim, with where a judge can see it proven:
 
 ![Dira production architecture](docs/architecture/dira-production.svg)
 
-The production boundary is one honest Cloud Run service. Gemini on Vertex AI
-does semantic interpretation; deterministic engines own propagation,
+The v1 production boundary is one Cloud Run service. The v2 branch routes
+live interpretation to Nemotron through Token Factory; deterministic engines own propagation,
 feasibility, planning, and policy; a Firestore action ledger coordinates
 execution and independent verification. Google Calendar is the real external
 mutation target. Recruiter availability, organization ownership, and outbound
 notifications are clearly labeled controlled Firestore integration surfaces.
+Account isolation, Postgres, the broker, and Nebius-hosted scheduling are planned migration stages; the current service still uses the v1 Firestore integration boundary.
 The Vercel dashboard proxies authenticated judge actions without exposing its
 token. [Architecture details and evidence legend](docs/architecture/README.md).
 
@@ -221,10 +225,10 @@ DIRA_ALLOWED_ORIGIN=<your-dashboard-origin> bash infrastructure/cloud-run/deploy
 ## Local replay & modes
 
 `REPLAY_MODE=deterministic` (default) — stored interpretation fixtures, local
-stateful adapters, zero credentials. `REPLAY_MODE=live-model` — Gemini
-interprets (`GEMINI_API_KEY` or Vertex ADC), while tools stay local.
-`REPLAY_MODE=production` — Gemini on Vertex AI, Firestore persistence and
-transactional ledger, a real managed Google Calendar, and controlled
+stateful adapters, zero credentials. `REPLAY_MODE=live-model` — Nemotron
+interprets through Nebius Token Factory (`NEBIUS_API_KEY`), while tools stay
+local. `REPLAY_MODE=production` — Nemotron through Token Factory, Firestore
+persistence and transactional ledger, a real managed Google Calendar, and controlled
 Firestore recruiter/org/outbox surfaces. See [`.env.example`](.env.example)
 and [`infrastructure/cloud-run/`](infrastructure/cloud-run/).
 
@@ -241,15 +245,15 @@ and [`infrastructure/cloud-run/`](infrastructure/cloud-run/).
   every repair derived, not replayed. Notably: with the exam at 1 PM the
   buffer holds and Dira correctly *doesn't* touch the interview.
 
-## Google technologies
+## Current and legacy infrastructure
 
-Gemini through the Google GenAI SDK for structured interpretation; Vertex AI
-application credentials in production; one deployable Cloud Run service;
-Firestore for graph state, deduplication, workflow snapshots, controlled
-integration state, flight recordings, and transactional action-ledger claims;
-and the Google Calendar API for real mutations plus verification reads.
-Pub/Sub provisioning remains an optional ingestion path, not a claimed live
-dependency. The dashboard deploys through Vercel. See
+The v2 live model client calls Nebius Token Factory's OpenAI-compatible
+`/v1/chat/completions` endpoint and captures provider, model, latency, and token
+usage. Configure `NEBIUS_API_KEY` and `DIRA_NEMOTRON_MODEL`. The current service
+deployment still uses Cloud Run and Firestore while later v2 stages replace
+those boundaries. The Google Calendar adapter remains the real mutation target
+and independently re-reads events to verify changes. Pub/Sub provisioning
+remains an optional ingestion path, not a claimed live dependency. The dashboard deploys through Vercel. See
 [`DEVIATIONS.md`](DEVIATIONS.md) for exact evidence boundaries.
 
 ### Optional Gemma 3n private voice intake
@@ -266,7 +270,7 @@ and demonstrated. [Deployment details](infrastructure/gemma-voice/README.md).
 ## Setup
 
 ```bash
-git clone https://github.com/Jeremiah-Sakuda/Dira && cd Dira
+git clone https://github.com/Jeremiah-Sakuda/dira-nemetron && cd dira-nemetron
 npm install            # Node ≥ 20
 make demo-replay       # credential-free golden workflow
 npm --workspace apps/web run dev   # dashboard on :3000

@@ -2,12 +2,13 @@ import type { Firestore } from '@google-cloud/firestore';
 import { FirestoreActionLedger } from '@dira/action-ledger/firestore-ledger';
 import {
   DiraOrchestrator,
-  GeminiModelClient,
+  NemotronModelClient,
   computeRunMetrics,
   summarizeSurfaceChanges,
   type RunMetrics,
   type SurfaceChange,
   type WorkflowRun,
+  type ModelClient,
 } from '@dira/agent';
 import {
   FirestoreWorkflowStore,
@@ -29,7 +30,7 @@ import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden'
 /**
  * PRODUCTION MODE (PRD §39): the same engine, wired to durable, real
  * backends —
- *   interpretation : Gemini via Vertex AI (service-account ADC, no keys)
+ *   interpretation : Nemotron through Nebius Token Factory
  *   calendar       : REAL Google Calendar (service-account-owned demo
  *                    calendar shared to the demo user)
  *   ledger/state   : Firestore (transactional outbox, per-doc records)
@@ -45,7 +46,7 @@ export interface ProductionRunResult {
   run: WorkflowRun;
   metrics: RunMetrics;
   flight: FlightEntry[];
-  gemini?: { model: string; latencyMs: number; vertexai: boolean };
+  modelCall?: ModelClient['lastCall'];
   calendarId: string;
   changes: SurfaceChange[];
 }
@@ -164,7 +165,7 @@ export async function handleProductionEvent(
 
   try {
     const tools = await buildTools(db, calendarId);
-    const model = new GeminiModelClient();
+    const model = new NemotronModelClient();
     const recorder = new FlightRecorder();
     if (onEntry) recorder.onEntry(onEntry);
     const ledger = await FirestoreActionLedger.open(db);
@@ -203,7 +204,7 @@ export async function handleProductionEvent(
       run,
       metrics: computeRunMetrics(run, ledger),
       flight: recorder.all(),
-      gemini: model.lastCall,
+      modelCall: model.lastCall,
       calendarId,
       changes,
     };

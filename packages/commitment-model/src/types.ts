@@ -171,6 +171,8 @@ export interface ApprovedSlot {
 /** The full in-memory world model the engines operate on. */
 export interface DomainState {
   userId: string;
+  /** User's IANA timezone (for display and local-time planning). Legacy snapshots may omit it. */
+  timezone?: string;
   horizonStartIso: string;
   /** exclusive horizon end, minutes */
   horizonEndMin: number;

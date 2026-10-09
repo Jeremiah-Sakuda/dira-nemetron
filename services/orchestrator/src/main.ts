@@ -10,7 +10,7 @@ import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden'
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
  * loop (PRD §31). Deployed with REPLAY_MODE=production it runs the REAL
- * path: Vertex Gemini interpretation, Firestore ledger/state, Google
+ * path: Nebius Token Factory Nemotron interpretation, Firestore ledger/state, Google
  * Calendar mutations, controlled recruiter/org integrations.
  *
  * Endpoints
@@ -21,7 +21,8 @@ import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden'
  *   POST /demo/reset         reseed the demo world (body: optional variation)
  *   POST /demo/trigger       inject the golden professor email
  *   GET  /runs/latest        latest workflow run + flight recording
- *   GET  /eval/gemini        run the model-eval corpus against live Gemini
+ *   GET  /eval/nemotron      run the model-eval corpus against Token Factory
+ *   GET  /eval/gemini        run the historical v1 corpus against Gemini
  *
  * The demo deployment pins max-instances=1; multi-worker safety is provided
  * by the Firestore ledger's transactional claims when that cap is lifted.
@@ -188,7 +189,7 @@ const server = createServer(async (req, res) => {
             msg: 'workflow finished',
             run: result.run.id,
             status: result.run.status,
-            gemini: result.gemini,
+            modelCall: result.modelCall,
           }),
         );
         json(req, res, 200, result);
@@ -206,7 +207,7 @@ const server = createServer(async (req, res) => {
           run: result.run.id,
           status: result.run.status,
           gemma3n: { model: transcription.model, latencyMs: transcription.latencyMs },
-          gemini: result.gemini,
+          modelCall: result.modelCall,
         }));
         json(req, res, 200, {
           ...result,
@@ -265,7 +266,7 @@ const server = createServer(async (req, res) => {
             msg: 'workflow finished',
             run: result.run.id,
             status: result.run.status,
-            gemini: result.gemini,
+            modelCall: result.modelCall,
             path: '/demo/stream',
           }));
           send('done', {
@@ -280,7 +281,7 @@ const server = createServer(async (req, res) => {
             failuresRecovered: result.run.failuresRecovered,
             userInterventions: result.run.userInterventions,
             runtime: 'production',
-            gemini: result.gemini,
+            modelCall: result.modelCall,
             calendarId: result.calendarId,
             changes: result.changes,
           });
@@ -305,6 +306,12 @@ const server = createServer(async (req, res) => {
         if (!requireAuthorization(req, res)) return;
         const { runGeminiEval } = await import('./gemini-eval.js');
         json(req, res, 200, await runGeminiEval());
+        return;
+      }
+      if (req.method === 'GET' && url.pathname === '/eval/nemotron') {
+        if (!requireAuthorization(req, res)) return;
+        const { runNemotronEval } = await import('./nemotron-eval.js');
+        json(req, res, 200, await runNemotronEval());
         return;
       }
     } else {

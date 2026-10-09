@@ -116,7 +116,7 @@ export class DiraOrchestrator {
   }
 
   private label(min: number): string {
-    return minutesToLabel(min, this.state.horizonStartIso);
+    return minutesToLabel(min, this.state.horizonStartIso, this.state.timezone);
   }
 
   async handleEvent(trigger: RawEmailEvent): Promise<WorkflowRun> {
@@ -185,7 +185,7 @@ export class DiraOrchestrator {
       from: trigger.from,
     });
 
-    // ---- INTERPRET (Gemini / fixture; strict schema + entity resolution) --
+    // ---- INTERPRET (model / fixture; strict schema + entity resolution) ---
     const outcome = await interpretEmail(this.model, trigger, this.state);
     if (!outcome.ok) {
       this.recorder.record('ERROR', `Interpretation failed: ${outcome.failure} (${outcome.detail ?? ''})`);
@@ -202,12 +202,12 @@ export class DiraOrchestrator {
     this.run.mutationSummary = summarizeMutation(mutation, target.title);
     const tele = this.model.lastCall;
     const via = tele
-      ? ` — ${tele.model} on ${tele.vertexai ? 'Vertex AI' : 'the Gemini API'}, ${(tele.latencyMs / 1000).toFixed(1)}s`
+      ? ` — ${tele.model} via ${tele.provider}, ${(tele.latencyMs / 1000).toFixed(1)}s`
       : '';
     this.recorder.record('INTERPRET', `${this.run.mutationSummary}${via}`, {
       mutation,
       modelClient: this.model.name,
-      gemini: tele,
+      modelCall: tele,
       attempts: outcome.attempts,
     });
 
@@ -845,7 +845,7 @@ function verificationFor(system: string | undefined): string {
  */
 export function summarizeSurfaceChanges(before: DomainState, after: DomainState): SurfaceChange[] {
   const label = (min: number | undefined) =>
-    min === undefined ? 'unscheduled' : minutesToLabel(min, before.horizonStartIso);
+    min === undefined ? 'unscheduled' : minutesToLabel(min, before.horizonStartIso, before.timezone);
   const changes: SurfaceChange[] = [];
 
   for (const [id, b] of Object.entries(before.commitments)) {

@@ -1,10 +1,9 @@
 /**
  * Time utilities.
  *
- * All engine arithmetic happens in integer minutes relative to the planning
- * horizon start. ISO strings (with explicit UTC offsets) exist only at the
- * boundary: fixtures, adapters, and UI. The demo fixture lives in
- * America/Chicago (-05:00 in August), matching the PRD's example payloads.
+ * Engine arithmetic uses absolute instants represented as integer minutes
+ * from the horizon start. IANA timezones are applied only when formatting at
+ * the boundary. Legacy fixtures without a timezone retain their input offset.
  */
 
 export const DEMO_UTC_OFFSET = '-05:00';
@@ -17,30 +16,52 @@ export function isoToMinutes(iso: string, horizonStartIso: string): number {
 }
 
 /** ISO-8601 timestamp (fixed demo offset) for minutes past the horizon start. */
-export function minutesToIso(minutes: number, horizonStartIso: string): string {
+export function minutesToIso(minutes: number, horizonStartIso: string, timeZone?: string): string {
   const startMs = Date.parse(horizonStartIso);
   const d = new Date(startMs + minutes * 60_000);
-  // Render in the demo offset rather than the host timezone.
-  const offsetMin = 5 * 60; // -05:00
-  const local = new Date(d.getTime() - offsetMin * 60_000);
+  const offsetMin = timeZone ? timezoneOffsetMinutes(d, timeZone) : offsetMinutesFromIso(horizonStartIso);
+  const local = new Date(d.getTime() + offsetMin * 60_000);
   const pad = (n: number) => String(n).padStart(2, '0');
+  const absOffset = Math.abs(offsetMin);
+  const offset = `${offsetMin < 0 ? '-' : '+'}${pad(Math.floor(absOffset / 60))}:${pad(absOffset % 60)}`;
   return (
     `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}` +
-    `T${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:00${DEMO_UTC_OFFSET}`
+    `T${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:00${offset}`
   );
 }
 
 /** Pretty "Wed 14:00" label for logs and the flight recorder. */
-export function minutesToLabel(minutes: number, horizonStartIso: string): string {
-  const iso = minutesToIso(minutes, horizonStartIso);
-  const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][
-    new Date(Date.parse(iso)).getUTCDay() // offset-shifted below
-  ];
-  // Recompute weekday in demo-local terms.
-  const localMs = Date.parse(iso); // absolute instant
-  const shifted = new Date(localMs - 5 * 3600_000);
-  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][shifted.getUTCDay()];
+export function minutesToLabel(minutes: number, horizonStartIso: string, timeZone?: string): string {
+  const iso = minutesToIso(minutes, horizonStartIso, timeZone);
+  const date = new Date(Date.parse(iso));
+  const localDate = new Date(Date.UTC(
+    Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)),
+  ));
+  const weekday = timeZone
+    ? new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(date)
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][localDate.getUTCDay()];
   return `${weekday} ${iso.slice(11, 16)}`;
+}
+
+function timezoneOffsetMinutes(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const localAsUtc = Date.UTC(
+    Number(values.year), Number(values.month) - 1, Number(values.day),
+    Number(values.hour), Number(values.minute), Number(values.second),
+  );
+  return Math.round((localAsUtc - date.getTime()) / 60_000);
+}
+
+function offsetMinutesFromIso(iso: string): number {
+  const suffix = /([+-])(\d{2}):(\d{2})$/.exec(iso);
+  if (!suffix) return 0;
+  const minutes = Number(suffix[2]) * 60 + Number(suffix[3]);
+  return suffix[1] === '-' ? -minutes : minutes;
 }
 
 /** Format a signed minute count as hours with one decimal, e.g. +4.1h / -3.6h. */

@@ -41,7 +41,7 @@ interface DoneSummary {
   failuresRecovered: number;
   userInterventions: number;
   runtime: 'production' | 'deterministic';
-  gemini?: { model: string; latencyMs: number; vertexai: boolean };
+  modelCall?: { model: string; latencyMs: number; provider: string };
   changes?: SurfaceChange[];
 }
 
@@ -271,7 +271,7 @@ export function LiveReplay() {
           </div>
           <p className="footnote">
             {summary.failuresRecovered} tool failure{summary.failuresRecovered === 1 ? '' : 's'} {summary.status === 'RESOLVED' ? 'handled' : 'observed'} · runtime: {summary.runtime}
-            {summary.gemini ? ` · ${summary.gemini.model} on Vertex AI · ${summary.gemini.latencyMs} ms` : ''}
+            {summary.modelCall ? ` · ${summary.modelCall.model} via ${summary.modelCall.provider} · ${summary.modelCall.latencyMs} ms` : ''}
           </p>
           {summary.workflowId && (
             <p className="footnote mono" style={{ marginTop: 4 }}>

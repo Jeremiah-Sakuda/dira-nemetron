@@ -23,7 +23,8 @@
     "demo:replay": "tsx scripts/replay.ts",
     "demo:replay:20x": "tsx scripts/replay-20x.ts",
     "demo:variations": "tsx scripts/replay.ts --matrix",
-    "eval:gemini": "tsx scripts/gemini-eval.ts"
+    "eval:gemini": "tsx scripts/gemini-eval.ts",
+    "eval:nemotron": "tsx scripts/nemotron-eval.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
