@@ -86,3 +86,28 @@ describe('interpretation pipeline over the eval corpus', () => {
     expect(outcome.failure).toBe('UNVERIFIED_SENDER');
   });
 });
+
+describe('commitment-scoped sender authority', () => {
+  it('a declared authority domain without an OWNED_BY edge cannot mutate the commitment', async () => {
+    const fixture = buildGoldenFixture();
+    const state = structuredClone(fixture.state);
+    state.edges = state.edges.filter((edge) => edge.type !== 'OWNED_BY');
+    const outcome = await interpretEmail(
+      new FixtureModelClient({ [fixture.trigger.messageId]: fixture.interpretation }),
+      fixture.trigger,
+      state,
+    );
+    expect(outcome.ok).toBe(false);
+    expect(outcome.failure).toBe('UNVERIFIED_SENDER');
+  });
+
+  it('the same sender is accepted once the user-confirmed OWNED_BY edge exists', async () => {
+    const fixture = buildGoldenFixture();
+    const outcome = await interpretEmail(
+      new FixtureModelClient({ [fixture.trigger.messageId]: fixture.interpretation }),
+      fixture.trigger,
+      fixture.state,
+    );
+    expect(outcome.ok).toBe(true);
+  });
+});
