@@ -57,6 +57,11 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
       return true;
     }
     const store = await ctx.store();
+    const active = await store.pool.query<{ n: number }>('SELECT count(*)::int AS n FROM dira_demo_sessions WHERE expires_at > now()');
+    if ((active.rows[0]?.n ?? 0) >= Number(process.env.DIRA_DEMO_MAX_ACTIVE ?? 300)) {
+      json(req, res, 503, { error: 'The demo is at capacity right now. Please try again in a few minutes.' });
+      return true;
+    }
     const previous = getSessionAccountId(req);
     if (previous && await getAccountKind(store, previous) === 'demo') await deleteAccountData(store, previous);
     const accountId = `demo-${randomUUID()}`;
