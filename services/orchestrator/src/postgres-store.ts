@@ -134,7 +134,7 @@ export class PostgresAccountStore {
       '005_account_availability.sql', '006_action_approvals.sql', '007_action_ledger_identity.sql',
       '008_workflow_execution_evidence.sql', '009_account_policy_settings.sql',
       '010_policy_block_events.sql', '011_source_sync_cursors.sql', '012_ical_deadline_feeds.sql',
-      '013_account_daily_reports.sql',
+      '013_account_daily_reports.sql', '014_event_repair_and_demo.sql',
     ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);

@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./firestore": "./src/firestore-outbox.ts",
-    "./user-google": "./src/user-google-gmail.ts"
+    "./user-google": "./src/user-google-gmail.ts",
+    "./user-google-mail": "./src/user-google-mail.ts"
   },
   "dependencies": {
     "@dira/tool-contracts": "*",

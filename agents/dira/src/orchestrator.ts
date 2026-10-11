@@ -75,6 +75,10 @@ export interface CandidateSummary {
 export interface WorkflowRun {
   id: string;
   eventId: string;
+  /** Account workflows: how the run started. Absent on v1 replay runs. */
+  kind?: 'schedule-request' | 'event-repair';
+  /** Planning clock for resume (the trigger time for synthetic demo worlds). */
+  clockIso?: string;
   status: WorkflowStatus;
   statusReason?: string;
   mutationSummary?: string;
@@ -462,6 +466,11 @@ export class DiraOrchestrator {
         verification: { verifiedAtIso: entry.atIso, observed: observed.observed },
       });
       this.state = applyAction(this.state, record.action);
+      const externalId = (observed.observed as { metadata?: { externalId?: unknown } } | null)?.metadata?.externalId;
+      const created = this.state.commitments[record.action.target];
+      if (record.action.type === 'CREATE_CALENDAR_EVENT' && created && typeof externalId === 'string') {
+        created.externalId = externalId;
+      }
       await this.opts.onStateCommitted?.(this.state);
       await this.workflows.save(this.run);
       return true;
@@ -902,7 +911,9 @@ export class DiraOrchestrator {
         return { delegated: true };
       }
       case 'SEND_NOTIFICATION':
-        return this.tools.gmail.sendReply(String(d.thread_id), String(d.to), String(d.body));
+        return this.tools.gmail.sendReply(String(d.thread_id), String(d.to), String(d.body), {
+          ...(typeof d.subject === 'string' ? { subject: d.subject } : {}),
+        });
       case 'DECLINE_INTERVIEW':
         throw new ToolError('declining an interview is never autonomous', 'POLICY', false);
       default:
@@ -917,7 +928,8 @@ export class DiraOrchestrator {
     switch (action.type) {
       case 'BOOK_INTERVIEW_SLOT': {
         const booking = await this.tools.recruiter.verifyBooking(action.target);
-        return { ok: booking?.startIso === d.start_iso, observed: booking };
+        const same = booking !== null && Date.parse(booking.startIso) === Date.parse(String(d.start_iso));
+        return { ok: same, observed: booking };
       }
       case 'MOVE_CALENDAR_EVENT': {
         const ev = await this.tools.calendar.verifyEvent({
@@ -946,6 +958,7 @@ export class DiraOrchestrator {
         const ok = await this.tools.gmail.verifyReply(
           String(d.thread_id),
           String(d.body_contains ?? ''),
+          { to: String(d.to), body: String(d.body) },
         );
         return { ok, observed: { sent: ok } };
       }

@@ -17,6 +17,10 @@ export const AccountPolicySettingsSchema = z.object({
   fencedGmail: z.boolean().default(false),
   calendarAutoSync: z.boolean().default(false),
   gmailAutoSync: z.boolean().default(false),
+  /** Outbound messages land in Drafts until the owner turns this off. */
+  draftOnly: z.boolean().default(true),
+  /** Delete flight records older than this many days (0 keeps them). */
+  flightRetentionDays: z.number().int().min(0).max(365).default(30),
   requireApproval: z.array(z.object({
     rule: z.enum(overrideableRules),
     scope: z.object({
@@ -45,5 +49,7 @@ export const DEFAULT_ACCOUNT_POLICY: AccountPolicySettings = {
   fencedGmail: false,
   calendarAutoSync: false,
   gmailAutoSync: false,
+  draftOnly: true,
+  flightRetentionDays: 30,
   requireApproval: [],
 };

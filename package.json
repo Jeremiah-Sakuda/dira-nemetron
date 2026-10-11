@@ -26,7 +26,8 @@
     "eval:gemini": "tsx scripts/gemini-eval.ts",
     "eval:nemotron": "tsx scripts/nemotron-eval.ts",
     "eval:repair": "tsx scripts/repair-eval.ts",
-    "models:check": "tsx scripts/models-check.ts"
+    "models:check": "tsx scripts/models-check.ts",
+    "test:postgres": "vitest run tests/postgres"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

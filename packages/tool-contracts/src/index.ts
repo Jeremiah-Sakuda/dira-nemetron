@@ -42,11 +42,21 @@ export interface GmailMessage {
   body: string;
 }
 
+export interface OutboundMessageOptions {
+  subject?: string;
+}
+
+export interface OutboundVerifyOptions {
+  /** Exact recipient and body let adapters derive a deterministic message identity. */
+  to?: string;
+  body?: string;
+}
+
 export interface GmailTool {
   readMessage(messageId: string): Promise<GmailMessage | null>;
   readThread(threadId: string): Promise<GmailMessage[]>;
-  sendReply(threadId: string, to: string, body: string): Promise<{ messageId: string }>;
-  verifyReply(threadId: string, bodyContains: string): Promise<boolean>;
+  sendReply(threadId: string, to: string, body: string, options?: OutboundMessageOptions): Promise<{ messageId: string; mode?: 'sent' | 'draft' }>;
+  verifyReply(threadId: string, bodyContains: string, options?: OutboundVerifyOptions): Promise<boolean>;
 }
 
 export interface OrgTask {

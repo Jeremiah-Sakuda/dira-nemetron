@@ -11,7 +11,8 @@
     "./golden-assertions": "./golden-workflow/assertions.ts",
     "./secondary": "./secondary-workflow/index.ts",
     "./model-eval": "./model-eval/corpus.ts",
-    "./repair-scenarios": "./repair-scenarios/index.ts"
+    "./repair-scenarios": "./repair-scenarios/index.ts",
+    "./types": "./types.ts"
   },
   "dependencies": {
     "@dira/agent": "*",

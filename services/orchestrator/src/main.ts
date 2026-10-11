@@ -7,7 +7,7 @@ import { Gemma3nVoiceClient, transcriptToVoiceEvent } from '@dira/gemma-voice';
 import { RawEmailEventSchema, RawVoiceNoteSchema } from '@dira/event-schema';
 import { buildGoldenFixture, type GoldenVariation } from '@dira/fixtures/golden';
 import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAccountId, googleCalendarWriteEnabled, isAllowedOrigin } from './google-auth.js';
-import { PostgresAccountStore } from './postgres-store.js';
+import { PostgresAccountStore, PostgresWorkflowStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema } from '@dira/agent';
@@ -22,6 +22,10 @@ import { startConfiguredGmailPolling, syncAccountGmailChanges } from './account-
 import { createIcalFeed, startConfiguredIcalPolling, syncAccountIcalFeed } from './account-ical-sync.js';
 import { startConfiguredAccountDailyJobs } from './account-daily-jobs.js';
 import { createApprovalForCurrentFeasibility, createScheduleApprovalRequest } from './account-schedule-approval.js';
+import { handleAccountRoutes } from './account-routes.js';
+import { AccountBusyError, resumeAccountRepair, workflowReadyToResume, type AccountRepairOptions } from './account-repair.js';
+import { deleteExpiredDemoAccounts, getAccountKind, pruneFlightRecords, recordOwnerDecision } from './account-records.js';
+import { installEgressGuard } from './egress-guard.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -238,6 +242,11 @@ async function handleLocalEvent(raw: unknown) {
   return { run, metrics: computeRunMetrics(run, runtime.ledger), flight: runtime.recorder.all() };
 }
 
+/** Hooks shared by every event-repair run (approval notifications are added by the Telegram module). */
+function repairOptions(_store: PostgresAccountStore, _accountId: string): AccountRepairOptions {
+  return {};
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   try {
@@ -254,6 +263,13 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (await handleAccountRoutes(req, res, url, {
+      store: accountStore,
+      json,
+      readBody: (request) => readBody(request),
+      repairOptions,
+    })) return;
+
     if (req.method === 'GET' && url.pathname === '/auth/google/start') {
       const start = beginGoogleOAuth();
       res.writeHead(302, { location: start.authorizationUrl, 'set-cookie': start.stateCookie });
@@ -267,6 +283,17 @@ const server = createServer(async (req, res) => {
         return;
       }
       const start = beginGoogleOAuth({ accountId, calendarWrite: true });
+      res.writeHead(302, { location: start.authorizationUrl, 'set-cookie': start.stateCookie });
+      res.end();
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/auth/google/gmail-compose/start') {
+      const accountId = getSessionAccountId(req);
+      if (!accountId) {
+        json(req, res, 401, { error: 'unauthenticated' });
+        return;
+      }
+      const start = beginGoogleOAuth({ accountId, gmailCompose: true });
       res.writeHead(302, { location: start.authorizationUrl, 'set-cookie': start.stateCookie });
       res.end();
       return;
@@ -335,11 +362,13 @@ const server = createServer(async (req, res) => {
         store.getCredential(accountId, 'google'),
       ]);
       await syncMemoryFromStore(store, accountId);
+      const kind = await getAccountKind(store, accountId) ?? 'google';
       json(req, res, 200, {
-        account,
+        account: { ...account, kind },
         permissions: {
           calendarWrite: credential?.scopes.includes('https://www.googleapis.com/auth/calendar.events') ?? false,
           gmailRead: credential?.scopes.includes('https://www.googleapis.com/auth/gmail.readonly') ?? false,
+          gmailCompose: credential?.scopes.includes('https://www.googleapis.com/auth/gmail.compose') ?? false,
         },
         stateSummary: {
           commitmentCount: Object.keys(state.commitments).length,
@@ -504,8 +533,9 @@ const server = createServer(async (req, res) => {
         return;
       }
       const store = await accountStore();
+      const demo = await getAccountKind(store, accountId) === 'demo';
       const profile = await store.getAvailabilityProfile(accountId);
-      if (!profile) {
+      if (!profile && !demo) {
         json(req, res, 409, { error: 'Set your focus hours before checking schedule feasibility.' });
         return;
       }
@@ -529,6 +559,10 @@ const server = createServer(async (req, res) => {
         return;
       }
       const store = await accountStore();
+      if (await getAccountKind(store, accountId) === 'demo') {
+        json(req, res, 409, { error: 'In the demo, send a trigger email from the Try page; repairs then appear in Approvals.' });
+        return;
+      }
       if (!await store.getAvailabilityProfile(accountId)) {
         json(req, res, 409, { error: 'Set your focus hours before requesting plan approval.' });
         return;
@@ -645,6 +679,26 @@ const server = createServer(async (req, res) => {
       }
       try {
         const store = await accountStore();
+        const target = await store.getActionRecord(accountId, body.actionId);
+        const targetRun = target ? await new PostgresWorkflowStore(store, accountId).get(target.workflowId) : undefined;
+        if (target && targetRun?.kind === 'event-repair') {
+          const record = await recordOwnerDecision(store, accountId, body.actionId, body.decision, 'authenticated-web');
+          let execution: { status: string; verifiedActions: number; reason?: string } = {
+            status: body.decision === 'APPROVED' ? 'AWAITING_APPROVAL' : 'REJECTED', verifiedActions: 0,
+          };
+          if (await workflowReadyToResume(store, accountId, record.workflowId)) {
+            const resumed = await resumeAccountRepair(store, accountId, record.workflowId, repairOptions(store, accountId));
+            const records = await store.listWorkflowActionRecords(accountId, record.workflowId);
+            execution = {
+              status: resumed.run.status,
+              verifiedActions: records.filter((item) => item.status === 'VERIFIED').length,
+              ...(resumed.run.statusReason ? { reason: resumed.run.statusReason } : {}),
+            };
+          }
+          await syncMemoryFromStore(store, accountId);
+          json(req, res, 200, { actionId: record.actionId, status: record.status, decision: body.decision, workflowId: record.workflowId, execution });
+          return;
+        }
         if (body.decision === 'APPROVED' && !await googleCalendarWriteEnabled(store, accountId)) {
           json(req, res, 409, { error: 'Enable Google Calendar changes in Account setup before approving this plan.' });
           return;
@@ -1350,7 +1404,7 @@ const server = createServer(async (req, res) => {
     const code =
       err instanceof Error && err.name === 'EventAlreadyProcessingError'
         ? 409
-        : err instanceof BusyError
+        : err instanceof BusyError || err instanceof AccountBusyError
           ? 429
           : 500;
     json(req, res, code, { error: friendlyError(err) });
@@ -1368,8 +1422,23 @@ function friendlyError(err: unknown): string {
 }
 
 
+installEgressGuard();
+
 server.listen(PORT, () => {
   console.log(`dira-orchestrator listening on :${PORT} (mode: ${MODE})`);
+  if (process.env.DATABASE_URL) {
+    const housekeeping = async () => {
+      try {
+        const store = await accountStore();
+        const removed = await deleteExpiredDemoAccounts(store);
+        if (removed) console.log(JSON.stringify({ severity: 'INFO', msg: 'expired demo sessions removed', removed }));
+      } catch (error) {
+        console.error('demo session cleanup failed', error);
+      }
+    };
+    setInterval(housekeeping, 10 * 60_000).unref();
+    void housekeeping();
+  }
   startConfiguredCalendarPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
   startConfiguredGmailPolling(accountStore, (store, accountId) => googleAccessToken(store, accountId));
   startConfiguredIcalPolling(accountStore);

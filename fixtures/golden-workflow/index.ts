@@ -73,6 +73,12 @@ export interface GoldenVariation {
   prepCompletedMin?: number;
   /** Tue workout start hour (default 19.5 = 19:30) — a pre-trigger calendar shift. */
   workoutStartHour?: number;
+  /**
+   * Local midnight of the Tuesday the world starts on (default Aug 18 2026).
+   * Minute offsets are unchanged, so the solver's numbers are identical; the
+   * demo persona uses this to replay the world in the coming week.
+   */
+  horizonStartIso?: string;
 }
 
 export interface GoldenFixture {
@@ -87,11 +93,11 @@ export interface GoldenFixture {
   variation: Required<GoldenVariation>;
 }
 
-const cal = (id: string, title: string, start: number, end: number): CalendarEvent => ({
+const cal = (id: string, title: string, start: number, end: number, toIso: (m: number) => string = iso): CalendarEvent => ({
   id: `cal-${id}`,
   title,
-  startIso: iso(start),
-  endIso: iso(end),
+  startIso: toIso(start),
+  endIso: toIso(end),
 });
 
 export function buildGoldenFixture(variation: GoldenVariation = {}): GoldenFixture {
@@ -103,7 +109,10 @@ export function buildGoldenFixture(variation: GoldenVariation = {}): GoldenFixtu
     backupOwner: variation.backupOwner ?? 'maya-okafor',
     prepCompletedMin: variation.prepCompletedMin ?? 120,
     workoutStartHour: variation.workoutStartHour ?? 19.5,
+    horizonStartIso: variation.horizonStartIso ?? HORIZON_START_ISO,
   };
+  const horizonStartIso = v.horizonStartIso;
+  const iso = (min: number): string => minutesToIso(min, horizonStartIso);
 
   const now = iso(at(0, 8, 30)); // trigger arrives Tue 08:30
   const workoutStart = at(0, Math.floor(v.workoutStartHour), (v.workoutStartHour % 1) * 60);
@@ -288,7 +297,7 @@ export function buildGoldenFixture(variation: GoldenVariation = {}): GoldenFixtu
   const state: DomainState = {
     userId: USER_ID,
     timezone: 'America/Chicago',
-    horizonStartIso: HORIZON_START_ISO,
+    horizonStartIso,
     horizonEndMin: HORIZON_END_MIN,
     commitments: Object.fromEntries(commitments.map((c) => [c.id, c])),
     edges: [
@@ -353,16 +362,16 @@ export function buildGoldenFixture(variation: GoldenVariation = {}): GoldenFixtu
   };
 
   const calendarSeed: CalendarEvent[] = [
-    cal(IDS.exam, 'ECON 402 Midterm 2', at(3, 14), at(3, 15)),
-    cal(IDS.interview, 'TechCorp technical interview', at(1, 17), at(1, 18)),
-    cal(IDS.presentation, 'Sponsor presentation (CS Club)', at(1, 19), at(1, 20)),
-    cal(IDS.workout, 'Workout', workoutStart, workoutStart + 60),
-    cal(IDS.sideProject, 'Side-project build block', at(1, 9), at(1, 9) + v.personalBlockDurationMin),
-    cal('wed-evening-prep', 'Study: ECON 402', at(1, 20, 30), at(1, 22, 30)),
-    cal('thu-evening-prep-1', 'Study: ECON 402', at(2, 19), at(2, 20, 45)),
-    cal('thu-evening-prep-2', 'Study: ECON 402', at(2, 21, 15), at(2, 22)),
-    cal('fri-morning-prep-1', 'Study: ECON 402', at(3, 8, 30), at(3, 9, 30)),
-    cal('fri-morning-prep-2', 'Study: ECON 402', at(3, 10), at(3, 10, 30)),
+    cal(IDS.exam, 'ECON 402 Midterm 2', at(3, 14), at(3, 15), iso),
+    cal(IDS.interview, 'TechCorp technical interview', at(1, 17), at(1, 18), iso),
+    cal(IDS.presentation, 'Sponsor presentation (CS Club)', at(1, 19), at(1, 20), iso),
+    cal(IDS.workout, 'Workout', workoutStart, workoutStart + 60, iso),
+    cal(IDS.sideProject, 'Side-project build block', at(1, 9), at(1, 9) + v.personalBlockDurationMin, iso),
+    cal('wed-evening-prep', 'Study: ECON 402', at(1, 20, 30), at(1, 22, 30), iso),
+    cal('thu-evening-prep-1', 'Study: ECON 402', at(2, 19), at(2, 20, 45), iso),
+    cal('thu-evening-prep-2', 'Study: ECON 402', at(2, 21, 15), at(2, 22), iso),
+    cal('fri-morning-prep-1', 'Study: ECON 402', at(3, 8, 30), at(3, 9, 30), iso),
+    cal('fri-morning-prep-2', 'Study: ECON 402', at(3, 10), at(3, 10, 30), iso),
   ];
 
   const orgSeed: OrgTask[] = [

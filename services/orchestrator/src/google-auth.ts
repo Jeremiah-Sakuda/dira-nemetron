@@ -30,7 +30,7 @@ interface SignedPayload {
 interface OAuthState extends SignedPayload {
   verifier: string;
   accountId?: string;
-  purpose?: 'sign-in' | 'calendar-write' | 'gmail-read';
+  purpose?: 'sign-in' | 'calendar-write' | 'gmail-read' | 'gmail-compose';
 }
 
 export interface GoogleIdentity {
@@ -58,7 +58,7 @@ interface StoredGoogleTokens {
   expiresAt?: number;
 }
 
-export function beginGoogleOAuth(options: { accountId?: string; calendarWrite?: boolean; gmailRead?: boolean } = {}): OAuthStart {
+export function beginGoogleOAuth(options: { accountId?: string; calendarWrite?: boolean; gmailRead?: boolean; gmailCompose?: boolean } = {}): OAuthStart {
   const state = randomBytes(32).toString('base64url');
   const verifier = randomBytes(48).toString('base64url');
   const challenge = createHash('sha256').update(verifier).digest('base64url');
@@ -66,10 +66,12 @@ export function beginGoogleOAuth(options: { accountId?: string; calendarWrite?: 
     value: state,
     verifier,
     accountId: options.accountId,
-    purpose: options.calendarWrite ? 'calendar-write' : options.gmailRead ? 'gmail-read' : 'sign-in',
+    purpose: options.calendarWrite ? 'calendar-write' : options.gmailCompose ? 'gmail-compose' : options.gmailRead ? 'gmail-read' : 'sign-in',
     expiresAt: Math.floor(Date.now() / 1000) + OAUTH_STATE_TTL_SECONDS,
   };
-  const scopes = options.gmailRead
+  const scopes = options.gmailCompose
+    ? ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.compose']
+    : options.gmailRead
     ? ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly']
     : options.calendarWrite
       ? [...GOOGLE_SCOPES, 'https://www.googleapis.com/auth/calendar.events']
@@ -85,7 +87,7 @@ export function beginGoogleOAuth(options: { accountId?: string; calendarWrite?: 
     code_challenge_method: 'S256',
     access_type: 'offline',
     include_granted_scopes: 'true',
-    ...(options.calendarWrite ? { prompt: 'consent' } : {}),
+    ...(options.calendarWrite || options.gmailCompose ? { prompt: 'consent' } : {}),
   }).toString();
   return {
     authorizationUrl: authorizationUrl.toString(),
@@ -183,6 +185,14 @@ export async function completeGoogleOAuth(
     sessionCookie: session,
     clearStateCookie: clearCookie(STATE_COOKIE, '/auth/google'),
   };
+}
+
+/** Signed HttpOnly session for an account Dira created server-side (the demo persona). */
+export function createSessionCookie(accountId: string, ttlSeconds = SESSION_TTL_SECONDS): string {
+  return signedCookie(SESSION_COOKIE, {
+    value: accountId,
+    expiresAt: Math.floor(Date.now() / 1000) + ttlSeconds,
+  }, ttlSeconds, '/');
 }
 
 export function getSessionAccountId(request: IncomingMessage): string | undefined {

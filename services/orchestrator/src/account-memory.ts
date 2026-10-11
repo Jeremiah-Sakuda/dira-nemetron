@@ -305,3 +305,9 @@ function parseMemoryPolicy(value: unknown): AccountPolicySettings {
   }
   throw current.error;
 }
+
+/** Delete an account's private memory repository (account deletion). */
+export async function deleteAccountMemory(accountId: string): Promise<void> {
+  const directory = accountDirectory(accountId);
+  await withAccountLock(directory, () => rm(directory, { recursive: true, force: true }));
+}
