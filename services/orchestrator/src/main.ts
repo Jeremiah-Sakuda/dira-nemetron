@@ -98,6 +98,29 @@ async function blockFencedPrimaryCalendar(
   return true;
 }
 
+function fencedPersonIdForEmail(
+  state: Awaited<ReturnType<PostgresAccountStore['ensureDomainState']>>,
+  fencedPersonIds: string[],
+  value: string | undefined,
+): string | undefined {
+  if (!value) return undefined;
+  const email = (value.match(/<([^>]+)>/)?.[1] ?? value).trim().toLowerCase();
+  return Object.values(state.people).find((item) =>
+    item.email.trim().toLowerCase() === email && fencedPersonIds.includes(item.id))?.id;
+}
+
+async function listVisibleGraphProposals(store: PostgresAccountStore, accountId: string) {
+  const [proposals, policy, state] = await Promise.all([
+    store.listGraphProposals(accountId, 'PENDING_REVIEW'),
+    store.getAccountPolicySettings(accountId),
+    store.ensureDomainState(accountId),
+  ]);
+  return proposals.filter((proposal) =>
+    !(policy.fencedCalendarIds.includes('primary') && proposal.sourceType === 'google-calendar')
+    && !(policy.fencedGmail && proposal.sourceType === 'gmail')
+    && !fencedPersonIdForEmail(state, policy.fencedPersonIds, proposal.source.sender));
+}
+
 async function syncMemoryFromStore(store: PostgresAccountStore, accountId: string): Promise<void> {
   try {
     await syncAccountMemory(accountId, async () => {
@@ -349,7 +372,14 @@ const server = createServer(async (req, res) => {
         json(req, res, 401, { error: 'unauthenticated' });
         return;
       }
-      json(req, res, 200, { policy: await (await accountStore()).getAccountPolicySettings(accountId) });
+      const store = await accountStore();
+      const [policy, state] = await Promise.all([
+        store.getAccountPolicySettings(accountId), store.ensureDomainState(accountId),
+      ]);
+      json(req, res, 200, {
+        policy,
+        people: Object.values(state.people).map(({ id, name, email }) => ({ id, name, email })),
+      });
       return;
     }
     if (url.pathname === '/api/policy/blocked-events' && req.method === 'GET') {
@@ -700,7 +730,7 @@ const server = createServer(async (req, res) => {
       );
       json(req, res, 200, {
         ...summary,
-        proposals: await store.listGraphProposals(accountId, 'PENDING_REVIEW'),
+        proposals: await listVisibleGraphProposals(store, accountId),
       });
       return;
     }
@@ -729,7 +759,7 @@ const server = createServer(async (req, res) => {
       );
       json(req, res, 200, {
         ...summary,
-        proposals: await store.listGraphProposals(accountId, 'PENDING_REVIEW'),
+        proposals: await listVisibleGraphProposals(store, accountId),
       });
       return;
     }
@@ -804,15 +834,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       const store = await accountStore();
-      const [allProposals, policy] = await Promise.all([
-        store.listGraphProposals(accountId, 'PENDING_REVIEW'),
-        store.getAccountPolicySettings(accountId),
-      ]);
-      const calendarFenced = policy.fencedCalendarIds.includes('primary');
-      const proposals = allProposals.filter((proposal) =>
-        !(calendarFenced && proposal.sourceType === 'google-calendar')
-        && !(policy.fencedGmail && proposal.sourceType === 'gmail'));
-      json(req, res, 200, { proposals });
+      json(req, res, 200, { proposals: await listVisibleGraphProposals(store, accountId) });
       return;
     }
     if (req.method === 'POST' && url.pathname === '/api/graph/proposals') {
@@ -903,7 +925,7 @@ const server = createServer(async (req, res) => {
           latencyMs: modelCalls.reduce((total, call) => total + call.latencyMs, 0),
           totalTokens: modelCalls.reduce((total, call) => total + (call.totalTokens ?? 0), 0),
         },
-        proposals: await store.listGraphProposals(accountId, 'PENDING_REVIEW'),
+        proposals: await listVisibleGraphProposals(store, accountId),
       });
       return;
     }
@@ -986,6 +1008,16 @@ const server = createServer(async (req, res) => {
               policyRule: 'fenced-gmail', reason: 'Gmail is fenced by account policy.',
             });
             json(req, res, 403, { error: 'Gmail is fenced by your account policy.' });
+            return;
+          }
+          const state = await store.ensureDomainState(accountId);
+          const fencedPersonId = fencedPersonIdForEmail(state, gmailPolicy.fencedPersonIds, proposal.source.sender);
+          if (fencedPersonId) {
+            await store.recordPolicyBlock(accountId, {
+              actionType: 'CONFIRM_GMAIL_PROPOSAL', targetId: fencedPersonId,
+              policyRule: 'fenced-person', reason: 'The message sender is fenced by account policy.',
+            });
+            json(req, res, 403, { error: 'This sender is fenced by your account policy.' });
             return;
           }
           const gmail = new GoogleUserGmailTool(() => googleAccessToken(store, accountId));

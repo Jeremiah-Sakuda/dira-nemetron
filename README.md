@@ -190,8 +190,11 @@ can be enabled per account in Policies; deployments must also configure
 `DIRA_GMAIL_SYNC_ACCOUNT_IDS`. `DIRA_GMAIL_POLL_INTERVAL_MS` controls its
 one-minute to one-hour interval (default five minutes). Message bodies are capped at 8,000 characters
 for Nano extraction and are not stored in graph proposals. Gmail has an
-independent source fence. Email changes do not yet enter the production repair
-workflow. Person fences, OpenShell egress controls, and imported correction rules remain
+independent source fence. Users can also fence individual graph contacts; Gmail
+polling reads only the sender header to identify a fenced contact, skips its
+message body before extraction, hides prior proposals from that contact, and
+records the policy block. Email changes do not yet enter the production repair
+workflow. OpenShell egress controls and imported correction rules remain
 unimplemented.
 
 Signed-in users can also add user-selected iCalendar exports from an LMS or

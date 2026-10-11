@@ -14,6 +14,7 @@ export interface GmailSourceMessage {
 
 export interface GmailSyncResult {
   messages: GmailSourceMessage[];
+  fencedMessages: { messageId: string; personId: string }[];
   accountEmail: string;
   nextHistoryId: string;
   reset: boolean;
@@ -41,7 +42,7 @@ export class GoogleUserGmailTool {
   }
 
   /** Incremental inbox poll. Initial sync is bounded to recent inbox messages. */
-  async syncMessages(historyId?: string): Promise<GmailSyncResult> {
+  async syncMessages(historyId?: string, fencedSenders: Map<string, string> = new Map()): Promise<GmailSyncResult> {
     const api = await this.client();
     let cursor = historyId;
     let reset = !historyId;
@@ -85,7 +86,25 @@ export class GoogleUserGmailTool {
         }
 
         const messages: GmailSourceMessage[] = [];
+        const fencedMessages: GmailSyncResult['fencedMessages'] = [];
         for (const id of ids) {
+          if (fencedSenders.size > 0) {
+            const metadata = await api.users.messages.get({
+              userId: 'me', id, format: 'metadata', metadataHeaders: ['From'],
+            }).catch((error: unknown) => {
+              if (httpStatus(error) === 404) return null;
+              throw error;
+            });
+            if (!metadata) continue;
+            const from = (metadata.data.payload?.headers ?? []).find((header) =>
+              (header.name ?? '').toLowerCase() === 'from')?.value ?? '';
+            const address = normalizeEmail(from);
+            const personId = fencedSenders.get(address);
+            if (personId) {
+              fencedMessages.push({ messageId: id, personId });
+              continue;
+            }
+          }
           const result = await api.users.messages.get({ userId: 'me', id, format: 'full' }).catch((error: unknown) => {
             if (httpStatus(error) === 404) return null;
             throw error;
@@ -112,7 +131,7 @@ export class GoogleUserGmailTool {
             body: (body || message.snippet || '').slice(0, 8_000),
           });
         }
-        return { messages, accountEmail: profile.data.emailAddress ?? '', nextHistoryId, reset };
+        return { messages, fencedMessages, accountEmail: profile.data.emailAddress ?? '', nextHistoryId, reset };
       } catch (error) {
         if (cursor && !reset && httpStatus(error) === 404) {
           cursor = undefined;
@@ -123,6 +142,10 @@ export class GoogleUserGmailTool {
       }
     }
   }
+}
+
+function normalizeEmail(value: string): string {
+  return (value.match(/<([^>]+)>/)?.[1] ?? value).trim().toLowerCase();
 }
 
 type GmailPart = {

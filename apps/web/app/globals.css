@@ -429,6 +429,15 @@ table.data td:first-child {
   margin-top: 18px;
 }
 
+.person-fence-list {
+  display: grid;
+  gap: 10px;
+}
+
+.person-fence-list > p {
+  margin: 2px 0;
+}
+
 .policy-rule {
   display: flex;
   align-items: flex-start;

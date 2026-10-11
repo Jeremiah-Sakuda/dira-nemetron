@@ -98,17 +98,27 @@ async function performGmailSync(
 
   const tool = new GoogleUserGmailTool(getAccessToken);
   const cursor = await store.getSourceSyncCursor(accountId, 'gmail');
-  const delta = await tool.syncMessages(cursor);
   const [state, savedProposals, account] = await Promise.all([
     store.ensureDomainState(accountId),
     store.listGraphProposals(accountId),
     store.getAccount(accountId),
   ]);
+  const fencedSenders = new Map(Object.values(state.people)
+    .filter((person) => policy.fencedPersonIds.includes(person.id))
+    .map((person) => [person.email.trim().toLowerCase(), person.id]));
+  const delta = await tool.syncMessages(cursor, fencedSenders);
   const savedBySource = new Map(savedProposals.map((proposal) => [proposal.sourceId, proposal]));
   const builder = new EmailGraphBuilder();
   let proposalsCreated = 0;
-  let ignored = 0;
+  let ignored = delta.fencedMessages.length;
   const ownerEmail = (account?.email ?? delta.accountEmail).toLowerCase();
+
+  for (const fenced of delta.fencedMessages) {
+    await store.recordPolicyBlock(accountId, {
+      actionType: 'READ_GMAIL_MESSAGE', targetId: fenced.personId,
+      policyRule: 'fenced-person', reason: 'Message content from this contact was not fetched under account person-fence policy.',
+    });
+  }
 
   for (const message of delta.messages) {
     const messageAddress = message.from.match(/<([^>]+)>/)?.[1] ?? message.from;
@@ -144,7 +154,7 @@ async function performGmailSync(
   // is durably represented as a pending proposal or an ignored source.
   await store.saveSourceSyncCursor(accountId, 'gmail', delta.nextHistoryId);
   return {
-    messages: delta.messages.length,
+    messages: delta.messages.length + delta.fencedMessages.length,
     proposalsCreated,
     ignored,
     reset: delta.reset,

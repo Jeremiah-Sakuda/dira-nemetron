@@ -24,10 +24,16 @@ type RuleId = typeof OPTIONS[number]['rule'];
 interface PolicySettings {
   schemaVersion: 1;
   fencedCalendarIds: ('primary')[];
+  fencedPersonIds: string[];
   fencedGmail: boolean;
   calendarAutoSync: boolean;
   gmailAutoSync: boolean;
   requireApproval: { rule: RuleId; scope?: { domain?: string; commitmentId?: string } }[];
+}
+interface PersonContact {
+  id: string;
+  name: string;
+  email: string;
 }
 interface PolicyBlockEvent {
   eventId: string;
@@ -38,10 +44,11 @@ interface PolicyBlockEvent {
   createdAtIso: string;
 }
 
-const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], fencedGmail: false, calendarAutoSync: false, gmailAutoSync: false, requireApproval: [] };
+const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], fencedPersonIds: [], fencedGmail: false, calendarAutoSync: false, gmailAutoSync: false, requireApproval: [] };
 
 export function PolicySettingsForm() {
   const [policy, setPolicy] = useState<PolicySettings>(DEFAULT_POLICY);
+  const [people, setPeople] = useState<PersonContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -51,9 +58,10 @@ export function PolicySettingsForm() {
   useEffect(() => {
     fetch('/api/policy/settings', { cache: 'no-store' })
       .then(async (response) => {
-        const result = await response.json() as { policy?: PolicySettings; error?: string };
+        const result = await response.json() as { policy?: PolicySettings; people?: PersonContact[]; error?: string };
         if (!response.ok) throw new Error(result.error ?? 'Sign in to edit your policy.');
         setPolicy(result.policy ?? DEFAULT_POLICY);
+        setPeople(result.people ?? []);
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'Policy settings could not be loaded.'))
       .finally(() => setLoading(false));
@@ -100,6 +108,16 @@ export function PolicySettingsForm() {
 
   function setGmailAutoSync(enabled: boolean) {
     setPolicy((current) => ({ ...current, gmailAutoSync: enabled }));
+    setNotice('');
+  }
+
+  function setPersonFenced(personId: string, enabled: boolean) {
+    setPolicy((current) => ({
+      ...current,
+      fencedPersonIds: enabled
+        ? [...new Set([...current.fencedPersonIds, personId])]
+        : current.fencedPersonIds.filter((id) => id !== personId),
+    }));
     setNotice('');
   }
 
@@ -175,6 +193,24 @@ export function PolicySettingsForm() {
                 <small>Stops future Gmail reads and extraction. Email-derived graph commitments already confirmed remain in your graph until you remove them.</small>
               </span>
             </label>
+            {people.length > 0 && (
+              <div className="person-fence-list">
+                <p className="muted">Block Gmail content from specific people</p>
+                {people.map((person) => (
+                  <label className="policy-rule" key={person.id}>
+                    <input
+                      type="checkbox"
+                      checked={policy.fencedPersonIds.includes(person.id)}
+                      onChange={(event) => setPersonFenced(person.id, event.currentTarget.checked)}
+                    />
+                    <span>
+                      <strong>{person.name}</strong>
+                      <small>{person.email} · prevents message bodies from being fetched for extraction; existing proposals from this contact are hidden.</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
           </fieldset>
           <fieldset className="policy-rule-list policy-fence-list" disabled={saving}>
             <legend>Automatic source checks</legend>

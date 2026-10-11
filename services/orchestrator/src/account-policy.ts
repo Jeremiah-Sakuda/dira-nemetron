@@ -12,6 +12,8 @@ const overrideableRules = [
 export const AccountPolicySettingsSchema = z.object({
   schemaVersion: z.literal(1),
   fencedCalendarIds: z.array(z.literal('primary')).max(1).default([]),
+  fencedPersonIds: z.array(z.string().min(1).max(256)).max(500).default([])
+    .refine((ids) => new Set(ids).size === ids.length, 'Choose each fenced contact once.'),
   fencedGmail: z.boolean().default(false),
   calendarAutoSync: z.boolean().default(false),
   gmailAutoSync: z.boolean().default(false),
@@ -39,6 +41,7 @@ export type AccountPolicySettings = z.infer<typeof AccountPolicySettingsSchema>;
 export const DEFAULT_ACCOUNT_POLICY: AccountPolicySettings = {
   schemaVersion: 1,
   fencedCalendarIds: [],
+  fencedPersonIds: [],
   fencedGmail: false,
   calendarAutoSync: false,
   gmailAutoSync: false,

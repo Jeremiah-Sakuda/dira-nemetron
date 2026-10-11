@@ -486,6 +486,14 @@ export class PostgresAccountStore {
   async saveAccountPolicySettings(accountId: string, input: unknown): Promise<AccountPolicySettings> {
     const policy = AccountPolicySettingsSchema.parse(input);
     return this.withAccount(accountId, async (client) => {
+      if (policy.fencedPersonIds.length) {
+        const result = await client.query<{ state: DomainState }>(
+          'SELECT state FROM dira_account_state WHERE account_id = $1 FOR SHARE', [accountId],
+        );
+        const knownPeople = new Set(Object.keys(result.rows[0]?.state.people ?? {}));
+        const unknown = policy.fencedPersonIds.find((personId) => !knownPeople.has(personId));
+        if (unknown) throw new Error('A fenced contact is not present in this account graph. Refresh settings and try again.');
+      }
       await client.query(
         `INSERT INTO dira_account_policy_settings (account_id, policy) VALUES ($1, $2::jsonb)
          ON CONFLICT (account_id) DO UPDATE SET policy = EXCLUDED.policy, updated_at = now()`,
