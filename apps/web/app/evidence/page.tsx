@@ -10,9 +10,6 @@ export const dynamic = 'force-dynamic';
 export default async function EvidencePage() {
   const data = await getGoldenRunData();
   const { run, metrics } = data;
-  const productionConfigured = Boolean(
-    process.env.DIRA_CLOUD_RUN_URL && process.env.DIRA_DEMO_TOKEN,
-  );
   const feasible = run.status === 'RESOLVED';
   const commitmentCount = data.commitmentsAfter.filter(
     (c) => !c.reservesEffortFor && c.status !== 'DROPPED',
@@ -119,11 +116,9 @@ export default async function EvidencePage() {
       </div>
 
       <p className="footnote">
-        Runtime note: this overview is always the reproducible deterministic reference.
-        {productionConfigured
-          ? ' Production credentials are configured for this deployment; the Interventions page verifies live Cloud Run connectivity per run and labels the boundary.'
-          : ' The judge-controlled replay currently uses stateful integration simulators; production credentials are not configured for this web deployment.'}{' '}
-        Reproduce the reference with <span className="mono">make demo-replay</span>.
+        Runtime note: this overview is the reproducible deterministic reference. It uses stored
+        interpretations and stateful integration simulators, never live services.
+        Reproduce it with <span className="mono">make demo-replay</span>.
       </p>
     </main>
   );

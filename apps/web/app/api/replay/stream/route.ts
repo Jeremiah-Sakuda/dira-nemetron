@@ -5,44 +5,14 @@ import { getDemoScenario } from '../../../../lib/demo-scenarios';
 export const dynamic = 'force-dynamic';
 
 /**
- * Server-side replay proxy. When the Cloud Run URL and demo token are
- * configured, the browser receives the real production stream without ever
- * seeing the credential. Otherwise it runs the same engine locally against
- * deterministic, stateful integration simulators.
+ * Engine evidence replay: the v1 golden workflow runs in this server against
+ * deterministic, stateful integration simulators and streams its flight
+ * record. It needs no credentials and is labeled as deterministic evidence.
  */
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const paceMs = Math.min(1200, Math.max(0, Number(url.searchParams.get('pace') ?? 320)));
   const scenario = getDemoScenario(url.searchParams.get('scenario'));
-  const cloudUrl = process.env.DIRA_CLOUD_RUN_URL?.replace(/\/$/, '');
-  const demoToken = process.env.DIRA_DEMO_TOKEN;
-
-  if (cloudUrl && demoToken) {
-    // One request: the service reseeds inside its own serialized turn (and
-    // narrates it), so a judge's run can never be wiped by another judge's
-    // reset and there is no silent seeding gap before the stream starts.
-    const variation = encodeURIComponent(JSON.stringify(scenario.variation));
-    const upstream = await fetch(`${cloudUrl}/demo/stream?variation=${variation}`, {
-      headers: { 'x-dira-demo-token': demoToken },
-      cache: 'no-store',
-    });
-    if (!upstream.ok || !upstream.body) {
-      return Response.json(
-        { error: `Cloud replay failed (${upstream.status})` },
-        { status: 502 },
-      );
-    }
-
-    return new Response(upstream.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-        'X-Dira-Runtime': 'production',
-      },
-    });
-  }
-
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {

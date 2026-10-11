@@ -72,9 +72,9 @@ export default async function ActivityPage() {
         </table>
       </div>
       <p className="footnote">
-        This table is the deterministic baseline ledger. Production uses the same lifecycle
-        in Firestore; its Calendar target is real and its recruiter, organization, and
-        message-outbox targets are controlled integrations.
+        This table is the deterministic reference ledger. Personal accounts and the demo
+        persona use the same lifecycle in Postgres under row-level security, with
+        AWAITING_APPROVAL added for owner decisions.
       </p>
     </main>
   );

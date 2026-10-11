@@ -1,10 +1,19 @@
+# Never ship local dependencies, build output, runtime state or secrets in an image.
 node_modules
 **/node_modules
-.next
 **/.next
 .git
-.vercel
+.env
+.env.*
+!.env.example
+infrastructure/nebius/dira.env
 .dira-runtime
-.claude
+.dira-memory
+.dira-memory-export
 coverage
+*.tsbuildinfo
+docs/demo/*.mp4
+.next
+.vercel
+.claude
 *.log

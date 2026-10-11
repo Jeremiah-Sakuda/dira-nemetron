@@ -180,17 +180,7 @@ export function LiveReplay() {
 
       {runtime && runtime.mode !== 'production' && (
         <p className="evidence-note">
-          This mode executes the real orchestration, constraint, policy, ledger, replan, and verification code against stateful integration simulators. It does not claim live Google side effects. Configure the server-only Cloud Run URL and demo token to switch this panel to production.
-        </p>
-      )}
-      {runtime && runtime.mode === 'production' && (
-        <p className="evidence-note">
-          Live cloud boundary: Nemotron interprets through Nebius Token Factory and the Calendar
-          mutations land on a real Google Calendar, verified by independent
-          re-reads. Recruiter availability, organization ownership, and the
-          notification outbox are controlled Firestore integration surfaces —
-          durable test doubles, not third-party products. One shared demo
-          world: concurrent runs are serialized.
+          This mode executes the real orchestration, constraint, policy, ledger, replan, and verification code against stateful integration simulators. It does not touch live services. For the product itself, use the Try page or sign in.
         </p>
       )}
       {error && <p className="error-note" role="alert">{error}</p>}
@@ -277,9 +267,7 @@ export function LiveReplay() {
             <p className="footnote mono" style={{ marginTop: 4 }}>
               workflow&nbsp;
               <span style={{ color: 'var(--text-primary)', userSelect: 'all' }}>{summary.workflowId}</span>
-              {summary.runtime === 'production'
-                ? ' — matches the Cloud Run log and the Firestore ledger for this run'
-                : ' — deterministic reference run'}
+              {' — deterministic reference run'}
             </p>
           )}
 

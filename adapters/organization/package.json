@@ -6,11 +6,9 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./firestore": "./src/firestore-org.ts"
+    ".": "./src/index.ts"
   },
   "dependencies": {
-    "@dira/tool-contracts": "*",
-    "@google-cloud/firestore": "^9.0.0"
+    "@dira/tool-contracts": "*"
   }
 }

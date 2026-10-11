@@ -1,0 +1,60 @@
+# Dira on one always-on Nebius CPU VM: Postgres, the orchestrator/broker,
+# the web app, and Caddy for HTTPS. Secrets come from ./dira.env (never
+# committed). See infrastructure/nebius/README.md.
+name: dira
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set in dira.env}
+      DIRA_APP_DB_PASSWORD: ${DIRA_APP_DB_PASSWORD:?set in dira.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/10-dira.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dira"]
+      interval: 5s
+      retries: 20
+
+  orchestrator:
+    build: { context: ../.., dockerfile: infrastructure/nebius/Dockerfile.orchestrator }
+    restart: unless-stopped
+    env_file: dira.env
+    environment:
+      DATABASE_URL: postgresql://dira_app:${DIRA_APP_DB_PASSWORD}@postgres:5432/dira
+    depends_on:
+      postgres: { condition: service_healthy }
+    volumes:
+      - memory:/var/lib/dira/memory
+    ports:
+      - "127.0.0.1:${DIRA_ORCHESTRATOR_HOST_PORT:-8081}:8081"
+
+  web:
+    build: { context: ../.., dockerfile: infrastructure/nebius/Dockerfile.web }
+    restart: unless-stopped
+    environment:
+      DIRA_ORCHESTRATOR_URL: http://orchestrator:8081
+      DIRA_WEB_ORIGIN: ${DIRA_WEB_ORIGIN:?set in dira.env}
+    depends_on: [orchestrator]
+    ports:
+      - "127.0.0.1:${DIRA_WEB_HOST_PORT:-3000}:3000"
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    profiles: ["tls"]
+    environment:
+      DIRA_WEB_DOMAIN: ${DIRA_WEB_DOMAIN:-}
+      DIRA_API_DOMAIN: ${DIRA_API_DOMAIN:-}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on: [web, orchestrator]
+
+volumes:
+  pgdata: {}
+  memory: {}
+  caddy: {}

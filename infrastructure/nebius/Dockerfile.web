@@ -1,0 +1,14 @@
+# Dira web app (Next.js). Talks to the orchestrator server-to-server.
+FROM node:22-slim AS build
+WORKDIR /app
+COPY . .
+RUN npm ci --no-audit --no-fund && npm --workspace apps/web run build
+
+FROM node:22-slim
+WORKDIR /app
+COPY --from=build /app /app
+ENV NODE_ENV=production PORT=3000
+RUN useradd --system --uid 10002 diraweb
+USER diraweb
+EXPOSE 3000
+CMD ["npm", "--workspace", "apps/web", "run", "start"]

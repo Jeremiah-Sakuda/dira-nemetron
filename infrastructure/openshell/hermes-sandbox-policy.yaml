@@ -1,0 +1,36 @@
+# OpenShell policy for one account's Hermes sandbox (created by NemoClaw).
+# Schema: https://docs.nvidia.com/openshell/how-it-works/policies/schema.md
+# Default-deny egress. Every endpoint is `enforcement: enforce`; OpenShell's
+# default is `audit`, which only logs. Denied requests are logged as
+# NET:OPEN DENIED events (`openshell logs <sandbox> --source sandbox`); MCP and
+# WebSocket rule denials return HTTP 403.
+#
+# Apply / update (network_policies hot-reload):
+#   openshell policy set dira-hermes-<account> --policy hermes-sandbox-policy.yaml --wait
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only: [/usr, /lib, /etc, /sandbox/.hermes/skills/dira]
+  read_write: [/tmp, /sandbox/.hermes/sessions]
+network_policies:
+  dira_mcp:
+    # Dira's read-and-report tool server. Hermes holds only a placeholder;
+    # the bearer token lives in the OpenShell provider store.
+    endpoints:
+      - host: ${DIRA_API_DOMAIN}
+        port: 443
+        protocol: mcp
+        enforcement: enforce
+        access: read-write
+  telegram_chat:
+    # Hermes' own chat channel (not Dira's approval bot).
+    endpoints:
+      - host: api.telegram.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+# Inference does not need an entry: the sandbox calls inference.local and
+# OpenShell forwards to Nebius Token Factory with host-held credentials.
+# Not listed, therefore denied: every other host, including anything a
+# prompt-injected email asks the agent to reach.

@@ -1,0 +1,14 @@
+# Hosts the Dira orchestrator/broker may reach. It runs outside the agent
+# sandboxes because it holds OAuth credentials; the same list is enforced
+# in-process by services/orchestrator/src/egress-guard.ts (HTTP 403 + audit).
+# Override with DIRA_EGRESS_ALLOWLIST (comma-separated).
+api.tokenfactory.nebius.com
+oauth2.googleapis.com
+openidconnect.googleapis.com
+www.googleapis.com
+gmail.googleapis.com
+calendar-json.googleapis.com
+api.telegram.org
+api.tavily.com
+# User-chosen iCalendar feed hosts are fetched by a separate IP-pinned HTTPS
+# client that refuses private, loopback and link-local addresses.

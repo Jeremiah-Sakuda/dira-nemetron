@@ -12,3 +12,6 @@ coverage/
 .dira-runtime/
 .dira-memory/
 .dira-memory-export/
+
+# Deployment secrets
+infrastructure/nebius/dira.env

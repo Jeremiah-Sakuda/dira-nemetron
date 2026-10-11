@@ -32,7 +32,6 @@ export interface ModelClient {
     promptTokens?: number;
     completionTokens?: number;
     totalTokens?: number;
-    vertexai?: boolean;
   };
 }
 
@@ -51,72 +50,6 @@ export class FixtureModelClient implements ModelClient {
       return { relevant: false, reason: 'no stored interpretation fixture', mutation: null };
     }
     return structuredClone(result);
-  }
-}
-
-/**
- * Live Gemini client (GenAI SDK). Loaded lazily so the credential-free
- * replay never needs the dependency or credentials. Two auth paths:
- *  - GEMINI_API_KEY (Google AI Studio) for local live-model runs;
- *  - Vertex AI via application-default credentials when
- *    GOOGLE_GENAI_USE_VERTEXAI=true (the Cloud Run deployment: the service
- *    account carries roles/aiplatform.user, no key material anywhere).
- */
-export class GeminiModelClient implements ModelClient {
-  name = 'gemini';
-  /** Telemetry from the most recent call, surfaced in eval artifacts. */
-  lastCall?: ModelClient['lastCall'];
-
-  // Hackathon rules require Gemini 3.5+; override with DIRA_GEMINI_MODEL.
-  constructor(private readonly model = process.env.DIRA_GEMINI_MODEL ?? 'gemini-3.5-flash') {}
-
-  async interpret(email: RawEmailEvent, context: InterpretationContext): Promise<unknown> {
-    const { GoogleGenAI } = await import('@google/genai');
-    const vertexai = process.env.GOOGLE_GENAI_USE_VERTEXAI === 'true';
-    const ai = vertexai
-      ? new GoogleGenAI({
-          vertexai: true,
-          project: process.env.GOOGLE_CLOUD_PROJECT,
-          location: process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1',
-        })
-      : new GoogleGenAI({});
-    const prompt = buildInterpretationPrompt(email, context);
-
-    // Rate limits and transient backend errors get bounded backoff (PRD §28
-    // "transient tool failure"); anything else propagates to the caller's
-    // safe-stop handling.
-    const backoffsMs = [0, 2_000, 6_000];
-    let lastErr: unknown;
-    for (const backoff of backoffsMs) {
-      if (backoff > 0) await new Promise((r) => setTimeout(r, backoff));
-      try {
-        const startedAt = Date.now();
-        const response = await ai.models.generateContent({
-          model: this.model,
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-            temperature: 0,
-          },
-        });
-        this.lastCall = {
-          model: this.model,
-          latencyMs: Date.now() - startedAt,
-          provider: vertexai ? 'Google Vertex AI' : 'Google AI Studio',
-          vertexai,
-        };
-        const text = response.text ?? '';
-        try {
-          return JSON.parse(text);
-        } catch {
-          return { malformed: text };
-        }
-      } catch (err) {
-        lastErr = err;
-        if (!isTransientModelError(err)) throw err;
-      }
-    }
-    throw lastErr;
   }
 }
 

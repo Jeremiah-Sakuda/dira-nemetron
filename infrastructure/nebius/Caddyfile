@@ -1,0 +1,14 @@
+# Web app for people; the API host is only for Hermes (/mcp) and Telegram
+# (/telegram/webhook). Everything else on the API host is closed.
+{$DIRA_WEB_DOMAIN} {
+	encode gzip
+	reverse_proxy web:3000
+}
+
+{$DIRA_API_DOMAIN} {
+	@public path /mcp /telegram/webhook /health
+	handle @public {
+		reverse_proxy orchestrator:8081
+	}
+	respond 404
+}
