@@ -44,7 +44,11 @@ Model calls go to Nemotron on Nebius Token Factory.
 
 ## What is verified and what is not
 
-**Verified locally:** both images build and the stack runs from a clean volume. RLS holds under the `dira_app` role. The demo persona runs end to end: approval pause, a 409 recovered through replanning, and verified surfaces. The egress guard returns 403 with an audit row.
+**Verified locally (2026-10-11):**
+- Both images build, and the images contain no env files or deployment secrets.
+- The services ran from a clean Postgres volume with `docker run` on a private network, using the compose file's images, init script and environment. The build machine has no Compose plugin.
+- The init script creates `dira_app` as a non-superuser without `BYPASSRLS`.
+- Through the web container: demo start, the cascade to −3.6h, the approval pause, and approval resolving with 13 verified actions and both outbound messages. The booking was held as `AWAITING_COUNTERPARTY`. The egress probe was blocked with 403, and a request with the wrong Origin was refused.
 
 **Not run against live Nebius or NVIDIA services:**
 
