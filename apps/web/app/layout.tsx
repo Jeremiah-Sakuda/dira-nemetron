@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Nav } from '../components/nav';
+import { Nav, SessionBanner } from '../components/nav';
 
 export const metadata: Metadata = {
-  title: 'Dira — self-healing operating system for your commitments',
+  title: 'Dira — your commitments, kept',
   description:
-    'Dira detects changes to your commitments, propagates their consequences across your life, and autonomously repairs your plan. One thing changes. Everything adapts.',
+    'Dira notices when a change breaks a promise you made, repairs your week within limits you set, and tells the people affected. NVIDIA Nemotron on Nebius proposes; deterministic code decides.',
 };
+
+export const viewport = { width: 'device-width', initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,12 +16,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="shell">
           <header className="topbar">
-            <div className="wordmark">
+            <a className="wordmark" href="/" aria-label="Dira home">
               DIRA<span>▮</span>
-            </div>
+            </a>
             <Nav />
-            <div className="tagline">One thing changes. Everything adapts.</div>
           </header>
+          <SessionBanner />
           {children}
         </div>
       </body>

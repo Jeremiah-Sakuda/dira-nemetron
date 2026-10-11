@@ -1,5 +1,7 @@
 import { AccountSetup } from '../../components/account-setup';
 
+export const metadata = { title: 'Setup — Dira' };
+
 export const dynamic = 'force-dynamic';
 
 export default function OnboardingPage() {

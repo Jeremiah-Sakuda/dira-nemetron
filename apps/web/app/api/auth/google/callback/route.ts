@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request): Promise<Response> {
-  const base = process.env.DIRA_CLOUD_RUN_URL?.replace(/\/$/, '');
+  const base = (process.env.DIRA_ORCHESTRATOR_URL ?? process.env.DIRA_CLOUD_RUN_URL)?.replace(/\/$/, '');
   const incoming = new URL(request.url);
   const code = incoming.searchParams.get('code');
   const state = incoming.searchParams.get('state');

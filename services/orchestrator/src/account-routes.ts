@@ -17,6 +17,9 @@ import {
 import { AccountBusyError, handleAccountEmail, liveModelConfigured, replanAccountRepair, type AccountRepairOptions } from './account-repair.js';
 import { captureRuleCandidate, CORRECTION_REASONS, decideRuleCandidate, deleteConfirmedRule, listRules, type CorrectionReason } from './account-rules.js';
 import { describeCorrectionRule } from './account-policy.js';
+import { createHermesToken, hermesTokenStatus, revokeHermesTokens } from './hermes-mcp.js';
+import { createTelegramLink, telegramLinkStatus, unlinkTelegram } from './telegram.js';
+import { handleOwnerNote } from './account-repair.js';
 import { accountToolLabels } from './account-tools.js';
 import { buildDemoWorld, buildDemoWorldAt, DEMO_DISCLOSURE, DEMO_SESSION_TTL_SECONDS } from './demo-world.js';
 import { withEgressContext, egressAllowlist } from './egress-guard.js';
@@ -63,7 +66,8 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
   }
 
   if (!url.pathname.startsWith('/api/demo/') && !url.pathname.startsWith('/api/workflows') && url.pathname !== '/api/surfaces'
-    && !url.pathname.startsWith('/api/rules')
+    && !url.pathname.startsWith('/api/rules') && !url.pathname.startsWith('/api/telegram')
+    && !url.pathname.startsWith('/api/hermes') && !url.pathname.startsWith('/api/notes')
     && url.pathname !== '/api/egress' && url.pathname !== '/api/account') {
     return false;
   }
@@ -95,7 +99,7 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
         .filter((item) => !item.reservesEffortFor && item.status !== 'DROPPED')
         .map((item) => ({
           id: item.id, title: item.title, kind: item.kind, domain: item.domain, flexibility: item.flexibility,
-          criticality: item.criticality, owner: state.people[item.owner]?.name ?? (item.owner === accountId ? 'You' : item.owner),
+          criticality: item.criticality, owner: item.owner === accountId ? 'You' : state.people[item.owner]?.name ?? humanize(item.owner),
           startIso: item.startMin !== undefined ? minutesToIso(item.startMin, state.horizonStartIso, state.timezone) : null,
           endIso: item.startMin !== undefined ? minutesToIso(item.startMin + (item.durationMin ?? 0), state.horizonStartIso, state.timezone) : null,
           deadlineIso: item.deadlineMin !== undefined ? minutesToIso(item.deadlineMin, state.horizonStartIso, state.timezone) : null,
@@ -232,6 +236,58 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
     return true;
   }
 
+  if (url.pathname === '/api/telegram/link') {
+    if (req.method === 'GET') { json(req, res, 200, await telegramLinkStatus(store, accountId)); return true; }
+    if (req.method === 'POST') {
+      try { json(req, res, 200, await createTelegramLink(store, accountId)); }
+      catch (error) { json(req, res, 409, { error: error instanceof Error ? error.message : String(error) }); }
+      return true;
+    }
+    if (req.method === 'DELETE') { await unlinkTelegram(store, accountId); json(req, res, 200, { linked: false }); return true; }
+  }
+  if (url.pathname === '/api/hermes/token') {
+    const mcpUrl = `${(process.env.DIRA_PUBLIC_ORCHESTRATOR_URL ?? '').replace(/\/$/, '') || '<orchestrator-url>'}/mcp`;
+    if (req.method === 'GET') { json(req, res, 200, { mcpUrl, token: await hermesTokenStatus(store, accountId) }); return true; }
+    if (kind === 'demo') { json(req, res, 409, { error: 'Connect Hermes from a signed-in account, not the demo.' }); return true; }
+    if (req.method === 'POST') { json(req, res, 200, { mcpUrl, token: await createHermesToken(store, accountId), shownOnce: true }); return true; }
+    if (req.method === 'DELETE') { await revokeHermesTokens(store, accountId); json(req, res, 200, { revoked: true }); return true; }
+  }
+  if (req.method === 'GET' && url.pathname === '/api/notes') {
+    const notes = await store.withAccount(accountId, async (client) => {
+      const result = await client.query<{ note_id: string; text: string; source: string; created_at: Date }>(
+        `SELECT note_id, text, source, created_at FROM dira_user_notes WHERE account_id = $1 AND status = 'PENDING' ORDER BY created_at DESC LIMIT 20`,
+        [accountId],
+      );
+      return result.rows.map((row) => ({ noteId: row.note_id, text: row.text, source: row.source, createdAtIso: row.created_at.toISOString() }));
+    });
+    json(req, res, 200, { notes });
+    return true;
+  }
+  const noteMatch = /^\/api\/notes\/(note-[0-9a-f-]{36})$/.exec(url.pathname);
+  if (req.method === 'POST' && noteMatch) {
+    const body = safeParse(await ctx.readBody(req)) as { decision?: string } | null;
+    if (body?.decision !== 'CONFIRMED' && body?.decision !== 'DISCARDED') { json(req, res, 400, { error: 'invalid_decision' }); return true; }
+    const note = await store.withAccount(accountId, async (client) => {
+      const result = await client.query<{ text: string }>(
+        `UPDATE dira_user_notes SET status = $3 WHERE account_id = $1 AND note_id = $2 AND status = 'PENDING' RETURNING text`,
+        [accountId, noteMatch[1], body.decision],
+      );
+      return result.rows[0];
+    });
+    if (!note) { json(req, res, 409, { error: 'That note is no longer pending.' }); return true; }
+    if (body.decision === 'DISCARDED') { json(req, res, 200, { decision: 'DISCARDED' }); return true; }
+    try {
+      const result = await handleOwnerNote(store, accountId, { noteId: noteMatch[1]!, text: note.text }, ctx.repairOptions(store, accountId));
+      await store.withAccount(accountId, (client) => client.query(
+        'UPDATE dira_user_notes SET workflow_id = $3 WHERE account_id = $1 AND note_id = $2', [accountId, noteMatch[1], result.run.id]));
+      await ctx.syncMemory(store, accountId);
+      json(req, res, 200, { decision: 'CONFIRMED', run: result.run });
+    } catch (error) {
+      json(req, res, error instanceof AccountBusyError ? 429 : 409, { error: error instanceof Error ? error.message : String(error) });
+    }
+    return true;
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/rules') {
     json(req, res, 200, await listRules(store, accountId));
     return true;
@@ -312,4 +368,8 @@ function allowDemoStart(address: string): boolean {
   demoStarts.set(address, recent);
   if (demoStarts.size > 10_000) demoStarts.clear();
   return true;
+}
+
+function humanize(id: string): string {
+  return id.replace(/[-_]+/g, ' ').replace(/\b\w/g, (part) => part.toUpperCase());
 }

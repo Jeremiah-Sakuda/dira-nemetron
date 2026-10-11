@@ -1,6 +1,9 @@
 import { DEMO_POLICY_TABLE } from '@dira/policy-engine';
 import { StatusPill } from '../../components/status';
 import { PolicySettingsForm } from '../../components/policy-settings';
+import { PrivacyControls } from '../../components/privacy-controls';
+
+export const metadata = { title: 'Settings — Dira' };
 
 const VERDICT_TONE: Record<string, string> = {
   ALLOW: 'good',
@@ -12,7 +15,7 @@ const VERDICT_TONE: Record<string, string> = {
 export default function PoliciesPage() {
   return (
     <main>
-      <h1 className="page-title">Autonomy policy</h1>
+      <h1 className="page-title">Settings and policy</h1>
       <p className="page-sub">
         Every mutating operation passes through a deterministic policy gate before it can
         reach the action ledger. Verdicts are code, not prompts: no email, and no model
@@ -20,6 +23,7 @@ export default function PoliciesPage() {
         unconditionally.
       </p>
       <PolicySettingsForm />
+      <PrivacyControls />
       <div className="grid-2">
         {DEMO_POLICY_TABLE.map((group) => (
           <div className="panel" key={group.verdict}>

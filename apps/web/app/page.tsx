@@ -1,116 +1,70 @@
 import Link from 'next/link';
-import { SlackChart } from '../components/slack-chart';
-import { StatusPill, Tile } from '../components/status';
-import { fmtSlack, getGoldenRunData } from '../lib/replay-data';
+import { StartButtons } from '../components/start-buttons';
 
-export const dynamic = 'force-dynamic';
-
-export default async function SystemPage() {
-  const data = await getGoldenRunData();
-  const { run, metrics } = data;
-  const productionConfigured = Boolean(
-    process.env.DIRA_CLOUD_RUN_URL && process.env.DIRA_DEMO_TOKEN,
-  );
-  const feasible = run.status === 'RESOLVED';
-  const commitmentCount = data.commitmentsAfter.filter(
-    (c) => !c.reservesEffortFor && c.status !== 'DROPPED',
-  ).length;
-  const atRisk = feasible ? 0 : 1;
-
+export default function HomePage() {
   return (
-    <main>
-      <section className="problem-hero" aria-labelledby="problem-title">
-        <div className="panel problem-copy">
-          <div className="section-label">When plans collide</div>
-          <h1 id="problem-title" className="hero-title">
-            One moved commitment can break the whole week.
-          </h1>
-          <p>
-            A midterm moves from Friday to Wednesday. The interview buffer disappears,
-            study capacity no longer fits, and a team deliverable is suddenly at risk.
-            Calendars show that conflict. Dira repairs it.
-          </p>
-          <p className="muted">
-            It only takes actions already permitted by the people and policies in the plan,
-            then verifies the changed world before calling the repair complete.
-          </p>
-          <div className="hero-actions">
-            <Link
-              href="/interventions"
-              className="btn"
-              style={{ textDecoration: 'none', fontSize: 15, padding: '11px 20px' }}
-            >
-              ▶ Run the 48-Hour Shock
-            </Link>
-            {productionConfigured && (
-              <StatusPill kind="good" label="LIVE CLOUD · Nebius + Calendar" />
-            )}
-          </div>
-        </div>
+    <main className="landing">
+      <section className="landing-hero" aria-labelledby="hero-title">
+        <div className="section-label">Personal AI · always on · yours</div>
+        <h1 id="hero-title" className="landing-title">When one thing moves, Dira fixes everything it breaks.</h1>
+        <p className="landing-lede">
+          A professor moves your midterm two days earlier. Suddenly your interview is too close, your study time is gone,
+          and a teammate is waiting on work you can&rsquo;t do. Dira notices, finds every promise the change breaks, and
+          repairs your week within limits you set. It tells the people affected before they have to ask.
+        </p>
+        <StartButtons />
+        <p className="landing-note">The demo is a synthetic student week with a simulated calendar and mailbox. It needs no account and cannot contact real people.</p>
+      </section>
 
-        <div className="panel impact-story" aria-label="48-Hour Shock: conflict and verified repair">
-          <div className="section-label">The 48-Hour Shock</div>
-          <div className="story-step story-trigger">
-            <span className="story-kicker">External change</span>
-            <strong>Midterm: Fri 2 PM → Wed 2 PM</strong>
+      <section className="landing-steps" aria-label="How Dira works">
+        <article className="panel">
+          <div className="section-label">1 · Notices</div>
+          <h2>Always watching the sources you choose</h2>
+          <p>Gmail, Google Calendar and course deadline feeds, each connected with its own permission. Dira polls them in the background and keeps a commitment graph of what you promised, to whom, and what depends on what.</p>
+        </article>
+        <article className="panel">
+          <div className="section-label">2 · Repairs</div>
+          <h2>Nemotron proposes. Code decides.</h2>
+          <p>NVIDIA Nemotron models on Nebius Token Factory read the change and propose repair plans. Deterministic code checks every plan for feasibility, provenance and policy, and you approve anything sensitive. No model output can authorize an action.</p>
+        </article>
+        <article className="panel">
+          <div className="section-label">3 · Remembers</div>
+          <h2>Your corrections become your rules</h2>
+          <p>Reject or edit a step and Dira suggests a rule. Confirm it and it is committed to a private Git repository you can export, and mirrored as a read-only Skill for your Hermes assistant.</p>
+        </article>
+      </section>
+
+      <section className="panel landing-boundary" aria-labelledby="boundary-title">
+        <h2 id="boundary-title">What the model may and may not do</h2>
+        <div className="boundary-grid">
+          <div>
+            <h3>Nemotron proposes</h3>
+            <ul>
+              <li>Commitment drafts from your calendar, email and feeds (Nano)</li>
+              <li>How an email changes an existing commitment (Super)</li>
+              <li>Typed links between commitments and repair plans (Ultra)</li>
+            </ul>
           </div>
-          <div className="story-arrow" aria-hidden="true">↓</div>
-          <div className="story-step story-risk">
-            <span className="story-kicker">What breaks</span>
-            <strong>Interview buffer · study capacity · team QA</strong>
-            <span className="mono">GLOBAL SLACK +4.1h → −3.6h</span>
+          <div>
+            <h3>Deterministic code decides</h3>
+            <ul>
+              <li>Whether a plan is feasible and leaves enough slack</li>
+              <li>Whether every action cites a stored fact, and who may be contacted</li>
+              <li>What runs, what waits for you, and whether each change really happened</li>
+            </ul>
           </div>
-          <div className="story-arrow" aria-hidden="true">↓</div>
-          <div className="story-step story-repair">
-            <span className="story-kicker">Dira&apos;s verified repair</span>
-            <strong>Replan, rebook, delegate, rebuild</strong>
-            <span className="mono">RESOLVED · +1.3h · 0 HUMAN ACTIONS</span>
+          <div>
+            <h3>You stay in charge</h3>
+            <ul>
+              <li>Drafts only until you allow sending</li>
+              <li>Fence a calendar, your inbox, or a contact</li>
+              <li>Export or delete everything at any time</li>
+            </ul>
           </div>
         </div>
       </section>
 
-      <div className="panel slack-evidence">
-        <div className="section-label">Evidence — global slack across the repair</div>
-        <SlackChart points={data.slackTrajectory} />
-      </div>
-
-      <div className="tile-row">
-        <Tile k="Commitments" v={String(commitmentCount)} />
-        <Tile k="At risk" v={String(atRisk)} tone={atRisk ? 'critical' : undefined} />
-        <Tile k="Interventions (resolved)" v="1" />
-        <Tile k="Global slack" v={fmtSlack(run.slackFinalMin ?? 0)} tone={feasible ? 'good' : 'critical'} />
-      </div>
-
-      <div className="panel">
-        <div className="section-label">What Dira changed in the reference repair</div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
-          <strong style={{ fontSize: 16.5 }}>ECON 402 — the 48-Hour Shock</strong>
-          <StatusPill kind={feasible ? 'good' : 'warning'} label={run.status} />
-        </div>
-        <div className="tile-row" style={{ margin: '16px 0 4px' }}>
-          <Tile k="Commitments affected" v={String(run.affected.length)} />
-          <Tile k="Verified adapter mutations" v={String(metrics.verifiedExternalMutations)} />
-          <Tile k="Failures recovered" v={String(metrics.failuresRecovered)} />
-          <Tile k="User interventions" v={String(metrics.userInterventions)} tone="good" />
-        </div>
-        <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginTop: 10 }}>
-          A professor email moved the midterm forward 48 hours. Dira re-derived the plan:
-          rebooked the interview (surviving a 409 on the first slot), delegated sponsor-deck
-          QA to the backup owner, reclaimed two personal blocks, and rebuilt the study plan —
-          all policy-gated, ledgered, and independently verified.{' '}
-          <Link href="/interventions" style={{ color: 'var(--accent)' }}>
-            Open the flight recorder →
-          </Link>
-        </p>
-      </div>
-
-      <p className="footnote">
-        Runtime note: this overview is always the reproducible deterministic reference.
-        {productionConfigured
-          ? ' Production credentials are configured for this deployment; the Interventions page verifies live Cloud Run connectivity per run and labels the boundary.'
-          : ' The judge-controlled replay currently uses stateful integration simulators; production credentials are not configured for this web deployment.'}{' '}
-        Reproduce the reference with <span className="mono">make demo-replay</span>.
-      </p>
+      <p className="footnote">Engine proofs, including the deterministic replay, the 20-run reliability check and the variation matrix, are on the <Link href="/evidence">Evidence</Link> page.</p>
     </main>
   );
 }

@@ -17,7 +17,10 @@ import {
 } from './account-policy.js';
 
 const execFile = promisify(execFileCallback);
-const repositoryRoot = process.env.DIRA_MEMORY_ROOT ?? '.dira-memory';
+/** Read at call time so deployments and tests can point it at persistent private storage. */
+function repositoryRoot(): string {
+  return process.env.DIRA_MEMORY_ROOT ?? '.dira-memory';
+}
 const locks = new Map<string, Promise<unknown>>();
 const Int = z.number().int().safe();
 const SafeId = z.string().min(1).max(256).refine((value) => !['__proto__', 'constructor', 'prototype'].includes(value));
@@ -95,7 +98,7 @@ const RulesSnapshotSchema = z.object({ schemaVersion: z.literal(1), rules: z.arr
 
 function accountDirectory(accountId: string): string {
   const key = createHash('sha256').update(accountId).digest('hex');
-  return join(repositoryRoot, key);
+  return join(repositoryRoot(), key);
 }
 
 async function git(directory: string, ...args: string[]): Promise<string> {
@@ -135,8 +138,8 @@ export async function syncAccountMemory(
   const directory = accountDirectory(accountId);
   return withAccountLock(directory, async () => {
     const { state, profile, policy = DEFAULT_ACCOUNT_POLICY } = await loadSnapshot();
-    await mkdir(repositoryRoot, { recursive: true, mode: 0o700 });
-    await chmod(repositoryRoot, 0o700);
+    await mkdir(repositoryRoot(), { recursive: true, mode: 0o700 });
+    await chmod(repositoryRoot(), 0o700);
     await mkdir(directory, { recursive: true, mode: 0o700 });
     await chmod(directory, 0o700);
     try {

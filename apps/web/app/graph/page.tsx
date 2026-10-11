@@ -1,5 +1,7 @@
 import { getGoldenRunData } from '../../lib/replay-data';
 
+export const metadata = { title: 'Commitment graph — Dira' };
+
 export const dynamic = 'force-dynamic';
 
 /**

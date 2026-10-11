@@ -2,11 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "dira-orchestrator",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "set -a; . ./.env.dev; set +a; PORT=8081 exec npx tsx services/orchestrator/src/main.ts"],
+      "port": 8081
+    },
+    {
       "name": "dira-web",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--workspace", "apps/web", "run", "dev"],
-      "port": 3000,
-      "autoPort": true
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "set -a; . ./.env.dev; set +a; exec npm --workspace apps/web run dev"],
+      "port": 3000
     }
   ]
 }

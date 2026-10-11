@@ -128,16 +128,26 @@ export class PostgresAccountStore {
   }
 
   async initialize(): Promise<void> {
+    const migrations: string[] = [];
     for (const name of [
       '001_account_state.sql', '002_google_credentials.sql',
       '003_graph_proposals.sql', '004_graph_edge_proposals.sql',
       '005_account_availability.sql', '006_action_approvals.sql', '007_action_ledger_identity.sql',
       '008_workflow_execution_evidence.sql', '009_account_policy_settings.sql',
       '010_policy_block_events.sql', '011_source_sync_cursors.sql', '012_ical_deadline_feeds.sql',
-      '013_account_daily_reports.sql', '014_event_repair_and_demo.sql', '015_correction_rule_candidates.sql',
+      '013_account_daily_reports.sql', '014_event_repair_and_demo.sql', '015_correction_rule_candidates.sql', '016_hermes_and_telegram.sql',
     ]) {
-      const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
-      await this.pool.query(migration);
+      migrations.push(await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8'));
+    }
+    // Serialize schema changes across processes (web-facing service, daily
+    // job, tests) so concurrent startups never race on CREATE statements.
+    const client = await this.pool.connect();
+    try {
+      await client.query("SELECT pg_advisory_lock(hashtext('dira-schema-migrations'))");
+      for (const migration of migrations) await client.query(migration);
+    } finally {
+      await client.query("SELECT pg_advisory_unlock(hashtext('dira-schema-migrations'))").catch(() => undefined);
+      client.release();
     }
   }
 

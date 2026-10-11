@@ -1,6 +1,8 @@
 import { StatusPill } from '../../components/status';
 import { fmtTime, getGoldenRunData } from '../../lib/replay-data';
 
+export const metadata = { title: 'Reference commitments — Dira evidence' };
+
 export const dynamic = 'force-dynamic';
 
 const FLEX_LABEL: Record<string, string> = {

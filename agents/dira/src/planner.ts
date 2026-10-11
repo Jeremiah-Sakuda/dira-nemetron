@@ -15,6 +15,12 @@ import {
   type FeasibilityComputation,
 } from '@dira/constraint-engine';
 import type { CandidatePlan, PlannedAction } from '@dira/event-schema';
+import { minutesToLabel } from '@dira/commitment-model';
+
+/** Human time label for summaries ("Thu 13:00"); machine fields keep ISO instants. */
+function when(state: DomainState, minute: number): string {
+  return minutesToLabel(minute, state.horizonStartIso, state.timezone);
+}
 
 /**
  * Candidate repair search (PRD §19).
@@ -188,7 +194,7 @@ function buildRebookActions(
       desired_state: desired,
       provenance: [slot.provenance],
       external_system: 'recruiter',
-      summary: `Book "${c.title}" at ${iso(slot.startMin)}`,
+      summary: `Book "${c.title}" at ${when(state, slot.startMin)}`,
     });
     actions.push({
       type: 'MOVE_CALENDAR_EVENT',
@@ -196,7 +202,7 @@ function buildRebookActions(
       desired_state: desired,
       provenance: [slot.provenance],
       external_system: 'calendar',
-      summary: `Update calendar for "${c.title}" to ${iso(slot.startMin)}`,
+      summary: `Update calendar for "${c.title}" to ${when(state, slot.startMin)}`,
     });
   }
   return actions;
@@ -288,7 +294,7 @@ function buildDonorMoves(
       },
       provenance: [`user_policy_config:flexibility=${donor.flexibility}`],
       external_system: 'calendar',
-      summary: `Move "${donor.title}" to ${iso(start)}`,
+      summary: `Move "${donor.title}" to ${when(state, start)}`,
     };
     actions.push(action);
     sim = applyAction(sim, action);
@@ -393,7 +399,7 @@ function assemblePlan(
         desired_state: { reason: 'reservation invalidated by mutation' },
         provenance: ['user_policy_config:study-plan'],
         external_system: 'calendar',
-        summary: `Remove invalidated block "${c.title}" (${iso(c.startMin)})`,
+        summary: `Remove invalidated block "${c.title}" (${when(state, c.startMin)})`,
       });
     }
   }
@@ -425,7 +431,7 @@ function assemblePlan(
         },
         provenance: ['user_policy_config:study-plan'],
         external_system: 'calendar',
-        summary: `Reserve ${s.workMinutes} min for "${task.title}" at ${iso(s.interval.start)}`,
+        summary: `Reserve ${s.workMinutes} min for "${task.title}" at ${when(state, s.interval.start)}`,
       });
     }
     for (const [taskId, minutes] of Object.entries(unplacedMinutes)) {

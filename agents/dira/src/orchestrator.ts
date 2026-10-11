@@ -239,7 +239,7 @@ export class DiraOrchestrator {
     const mutation = interpretation.mutation;
     const target = this.state.commitments[mutation.entity_id]!;
     this.run.mutation = mutation;
-    this.run.mutationSummary = summarizeMutation(mutation, target.title);
+    this.run.mutationSummary = summarizeMutation(mutation, target.title, this.state);
     const tele = this.model.lastCall;
     const via = tele
       ? ` — ${tele.model} via ${tele.provider}, ${(tele.latencyMs / 1000).toFixed(1)}s`
@@ -1003,14 +1003,22 @@ export class DiraOrchestrator {
   }
 }
 
-function summarizeMutation(m: InterpretedMutation, title: string): string {
+function summarizeMutation(m: InterpretedMutation, title: string, state?: DomainState): string {
+  const at = (value?: string) => {
+    if (!value || !state) return value ?? '?';
+    try {
+      return minutesToLabel(isoToMinutes(value, state.horizonStartIso), state.horizonStartIso, state.timezone);
+    } catch {
+      return value;
+    }
+  };
   switch (m.mutation_type) {
     case 'schedule_change':
-      return `"${title}" moved ${m.old_start ?? '?'} → ${m.new_start ?? '?'}`;
+      return `"${title}" moved ${m.old_start ? `${at(m.old_start)} → ` : 'to '}${at(m.new_start)}`;
     case 'offer_of_alternatives':
       return `"${title}" withdrawn; ${m.offered_alternatives?.length ?? 0} alternatives offered`;
     case 'deadline_change':
-      return `"${title}" deadline changed to ${m.new_start ?? '?'}`;
+      return `"${title}" deadline changed to ${at(m.new_start)}`;
     case 'cancellation':
       return `"${title}" cancelled`;
     default:

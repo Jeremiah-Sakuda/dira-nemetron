@@ -214,7 +214,7 @@ export function computeFeasibility(state: DomainState): FeasibilityComputation {
         type: 'ASSIGNEE_UNAVAILABLE',
         commitment_id: task.id,
         detail:
-          `${task.title}: no feasible session for owner "${task.owner}" ` +
+          `${task.title}: no feasible session for ${task.owner === state.userId ? 'you' : state.people[task.owner]?.name ?? task.owner} ` +
           `within its execution window`,
       });
       paths.push({

@@ -28,6 +28,8 @@ interface PolicySettings {
   fencedGmail: boolean;
   calendarAutoSync: boolean;
   gmailAutoSync: boolean;
+  draftOnly?: boolean;
+  flightRetentionDays?: number;
   requireApproval: { rule: RuleId; scope?: { domain?: string; commitmentId?: string } }[];
 }
 interface PersonContact {
@@ -44,7 +46,7 @@ interface PolicyBlockEvent {
   createdAtIso: string;
 }
 
-const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], fencedPersonIds: [], fencedGmail: false, calendarAutoSync: false, gmailAutoSync: false, requireApproval: [] };
+const DEFAULT_POLICY: PolicySettings = { schemaVersion: 1, fencedCalendarIds: [], fencedPersonIds: [], fencedGmail: false, calendarAutoSync: false, gmailAutoSync: false, draftOnly: true, flightRetentionDays: 30, requireApproval: [] };
 
 export function PolicySettingsForm() {
   const [policy, setPolicy] = useState<PolicySettings>(DEFAULT_POLICY);
@@ -211,6 +213,31 @@ export function PolicySettingsForm() {
                 ))}
               </div>
             )}
+          </fieldset>
+          <fieldset className="policy-rule-list policy-fence-list" disabled={saving}>
+            <legend>Messages and records</legend>
+            <label className="policy-rule">
+              <input
+                type="checkbox"
+                checked={policy.draftOnly !== false}
+                onChange={(event) => { const checked = event.currentTarget.checked; setPolicy((current) => ({ ...current, draftOnly: checked })); }}
+              />
+              <span>
+                <strong>Draft-only: keep every message Dira writes in Drafts</strong>
+                <small>Recommended until you trust Dira. Turn it off to let approved plans send messages to the stakeholders stored on a commitment. Every message says it was sent by Dira on your behalf.</small>
+              </span>
+            </label>
+            <label className="policy-rule retention-row">
+              <span>
+                <strong>Delete flight records after</strong>
+                <small>Run logs older than this are removed by the nightly job. 0 keeps them.</small>
+              </span>
+              <input
+                type="number" min={0} max={365} step={1} inputMode="numeric" aria-label="Retention in days"
+                value={policy.flightRetentionDays ?? 30}
+                onChange={(event) => { const value = Number(event.currentTarget.value); setPolicy((current) => ({ ...current, flightRetentionDays: Number.isFinite(value) ? Math.max(0, Math.min(365, Math.round(value))) : 30 })); }}
+              /> days
+            </label>
           </fieldset>
           <fieldset className="policy-rule-list policy-fence-list" disabled={saving}>
             <legend>Automatic source checks</legend>

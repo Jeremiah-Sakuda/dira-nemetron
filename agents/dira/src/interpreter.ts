@@ -402,7 +402,7 @@ export async function interpretEmail(
     // it. Gemma 3n is therefore limited to a user's own commitments. A voice
     // note can capture the user's intent privately, but can never impersonate
     // a professor, recruiter, or teammate to change someone else's event.
-    if (email.source === 'gemma_voice_note' && entity.owner !== sender?.id) {
+    if ((email.source === 'gemma_voice_note' || email.source === 'user_note') && entity.owner !== sender?.id) {
       return {
         ok: false,
         result,

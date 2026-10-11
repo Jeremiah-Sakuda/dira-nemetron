@@ -166,7 +166,7 @@ suite('demo persona: event repair against PostgreSQL', () => {
     expect(insideRule).toBe(false);
 
     process.env.DIRA_MEMORY_ROOT = await mkdtemp(join(tmpdir(), 'dira-memory-test-'));
-    const memory = await import('../../services/orchestrator/src/account-memory.js?rules');
+    const memory = await import('../../services/orchestrator/src/account-memory.js');
     const state = (await store.loadDomainState(accountId))!;
     await memory.syncAccountMemory(accountId, async () => ({
       state, profile: undefined, policy: await store.getAccountPolicySettings(accountId),

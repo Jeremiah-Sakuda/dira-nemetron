@@ -27,6 +27,8 @@ import { AccountBusyError, resumeAccountRepair, workflowReadyToResume, type Acco
 import { deleteExpiredDemoAccounts, getAccountKind, pruneFlightRecords, recordOwnerDecision } from './account-records.js';
 import { installEgressGuard } from './egress-guard.js';
 import { captureRuleCandidate, CORRECTION_REASONS, type CorrectionReason } from './account-rules.js';
+import { handleHermesMcp } from './hermes-mcp.js';
+import { handleTelegramUpdate, notifyApprovalRequested, verifyTelegramSecret } from './telegram.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -243,9 +245,11 @@ async function handleLocalEvent(raw: unknown) {
   return { run, metrics: computeRunMetrics(run, runtime.ledger), flight: runtime.recorder.all() };
 }
 
-/** Hooks shared by every event-repair run (approval notifications are added by the Telegram module). */
-function repairOptions(_store: PostgresAccountStore, _accountId: string): AccountRepairOptions {
-  return {};
+/** Hooks shared by every event-repair run: approval requests also go to the owner's linked Telegram chat. */
+function repairOptions(store: PostgresAccountStore, accountId: string): AccountRepairOptions {
+  return {
+    onAwaitingApproval: (run, pending) => notifyApprovalRequested(store, accountId, run, pending),
+  };
 }
 
 const server = createServer(async (req, res) => {
@@ -261,6 +265,30 @@ const server = createServer(async (req, res) => {
     // locally).
     if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/healthz')) {
       json(req, res, 200, { ok: true, mode: MODE });
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/mcp') {
+      // Hermes Agent (through NemoClaw) calls Dira's read-and-report tools here.
+      const body = (await readBodyBuffer(req, 256 * 1024)).toString('utf8');
+      await handleHermesMcp(req, res, await accountStore(), body);
+      return;
+    }
+    if (url.pathname === '/mcp') {
+      res.writeHead(405, { allow: 'POST' }).end();
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/telegram/webhook') {
+      if (!verifyTelegramSecret(req)) {
+        json(req, res, 401, { error: 'unauthorized' });
+        return;
+      }
+      const update = safeJson((await readBodyBuffer(req, 64 * 1024)).toString('utf8'));
+      const store = await accountStore();
+      // Acknowledge quickly; Telegram retries slow webhooks.
+      json(req, res, 200, { ok: true });
+      void handleTelegramUpdate(store, update as Parameters<typeof handleTelegramUpdate>[1], (accountId) => repairOptions(store, accountId))
+        .catch((error) => console.error('telegram update failed', error));
       return;
     }
 
@@ -422,7 +450,7 @@ const server = createServer(async (req, res) => {
       ]);
       json(req, res, 200, {
         policy,
-        people: Object.values(state.people).map(({ id, name, email }) => ({ id, name, email })),
+        people: Object.values(state.people).filter((person) => person.id !== state.userId).map(({ id, name, email }) => ({ id, name, email })),
       });
       return;
     }

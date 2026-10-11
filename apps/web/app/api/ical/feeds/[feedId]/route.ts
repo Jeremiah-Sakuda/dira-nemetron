@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 async function forward(request: Request, feedId: string, method: 'PATCH' | 'DELETE'): Promise<Response> {
-  const base = process.env.DIRA_CLOUD_RUN_URL?.replace(/\/$/, '');
+  const base = (process.env.DIRA_ORCHESTRATOR_URL ?? process.env.DIRA_CLOUD_RUN_URL)?.replace(/\/$/, '');
   if (!base) return Response.json({ error: 'iCalendar service is not configured' }, { status: 503 });
   try {
     const upstream = await fetch(`${base}/api/ical/feeds/${encodeURIComponent(feedId)}`, {

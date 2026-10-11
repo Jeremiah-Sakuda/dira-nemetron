@@ -10,7 +10,8 @@ export const RawEmailEventSchema = z.object({
   eventId: z.string().min(1),
   /** gmail is an email delivery; gemma_voice_note is a user-owned recording
    * transcribed by the optional Gemma 3n service. Both remain untrusted input. */
-  source: z.enum(['gmail', 'gemma_voice_note']),
+  /** user_note is the owner's own words relayed through chat (Hermes) and confirmed in the web app. */
+  source: z.enum(['gmail', 'gemma_voice_note', 'user_note']),
   threadId: z.string().min(1),
   messageId: z.string().min(1),
   from: z.string().min(1),

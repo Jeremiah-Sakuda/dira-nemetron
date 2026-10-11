@@ -2,6 +2,8 @@ import { LiveReplay } from '../../components/live-replay';
 import { PHASE_TONE, StatusPill, Tile } from '../../components/status';
 import { fmtSlack, getGoldenRunData } from '../../lib/replay-data';
 
+export const metadata = { title: 'Replay — Dira evidence' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function InterventionsPage() {

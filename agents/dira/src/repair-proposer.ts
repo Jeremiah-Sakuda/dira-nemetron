@@ -332,12 +332,12 @@ export function compileProposedPlan(
         actions.push({
           type: 'BOOK_INTERVIEW_SLOT', target: target.id, desired_state: desired,
           provenance: [approved.provenance], external_system: 'recruiter',
-          summary: `Book "${target.title}" at ${iso(state, startMin)}`,
+          summary: `Book "${target.title}" at ${minutesToLabel(startMin, state.horizonStartIso, state.timezone)}`,
         });
         actions.push({
           type: 'MOVE_CALENDAR_EVENT', target: target.id, desired_state: desired,
           provenance: [approved.provenance], external_system: 'calendar',
-          summary: `Update calendar for "${target.title}" to ${iso(state, startMin)}`,
+          summary: `Update calendar for "${target.title}" to ${minutesToLabel(startMin, state.horizonStartIso, state.timezone)}`,
         });
         break;
       }
@@ -361,7 +361,7 @@ export function compileProposedPlan(
         actions.push({
           type: 'DELETE_CALENDAR_EVENT', target: target.id, desired_state: { reason: 'Nemotron Ultra proposal' },
           provenance, external_system: 'calendar',
-          summary: `Remove "${target.title}"${target.startMin !== undefined ? ` (${iso(state, target.startMin)})` : ''}`,
+          summary: `Remove "${target.title}"${target.startMin !== undefined ? ` (${minutesToLabel(target.startMin, state.horizonStartIso, state.timezone)})` : ''}`,
         });
         break;
       case 'DECLINE_INTERVIEW':
@@ -535,7 +535,7 @@ function moveAction(state: DomainState, target: Commitment, startMin: number, pr
     },
     provenance,
     external_system: 'calendar',
-    summary: `Move "${target.title}" to ${iso(state, startMin)}`,
+    summary: `Move "${target.title}" to ${minutesToLabel(startMin, state.horizonStartIso, state.timezone)}`,
   };
 }
 

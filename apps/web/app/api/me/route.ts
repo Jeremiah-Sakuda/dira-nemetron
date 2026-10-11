@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request): Promise<Response> {
-  const base = process.env.DIRA_CLOUD_RUN_URL?.replace(/\/$/, '');
+  const base = (process.env.DIRA_ORCHESTRATOR_URL ?? process.env.DIRA_CLOUD_RUN_URL)?.replace(/\/$/, '');
   if (!base) return Response.json({ error: 'Account service is not configured' }, { status: 503 });
   const upstream = await fetch(`${base}/api/me`, {
     headers: { cookie: request.headers.get('cookie') ?? '' },
@@ -12,7 +12,7 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const base = process.env.DIRA_CLOUD_RUN_URL?.replace(/\/$/, '');
+  const base = (process.env.DIRA_ORCHESTRATOR_URL ?? process.env.DIRA_CLOUD_RUN_URL)?.replace(/\/$/, '');
   if (!base) return Response.json({ error: 'Account service is not configured' }, { status: 503 });
   const upstream = await fetch(`${base}/auth/logout`, {
     method: 'POST',

@@ -1,5 +1,7 @@
 import { analyzeAccountSchedule, availabilityIntervals, rebaseDomainState } from './account-planning.js';
 import type { PostgresAccountStore, StoredDailyScheduleReport } from './postgres-store.js';
+import { pruneFlightRecords } from './account-records.js';
+import { sendTelegramText } from './telegram.js';
 
 const NIGHTLY_MINUTE = 2 * 60;
 const MORNING_MINUTE = 7 * 60;
@@ -18,23 +20,7 @@ export function startConfiguredAccountDailyJobs(
     if (running) return;
     running = true;
     try {
-      const store = await getStore();
-      for (const accountId of accountIds) {
-        try {
-          const account = await store.getAccount(accountId);
-          if (!account) continue;
-          const clock = localClock(new Date(), account.timezone);
-          if (clock.minuteOfDay >= NIGHTLY_MINUTE) {
-            await runDailyReport(store, accountId, clock.localDate, 'NIGHTLY_RECOMPUTE', mirrorMemory);
-          }
-          if (clock.minuteOfDay >= MORNING_MINUTE) {
-            await runDailyReport(store, accountId, clock.localDate, 'MORNING_SUMMARY', mirrorMemory);
-          }
-        } catch (error) {
-          console.error(JSON.stringify({ severity: 'WARN', msg: 'account daily schedule job failed',
-            failure: error instanceof Error ? error.message : String(error) }));
-        }
-      }
+      await runDailyJobsForAccounts(await getStore(), accountIds, mirrorMemory);
     } catch (error) {
       console.error(JSON.stringify({ severity: 'ERROR', msg: 'account daily scheduler could not access account storage',
         failure: error instanceof Error ? error.message : String(error) }));
@@ -47,6 +33,35 @@ export function startConfiguredAccountDailyJobs(
   timer.unref();
   void poll();
   return timer;
+}
+
+/**
+ * One pass of the daily jobs. The always-on VM calls this every minute; a
+ * Nebius Serverless Job can run the same pass on a schedule
+ * (scripts/daily-job.ts). Both are idempotent per account and local date.
+ */
+export async function runDailyJobsForAccounts(
+  store: PostgresAccountStore,
+  accountIds: readonly string[],
+  mirrorMemory: (store: PostgresAccountStore, accountId: string) => Promise<void>,
+  now = new Date(),
+): Promise<void> {
+  for (const accountId of accountIds) {
+    try {
+      const account = await store.getAccount(accountId);
+      if (!account) continue;
+      const clock = localClock(now, account.timezone);
+      if (clock.minuteOfDay >= NIGHTLY_MINUTE) {
+        await runDailyReport(store, accountId, clock.localDate, 'NIGHTLY_RECOMPUTE', mirrorMemory);
+      }
+      if (clock.minuteOfDay >= MORNING_MINUTE) {
+        await runDailyReport(store, accountId, clock.localDate, 'MORNING_SUMMARY', mirrorMemory);
+      }
+    } catch (error) {
+      console.error(JSON.stringify({ severity: 'WARN', msg: 'account daily schedule job failed',
+        failure: error instanceof Error ? error.message : String(error) }));
+    }
+  }
 }
 
 async function runDailyReport(
@@ -79,7 +94,16 @@ async function runDailyReport(
       plans: analysis.plans.slice(0, 3),
       calendarFenced: analysis.calendarFenced,
     };
-    return await store.saveDailyScheduleReport(accountId, localDate, reportType, report);
+    const saved = await store.saveDailyScheduleReport(accountId, localDate, reportType, report);
+    if (saved && reportType === 'NIGHTLY_RECOMPUTE') {
+      await pruneFlightRecords(store, accountId, policy.flightRetentionDays);
+    }
+    if (saved && reportType === 'MORNING_SUMMARY') {
+      const pending = (await store.listPendingApprovals(accountId)).length;
+      await sendTelegramText(store, accountId, morningText(report, pending, policy.correctionRules.length))
+        .catch((error) => console.error('morning summary delivery failed', error));
+    }
+    return saved;
   });
 
   if (lock.acquired && lock.value) {
@@ -98,4 +122,23 @@ function localClock(date: Date, timezone: string): { localDate: string; minuteOf
     localDate: `${get('year')}-${get('month')}-${get('day')}`,
     minuteOfDay: Number(get('hour')) * 60 + Number(get('minute')),
   };
+}
+
+/** The 07:00 summary as a short chat message. It reports; it never acts. */
+export function morningText(
+  report: { localDate: string; globalSlackMinutes: number; violations: { detail: string }[]; plans: { label: string }[] },
+  pendingApprovals: number,
+  activeRules: number,
+): string {
+  const hours = (Math.abs(report.globalSlackMinutes) / 60).toFixed(1);
+  const lines = [
+    `Good morning. Dira checked your schedule for ${report.localDate}.`,
+    report.violations.length
+      ? `${report.violations.length} thing${report.violations.length === 1 ? '' : 's'} won't fit: ${report.violations.slice(0, 3).map((item) => item.detail).join('; ')}.`
+      : `Everything fits, with ${report.globalSlackMinutes < 0 ? '-' : ''}${hours}h of slack at the tightest point.`,
+    report.violations.length && report.plans[0] ? `Best repair: ${report.plans[0].label}. Open Dira to review it.` : '',
+    pendingApprovals ? `${pendingApprovals} action${pendingApprovals === 1 ? '' : 's'} waiting for your OK.` : '',
+    activeRules ? `${activeRules} rule${activeRules === 1 ? '' : 's'} you taught Dira are active.` : '',
+  ];
+  return lines.filter(Boolean).join('\n');
 }

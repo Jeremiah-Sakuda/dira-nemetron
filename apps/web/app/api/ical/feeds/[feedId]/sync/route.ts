@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 export async function POST(request: Request, context: { params: Promise<{ feedId: string }> }): Promise<Response> {
-  const base = process.env.DIRA_CLOUD_RUN_URL?.replace(/\/$/, '');
+  const base = (process.env.DIRA_ORCHESTRATOR_URL ?? process.env.DIRA_CLOUD_RUN_URL)?.replace(/\/$/, '');
   if (!base) return Response.json({ error: 'iCalendar service is not configured' }, { status: 503 });
   const { feedId } = await context.params;
   try {

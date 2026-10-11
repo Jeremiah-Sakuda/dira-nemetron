@@ -113,6 +113,38 @@ export async function resumeAccountRepair(
   return locked.value;
 }
 
+/**
+ * A change the owner described in chat and then confirmed in the web app.
+ * It is interpreted like an email from the owner and may only change the
+ * owner's own commitments; third-party commitments still need their sender.
+ */
+export async function handleOwnerNote(
+  store: PostgresAccountStore,
+  accountId: string,
+  note: { noteId: string; text: string },
+  options: AccountRepairOptions = {},
+): Promise<AccountRepairResult> {
+  const [account, state] = await Promise.all([store.getAccount(accountId), store.loadDomainState(accountId)]);
+  if (!account || !state) throw new Error('account is not initialized');
+  const ownerEmail = (state.people[state.userId]?.email ?? account.email).toLowerCase();
+  if (!state.people[state.userId]) {
+    state.people[state.userId] = { id: state.userId, name: account.email.split('@')[0] ?? 'Owner', email: ownerEmail };
+    await store.saveDomainState(accountId, state);
+  }
+  const now = (options.now ?? (() => new Date()))();
+  return handleAccountEmail(store, accountId, {
+    eventId: `evt-${note.noteId}`,
+    source: 'user_note',
+    threadId: `thread-${note.noteId}`,
+    messageId: note.noteId,
+    from: ownerEmail,
+    to: ownerEmail,
+    subject: 'Change relayed by the owner',
+    body: note.text,
+    receivedAtIso: now.toISOString(),
+  }, options);
+}
+
 /** Plan again (after a rejection and a confirmed rule, for example). */
 export async function replanAccountRepair(
   store: PostgresAccountStore,
