@@ -1897,3 +1897,16 @@ table.data td:first-child {
 .study-steps { margin: 8px 0 0 18px; font-size: 13px; color: var(--text-secondary); display: grid; gap: 3px; }
 .evidence-intro { margin-bottom: 28px; }
 .evidence-intro .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.graph-columns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.graph-column h2 { font-size: 14px; margin-bottom: 10px; }
+.graph-node { display: grid; gap: 2px; background: var(--surface-2); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; border-left: 3px solid var(--border); font-size: 13.5px; }
+.graph-node[data-domain='academic'] { border-left-color: #3987e5; }
+.graph-node[data-domain='career'] { border-left-color: #c77dff; }
+.graph-node[data-domain='organization'] { border-left-color: #fab219; }
+.graph-node[data-domain='personal'] { border-left-color: #0ca30c; }
+.graph-node .muted { font-size: 12px; }
+.edge-list { list-style: none; display: grid; gap: 6px; font-size: 13.5px; margin: 8px 0 12px; }
+.source-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.source-form select, .source-form input { background: var(--surface-0); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px; font: inherit; font-size: 14px; min-height: 42px; }
+.account-graph .panel { margin-bottom: 16px; }
+@media (max-width: 860px) { .graph-columns { grid-template-columns: minmax(0, 1fr); } }

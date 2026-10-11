@@ -19,5 +19,6 @@ This file records every deliberate departure from [`docs/product/dira-v2-prd.md`
    - Nebius VM, Serverless Job, NemoClaw and OpenShell commands.
 
    Scripts and policies follow the official docs. See [`infrastructure/README.md`](infrastructure/README.md).
-9. **P1 items not built:** Tavily source checks, extension and renegotiation actions, the professional/Asana persona, Parakeet voice intake, exportable skill bundles beyond the memory repo, Canvas REST, and Calendar push.
-10. **The v1 Gemma voice intake was removed with the Google Cloud runtime.** Its captured run stays in `docs/evidence/v1`.
+9. **Tavily source checks are built but unverified live.** The Tavily call, domain filtering, verbatim-evidence gate and repair path are tested against a stubbed Tavily response. A live run needs `TAVILY_API_KEY`. Checks run only for signed-in accounts, not the demo.
+10. **P1 items not built:** extension and renegotiation actions, the professional/Asana persona, Parakeet voice intake, exportable skill bundles beyond the memory repo, Canvas REST, and Calendar push.
+11. **The v1 Gemma voice intake was removed with the Google Cloud runtime.** Its captured run stays in `docs/evidence/v1`.

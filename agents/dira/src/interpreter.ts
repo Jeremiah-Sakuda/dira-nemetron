@@ -221,6 +221,13 @@ export function buildInterpretationPrompt(
     'If the email does not clearly mutate a known commitment, set relevant=false.',
     'If wording is ambiguous, lower confidence accordingly.',
     '',
+    ...(email.source === 'web_page' ? [
+      'This item is a PUBLIC WEB PAGE the owner named as an official source, not a message.',
+      'Report a mutation only if the page states a date or time for a known commitment that',
+      'differs from the stored time above; quote that sentence verbatim as evidence_quote.',
+      'A page that restates the stored time is relevant=false.',
+      '',
+    ] : []),
     '--- EMAIL (untrusted) ---',
     `From: ${email.from}`,
     `Subject: ${email.subject}`,
@@ -235,6 +242,7 @@ export interface InterpretOutcome {
   failure?:
     | 'MALFORMED_OUTPUT'
     | 'UNRESOLVED_ENTITY'
+    | 'UNVERIFIED_EVIDENCE'
     | 'LOW_CONFIDENCE'
     | 'UNVERIFIED_SENDER'
     | 'MODEL_UNAVAILABLE';
@@ -341,6 +349,18 @@ export async function interpretEmail(
         result,
         failure: 'UNVERIFIED_SENDER',
         detail: `voice note owner ${sender?.email ?? email.from} cannot mutate commitment ${entity.id} owned by ${entity.owner}`,
+        attempts,
+      };
+    }
+    // A public page is noisy and unsigned: its claim counts only if the quoted
+    // evidence appears verbatim in the fetched text.
+    if (email.source === 'web_page'
+      && (!result.mutation.evidence_quote || !email.body.includes(result.mutation.evidence_quote))) {
+      return {
+        ok: false,
+        result,
+        failure: 'UNVERIFIED_EVIDENCE',
+        detail: 'the page interpretation has no verbatim evidence quote from the fetched text',
         attempts,
       };
     }

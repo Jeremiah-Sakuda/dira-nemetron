@@ -1,6 +1,6 @@
 # Dira: your commitments, kept
 
-**Track:** Personal AI · **Built with:** NVIDIA Nemotron 3 (Nano, Super, Ultra) on Nebius Token Factory, Nebius AI Cloud, NVIDIA NemoClaw, OpenShell, Hermes Agent
+**Track:** Personal AI · **Built with:** NVIDIA Nemotron 3 (Nano, Super, Ultra) on Nebius Token Factory, Nebius AI Cloud, NVIDIA NemoClaw, OpenShell, Hermes Agent, Tavily
 
 ## Inspiration
 
@@ -21,6 +21,10 @@ Dira keeps a graph of what you have promised, to whom, and what depends on what.
 
 **Injection test:** a prompt-injection email asks Dira to forward the inbox to an outside address. It changes nothing and sends nothing. The sender has no authority, a labeled adversarial plan is rejected at provenance, and the attempt to reach the outside host gets an audited HTTP 403. In deployment, the OpenShell sandbox enforces the same allowlist at the network edge.
 
+## Tavily
+
+You can name a commitment's official page, such as a course's exam page. Dira searches only that domain with Tavily, nightly or on demand. A date change it finds is interpreted by Super and accepted only if the quote appears verbatim on the fetched page. It then goes through the same propagation, planning, policy and approval as an email. A web source can have authority over one commitment, but it can never be contacted.
+
 ## How we built it
 
 - **Deterministic core:** TypeScript with Zod schemas, typed-edge propagation, a global-slack solver, a policy engine, and a durable ledger with crash-resume. It carried over from v1, and its property and chaos tests still pass.
@@ -37,7 +41,7 @@ The hardest part was letting a model propose plans without letting it act. Our a
 
 ## What's next
 
-Tavily checks for publicly posted dates. Extension and renegotiation emails. A professional persona with an Asana feed. Calendar push notifications.
+Extension and renegotiation emails. A professional persona with an Asana feed. Calendar push notifications.
 
 ## Significantly updated from an earlier hackathon
 

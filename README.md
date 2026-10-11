@@ -48,7 +48,7 @@ make eval-repair-fixture  # the repair-proposer gates on stored proposals (no in
 | Private | Postgres row-level security per account. Credentials stay in the broker, outside any model sandbox. Each account's Hermes runs in an OpenShell sandbox with default-deny egress, and the broker enforces its own allowlist with an audited 403. Draft-only by default. Calendar, Gmail and person fences. Export or delete everything. |
 | Persistent memory | Each account's graph, focus hours, policy and rules are committed to a private Git repository. You can download it as a bundle and restore it with validation. |
 | Reusable skills | When you correct Dira, it proposes a rule. Confirmed rules shape every later plan, and they are mirrored as read-only Hermes Skills (`skills/dira/<rule>/SKILL.md`). |
-| Tools you choose | Each connector is its own consent: Calendar read, Calendar write, Gmail read, Gmail drafting. Deadline feeds you add. Telegram approvals you link. Hermes, through a token you create. |
+| Tools you choose | Each connector is its own consent: Calendar read, Calendar write, Gmail read, Gmail drafting. Deadline feeds you add. Official pages you name for Tavily checks. Telegram approvals you link. Hermes, through a token you create. |
 
 ## Nemotron on Nebius Token Factory
 
@@ -59,6 +59,7 @@ Each job uses the smallest tier that does it well. Every call records its model,
 | Commitment drafts from calendar, email and feed items | Nano | A strict draft schema. Email drafts need a verbatim evidence quote. Nothing enters the graph until you confirm it. |
 | How an email changes an existing commitment | Super | The interpretation schema, then entity resolution against stored ids, commitment-scoped sender authority, and a confidence floor. |
 | Typed links between commitments | Ultra | Validated against your graph; inert until confirmed. |
+| Checking an official page (via Tavily search) for a changed date | Super | Tavily searches only the domain the owner named. A page's claim must quote the fetched text verbatim, then passes the same gates as an email. A web source is never contactable. |
 | Repair plans | Ultra | Structured intents that cite typed provenance (`edge:…`, `slot:…`, `message:…`, `policy:…`, `rule:…`). A deterministic compiler resolves every reference and derives times, recipients and message text from stored facts. It then runs the same feasibility, margin, cost and policy checks as the enumerated candidates. |
 
 Ultra matters because the enumerator only knows four repair shapes. In the overlap scenario, a fixed session moves onto a flexible block, and the deterministic planner has nothing to offer. Ultra's plan is the one that resolves it.
@@ -114,6 +115,7 @@ One Nebius VM runs Postgres, the orchestrator and broker, the web app, Caddy, an
 | Ultra proposer gates, approval pause and resume, correction rules | Tests on fixture proposals, including adversarial proposals. |
 | Demo persona, account repair engine, RLS, Hermes MCP, Telegram nonces | Postgres integration tests under a non-superuser role (`make test-postgres`), and clicked through end to end in the browser. |
 | Live Nemotron calls (Nano, Super, Ultra) | Implemented, with live telemetry, evals and cost reporting. **Not yet run in this repository:** the evidence files are produced when `NEBIUS_API_KEY` is configured. |
+| Tavily official-source checks | Tested against a stubbed Tavily response. A live run needs `TAVILY_API_KEY`. |
 | Google Calendar and Gmail on a real account | Implemented behind narrow adapters with scope checks and read-back. Not yet exercised against live credentials in this repository. |
 | Nebius VM, Serverless Jobs, NemoClaw/Hermes, OpenShell | Scripts and policies are written from the official docs and the images build locally. Commands that have not been run against live services are marked in `infrastructure/README.md`. |
 

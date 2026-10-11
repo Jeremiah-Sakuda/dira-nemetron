@@ -2,6 +2,8 @@ import { analyzeAccountSchedule, availabilityIntervals, rebaseDomainState } from
 import type { PostgresAccountStore, StoredDailyScheduleReport } from './postgres-store.js';
 import { pruneFlightRecords } from './account-records.js';
 import { sendTelegramText } from './telegram.js';
+import { listSourceChecks, runSourceCheck, tavilyConfigured } from './source-checks.js';
+import { liveModelConfigured } from './account-repair.js';
 
 const NIGHTLY_MINUTE = 2 * 60;
 const MORNING_MINUTE = 7 * 60;
@@ -97,6 +99,12 @@ async function runDailyReport(
     const saved = await store.saveDailyScheduleReport(accountId, localDate, reportType, report);
     if (saved && reportType === 'NIGHTLY_RECOMPUTE') {
       await pruneFlightRecords(store, accountId, policy.flightRetentionDays);
+      if (tavilyConfigured() && liveModelConfigured()) {
+        for (const check of listSourceChecks(rebased)) {
+          await runSourceCheck(store, accountId, check.commitmentId)
+            .catch((error) => console.error(JSON.stringify({ severity: 'WARN', msg: 'official source check failed', failure: String(error) })));
+        }
+      }
     }
     if (saved && reportType === 'MORNING_SUMMARY') {
       const pending = (await store.listPendingApprovals(accountId)).length;

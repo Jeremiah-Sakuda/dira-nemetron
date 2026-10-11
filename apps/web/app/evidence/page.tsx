@@ -31,6 +31,7 @@ export default async function EvidencePage() {
           <Link className="btn btn-secondary" href="/interventions">Stream the replay</Link>
           <Link className="btn btn-secondary" href="/evidence/ledger">Action ledger</Link>
           <Link className="btn btn-secondary" href="/commitments">Reference commitments</Link>
+          <Link className="btn btn-secondary" href="/evidence/graph">Reference graph</Link>
         </div>
       </section>
       <section className="problem-hero" aria-labelledby="problem-title">

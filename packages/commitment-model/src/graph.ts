@@ -62,6 +62,9 @@ export function findOrderingCycle(state: DomainState): string[] | null {
   return null;
 }
 
+/** Id prefix for an official public page the owner named as a source of truth. */
+export const WEB_SOURCE_PREFIX = 'web-source-';
+
 /**
  * People Dira may contact about a commitment: its participants, owner, the
  * person a user-confirmed OWNED_BY edge names, and stored DELEGATABLE_TO
@@ -76,5 +79,7 @@ export function commitmentStakeholders(state: DomainState, commitmentId: string)
   for (const edge of edgesFrom(state, commitmentId, 'OWNED_BY')) ids.add(edge.to);
   for (const id of delegationTargets(state, commitmentId)) ids.add(id);
   ids.delete(state.userId);
-  return [...ids].filter((id) => Boolean(state.people[id]?.email));
+  // Official web sources can have authority over a commitment but are never
+  // people Dira may contact.
+  return [...ids].filter((id) => !id.startsWith(WEB_SOURCE_PREFIX) && Boolean(state.people[id]?.email));
 }

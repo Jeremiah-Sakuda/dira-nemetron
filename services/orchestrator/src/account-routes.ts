@@ -20,6 +20,7 @@ import { describeCorrectionRule } from './account-policy.js';
 import { createHermesToken, hermesTokenStatus, revokeHermesTokens } from './hermes-mcp.js';
 import { createTelegramLink, telegramLinkStatus, unlinkTelegram } from './telegram.js';
 import { handleOwnerNote } from './account-repair.js';
+import { listSourceChecks, registerSourceCheck, runSourceCheck, tavilyConfigured } from './source-checks.js';
 import { accountToolLabels } from './account-tools.js';
 import { buildDemoWorld, buildDemoWorldAt, DEMO_DISCLOSURE, DEMO_SESSION_TTL_SECONDS } from './demo-world.js';
 import { withEgressContext, egressAllowlist } from './egress-guard.js';
@@ -68,6 +69,7 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
   if (!url.pathname.startsWith('/api/demo/') && !url.pathname.startsWith('/api/workflows') && url.pathname !== '/api/surfaces'
     && !url.pathname.startsWith('/api/rules') && !url.pathname.startsWith('/api/telegram')
     && !url.pathname.startsWith('/api/hermes') && !url.pathname.startsWith('/api/notes')
+    && !url.pathname.startsWith('/api/source-checks') && url.pathname !== '/api/account-graph'
     && url.pathname !== '/api/egress' && url.pathname !== '/api/account') {
     return false;
   }
@@ -251,6 +253,60 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
     if (kind === 'demo') { json(req, res, 409, { error: 'Connect Hermes from a signed-in account, not the demo.' }); return true; }
     if (req.method === 'POST') { json(req, res, 200, { mcpUrl, token: await createHermesToken(store, accountId), shownOnce: true }); return true; }
     if (req.method === 'DELETE') { await revokeHermesTokens(store, accountId); json(req, res, 200, { revoked: true }); return true; }
+  }
+  if (req.method === 'GET' && url.pathname === '/api/account-graph') {
+    const state = await store.loadDomainState(accountId);
+    if (!state) { json(req, res, 200, { commitments: [], edges: [], sources: [] }); return true; }
+    const at = (minute?: number) => minute === undefined ? null : minutesToIso(minute, state.horizonStartIso, state.timezone);
+    const name = (id: string) => id === accountId ? 'You' : state.people[id]?.name ?? state.commitments[id]?.title ?? humanize(id);
+    const live = Object.values(state.commitments).filter((item) => item.status !== 'DROPPED' && !item.reservesEffortFor);
+    json(req, res, 200, {
+      timezone: state.timezone,
+      commitments: live.map((item) => ({
+        id: item.id, title: item.title, domain: item.domain, kind: item.kind, flexibility: item.flexibility,
+        criticality: item.criticality, owner: name(item.owner), startIso: at(item.startMin),
+        endIso: item.startMin !== undefined ? at(item.startMin + (item.durationMin ?? 0)) : null, deadlineIso: at(item.deadlineMin),
+        authority: state.edges.filter((edge) => edge.type === 'OWNED_BY' && edge.from === item.id).map((edge) => name(edge.to)),
+      })),
+      edges: state.edges
+        .filter((edge) => edge.type !== 'SUPPORTS_GOAL' && (state.commitments[edge.from] || state.people[edge.from]))
+        .map((edge) => ({ id: edge.id, type: edge.type, from: name(edge.from), to: name(edge.to) })),
+      sources: listSourceChecks(state),
+      sourceChecks: { tavily: tavilyConfigured(), liveModel: liveModelConfigured() },
+    });
+    return true;
+  }
+  if (url.pathname === '/api/source-checks') {
+    if (req.method === 'GET') {
+      const state = await store.loadDomainState(accountId);
+      json(req, res, 200, { configured: tavilyConfigured(), liveModel: liveModelConfigured(), checks: state ? listSourceChecks(state) : [] });
+      return true;
+    }
+    if (req.method === 'POST') {
+      const body = safeParse(await ctx.readBody(req)) as { commitmentId?: string; domain?: string } | null;
+      if (typeof body?.commitmentId !== 'string' || typeof body.domain !== 'string') { json(req, res, 400, { error: 'commitmentId and domain are required' }); return true; }
+      try {
+        const registered = await registerSourceCheck(store, accountId, body.commitmentId, body.domain);
+        await ctx.syncMemory(store, accountId, `Name ${registered.domain} as an official source`);
+        json(req, res, 200, registered);
+      } catch (error) {
+        json(req, res, 400, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return true;
+    }
+  }
+  if (req.method === 'POST' && url.pathname === '/api/source-checks/run') {
+    const body = safeParse(await ctx.readBody(req)) as { commitmentId?: string } | null;
+    if (typeof body?.commitmentId !== 'string') { json(req, res, 400, { error: 'commitmentId is required' }); return true; }
+    if (kind === 'demo') { json(req, res, 409, { error: 'Official-source checks search the public web, so they run only for signed-in accounts.' }); return true; }
+    try {
+      const result = await runSourceCheck(store, accountId, body.commitmentId, ctx.repairOptions(store, accountId));
+      await ctx.syncMemory(store, accountId);
+      json(req, res, 200, result);
+    } catch (error) {
+      json(req, res, error instanceof AccountBusyError ? 429 : 409, { error: error instanceof Error ? error.message : String(error) });
+    }
+    return true;
   }
   if (req.method === 'GET' && url.pathname === '/api/notes') {
     const notes = await store.withAccount(accountId, async (client) => {
