@@ -1,4 +1,5 @@
 import {
+  commitmentStakeholders,
   delegationTargets,
   type DomainState,
 } from '@dira/commitment-model';
@@ -183,12 +184,28 @@ function evaluateActionBase(state: DomainState, action: PlannedAction): PolicyDe
       );
     }
 
-    case 'SEND_NOTIFICATION':
+    case 'SEND_NOTIFICATION': {
+      // Recipients are restricted to stored stakeholders of the commitment the
+      // message is about, at their stored address. A model, an email, or a
+      // plan can never introduce a new recipient.
+      const d = action.desired_state as { about?: unknown; recipient_person_id?: unknown; to?: unknown };
+      if (typeof d.about !== 'string' || !state.commitments[d.about]) {
+        return deny('notification-subject-required', 'notification does not reference a stored commitment');
+      }
+      const personId = typeof d.recipient_person_id === 'string' ? d.recipient_person_id : '';
+      const person = state.people[personId];
+      if (!person || !commitmentStakeholders(state, d.about).includes(personId)) {
+        return deny('recipient-not-stakeholder', `recipient is not a stakeholder on ${state.commitments[d.about]!.title}`);
+      }
+      if (typeof d.to !== 'string' || d.to.trim().toLowerCase() !== person.email.trim().toLowerCase()) {
+        return deny('recipient-address-mismatch', 'notification address does not match the stored stakeholder address');
+      }
       return {
         verdict: 'ALLOW_AND_NOTIFY',
         rule: 'routine-operational-updates',
-        reason: 'routine operational update',
+        reason: `routine update to ${person.name}, a stakeholder on ${state.commitments[d.about]!.title}`,
       };
+    }
 
     default:
       return deny('unsupported-action', `no rule covers action type ${(action as PlannedAction).type}`);

@@ -61,3 +61,20 @@ export function findOrderingCycle(state: DomainState): string[] | null {
   }
   return null;
 }
+
+/**
+ * People Dira may contact about a commitment: its participants, owner, the
+ * person a user-confirmed OWNED_BY edge names, and stored DELEGATABLE_TO
+ * backups. The user themself is excluded. Recipients outside this set are
+ * denied by policy no matter what a model or message proposes.
+ */
+export function commitmentStakeholders(state: DomainState, commitmentId: string): string[] {
+  const commitment = state.commitments[commitmentId];
+  if (!commitment) return [];
+  const ids = new Set<string>(commitment.participants);
+  if (commitment.owner) ids.add(commitment.owner);
+  for (const edge of edgesFrom(state, commitmentId, 'OWNED_BY')) ids.add(edge.to);
+  for (const id of delegationTargets(state, commitmentId)) ids.add(id);
+  ids.delete(state.userId);
+  return [...ids].filter((id) => Boolean(state.people[id]?.email));
+}

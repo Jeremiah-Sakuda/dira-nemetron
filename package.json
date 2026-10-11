@@ -2,7 +2,7 @@
   "name": "dira",
   "private": true,
   "version": "0.1.0",
-  "description": "Dira — the self-healing operating system for your commitments. One thing changes. Everything adapts.",
+  "description": "Dira \u2014 the self-healing operating system for your commitments. One thing changes. Everything adapts.",
   "type": "module",
   "workspaces": [
     "packages/*",
@@ -24,7 +24,9 @@
     "demo:replay:20x": "tsx scripts/replay-20x.ts",
     "demo:variations": "tsx scripts/replay.ts --matrix",
     "eval:gemini": "tsx scripts/gemini-eval.ts",
-    "eval:nemotron": "tsx scripts/nemotron-eval.ts"
+    "eval:nemotron": "tsx scripts/nemotron-eval.ts",
+    "eval:repair": "tsx scripts/repair-eval.ts",
+    "models:check": "tsx scripts/models-check.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

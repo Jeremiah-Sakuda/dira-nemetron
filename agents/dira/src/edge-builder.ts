@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { minutesToIso, type CommitmentEdge, type DomainState, type EdgeType } from '@dira/commitment-model';
+import { tierModel } from './model-routing.js';
 import { NemotronModelClient } from './interpreter.js';
 
 const INFERABLE_EDGE_TYPES = [
@@ -110,9 +111,7 @@ export interface GraphEdgeProposalResult {
 export class GraphEdgeBuilder {
   private readonly model: NemotronModelClient;
 
-  constructor(model = new NemotronModelClient(
-    process.env.DIRA_NEMOTRON_SUPER_MODEL ?? 'nvidia/nemotron-3-ultra-550b-a55b',
-  )) {
+  constructor(model = new NemotronModelClient(tierModel('ultra'))) {
     this.model = model;
   }
 

@@ -4,3 +4,5 @@ export * from './edge-builder.js';
 export * from './planner.js';
 export * from './orchestrator.js';
 export * from './replay.js';
+export * from './repair-proposer.js';
+export * from './model-routing.js';

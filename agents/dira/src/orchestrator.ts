@@ -26,11 +26,22 @@ import type {
   RawEmailEvent,
 } from '@dira/event-schema';
 import { FlightRecorder } from '@dira/observability';
-import { evaluateAction, evaluatePlanActions, type PolicyDecision } from '@dira/policy-engine';
+import {
+  evaluateAction,
+  evaluatePlanActions,
+  type PolicyDecision,
+  type PolicyRuleOverride,
+} from '@dira/policy-engine';
 import { propagateConsequences } from '@dira/propagation-engine';
 import { ToolError, type ToolSet } from '@dira/tool-contracts';
 import { interpretEmail, type ModelClient } from './interpreter.js';
 import { generateCandidatePlans, type LiveSlot } from './planner.js';
+import {
+  isModelProposedPlanId,
+  type RepairProposalInput,
+  type RepairProposalOutcome,
+  type StoredFactIndex,
+} from './repair-proposer.js';
 
 /**
  * Dira orchestrator — the autonomous repair loop (PRD §4, §59).
@@ -55,6 +66,10 @@ export interface CandidateSummary {
   slackMinutes: number;
   rejectionReason?: string;
   actionCount: number;
+  /** Who proposed the candidate. Both pass the same validator and policy. */
+  source?: 'deterministic' | 'nemotron-ultra';
+  /** Policy requires an authenticated owner decision before execution. */
+  approvalRequired?: boolean;
 }
 
 export interface WorkflowRun {
@@ -96,6 +111,24 @@ export interface OrchestratorOptions {
   maxReplans?: number;
   /** Injected backoff; the deterministic replay passes a no-op. */
   sleep?: (ms: number) => Promise<void>;
+  /** Optional model candidate source (Nemotron Ultra). Never authorizes anything. */
+  repairProposer?: { propose(input: RepairProposalInput): Promise<RepairProposalOutcome> };
+  /** Stored message/thread ids the proposer may cite. */
+  facts?: StoredFactIndex;
+  /** Demo/eval: append a labeled adversarial proposal to show it is rejected. */
+  adversarialProbe?: boolean;
+  /** Per-account REQUIRE_APPROVAL overrides; they can only tighten policy. */
+  policyOverrides?: readonly PolicyRuleOverride[];
+  /**
+   * When true, a feasible plan that needs an owner decision is persisted with
+   * its approval-gated actions in AWAITING_APPROVAL and the workflow pauses.
+   * When false (v1 replay), such plans are treated as non-executable.
+   */
+  approvals?: boolean;
+  /** Persist the world model after the mutation and after every verified action. */
+  onStateCommitted?: (state: DomainState) => Promise<void>;
+  /** Approval sources accepted when resuming. */
+  approvalSources?: readonly ('authenticated-web' | 'telegram-callback')[];
 }
 
 export class DiraOrchestrator {
@@ -220,6 +253,7 @@ export class DiraOrchestrator {
       this.recorder.record('ERROR', `Mutation could not be applied: ${String(err)}`);
       return this.finish('WAITING_REVIEW', `unapplicable mutation: ${String(err)}`);
     }
+    await this.opts.onStateCommitted?.(this.state);
     this.recorder.record('GRAPH', `Commitment mutation persisted for "${target.title}"`);
 
     // ---- PROPAGATE --------------------------------------------------------
@@ -289,10 +323,16 @@ export class DiraOrchestrator {
       if (this.run.planningRounds.length > 0) this.run.replans += 1;
 
       const planned = await this.planAndPersist(f);
-      if (!planned) {
+      if (planned === 'none') {
         return this.finish(
           'WAITING_REVIEW',
           'no policy-compliant feasible repair exists; user decision required',
+        );
+      }
+      if (planned === 'approval') {
+        return this.finish(
+          'AWAITING_APPROVAL',
+          'a feasible plan needs the account owner’s approval before anything runs',
         );
       }
       await this.workflows.save(this.run);
@@ -422,6 +462,7 @@ export class DiraOrchestrator {
         verification: { verifiedAtIso: entry.atIso, observed: observed.observed },
       });
       this.state = applyAction(this.state, record.action);
+      await this.opts.onStateCommitted?.(this.state);
       await this.workflows.save(this.run);
       return true;
     }
@@ -443,9 +484,10 @@ export class DiraOrchestrator {
 
   // ---------------------------------------------------------------------- //
 
-  private async planAndPersist(f: FeasibilityComputation): Promise<boolean> {
+  private async planAndPersist(f: FeasibilityComputation): Promise<'executable' | 'approval' | 'none'> {
     const liveSlots = await this.refreshLiveSlots();
     const nowMin = this.currentNowMin();
+    const overrides = this.opts.policyOverrides ?? [];
 
     const candidates = generateCandidatePlans({
       state: this.state,
@@ -454,35 +496,85 @@ export class DiraOrchestrator {
       nowMin,
     });
 
-    const validations = candidates.map((plan) => validatePlan(this.state, plan));
-    const policies = validations.map((v) => evaluatePlanActions(this.state, v.plan.actions));
+    if (this.opts.repairProposer) {
+      const proposal = await this.opts.repairProposer.propose({
+        state: this.state,
+        feasibility: f,
+        nowMin,
+        liveSlots,
+        facts: this.opts.facts,
+        adversarialProbe: this.opts.adversarialProbe,
+      });
+      const via = proposal.model
+        ? ` — ${proposal.model.model} via ${proposal.model.provider}, ${(proposal.model.latencyMs / 1000).toFixed(1)}s`
+        : '';
+      if (proposal.error) {
+        this.recorder.record('PROPOSE', `Nemotron Ultra unavailable; continuing with deterministic candidates (${proposal.error})${via}`, {
+          modelCall: proposal.model,
+        });
+      } else {
+        this.recorder.record(
+          'PROPOSE',
+          `Nemotron Ultra proposed ${proposal.proposedCount} plan(s): ${proposal.accepted.length} compiled, ` +
+            `${proposal.rejected.filter((r) => r.source === 'nemotron-ultra').length} rejected${via}`,
+          { modelCall: proposal.model, accepted: proposal.accepted.map((p) => p.id) },
+        );
+      }
+      for (const rejected of proposal.rejected) {
+        this.recorder.record(
+          'REJECT',
+          `${rejected.source === 'adversarial-probe' ? 'Labeled adversarial proposal' : 'Ultra proposal'} ` +
+            `"${rejected.label}" rejected at ${rejected.stage}: ${rejected.reasons.join('; ')}`,
+          rejected,
+        );
+      }
+      candidates.push(...proposal.accepted);
+    }
 
-    const summaries: CandidateSummary[] = validations.map((v, i) => ({
-      id: v.plan.id,
-      label: v.plan.label,
-      acceptable: v.acceptable && policies[i]!.autonomous,
-      autonomous: policies[i]!.autonomous,
-      costTotal: v.cost.total,
-      slackMinutes: v.feasibility.global_slack_minutes,
-      rejectionReason: !policies[i]!.autonomous
-        ? `policy: ${policies[i]!.decisions.find((d) => d.verdict === 'DENY' || d.verdict === 'REQUIRE_APPROVAL')?.reason ?? 'not autonomous'}`
-        : v.rejectionReason,
-      actionCount: v.plan.actions.length,
-    }));
+    const validations = candidates.map((plan) => validatePlan(this.state, plan));
+    const policies = validations.map((v) => evaluatePlanActions(this.state, v.plan.actions, overrides));
+
+    const summaries: CandidateSummary[] = validations.map((v, i) => {
+      const policy = policies[i]!;
+      const denied = policy.decisions.find((d) => d.verdict === 'DENY');
+      const approvalRequired = !denied && policy.decisions.some((d) => d.verdict === 'REQUIRE_APPROVAL');
+      return {
+        id: v.plan.id,
+        label: v.plan.label,
+        acceptable: v.acceptable && policy.autonomous,
+        autonomous: policy.autonomous,
+        costTotal: v.cost.total,
+        slackMinutes: v.feasibility.global_slack_minutes,
+        rejectionReason: !policy.autonomous
+          ? `policy: ${(denied ?? policy.decisions.find((d) => d.verdict === 'REQUIRE_APPROVAL'))?.reason ?? 'not autonomous'}`
+          : v.rejectionReason,
+        actionCount: v.plan.actions.length,
+        source: isModelProposedPlanId(v.plan.id) ? 'nemotron-ultra' : 'deterministic',
+        approvalRequired,
+      };
+    });
     this.run.planningRounds.push(summaries);
     this.recorder.record('PLAN', `${candidates.length} candidate repair(s) evaluated`, { candidates: summaries });
 
-    const acceptable = rankValidations(validations).filter(
-      (v) => v.acceptable && policies[validations.indexOf(v)]!.autonomous,
-    );
+    const ranked = rankValidations(validations);
+    const autonomous = ranked.filter((v) => v.acceptable && policies[validations.indexOf(v)]!.autonomous);
+    const gated = this.opts.approvals
+      ? ranked.filter((v) => {
+        const policy = policies[validations.indexOf(v)]!;
+        return v.acceptable && !policy.autonomous && !policy.decisions.some((d) => d.verdict === 'DENY');
+      })
+      : [];
 
     // Walk the ranking until a plan is *viable*: every action (including the
     // policy-mandated notifications) must either be new, revivable, or
     // already satisfied. An intent that previously failed permanently can
     // never be re-queued, so a plan re-issuing it would silently lose an
     // action — reject such plans instead of executing them partially.
-    for (const chosen of acceptable) {
-      const actions = this.expandWithNotifications(chosen.plan.actions);
+    for (const [chosen, needsApproval] of [
+      ...autonomous.map((v) => [v, false] as const),
+      ...gated.map((v) => [v, true] as const),
+    ]) {
+      const actions = this.expandWithNotifications(chosen.plan.actions, needsApproval);
       if (actions === null) continue; // an action failed the policy re-check
 
       const roundPlanId = `round${this.run.planningRounds.length}:${chosen.plan.id}`;
@@ -492,27 +584,29 @@ export class DiraOrchestrator {
         );
         return (
           existing !== undefined &&
-          (existing.status === 'REPLAN_REQUIRED' || existing.status === 'FAILED_PERMANENT')
+          (existing.status === 'REPLAN_REQUIRED' || existing.status === 'FAILED_PERMANENT' || existing.status === 'REJECTED')
         );
       });
       if (blocked) {
         this.recorder.record(
           'PLAN',
-          `Plan ${chosen.plan.id} rejected: "${blocked.action.summary}" already failed permanently`,
+          `Plan ${chosen.plan.id} rejected: "${blocked.action.summary}" already failed or was rejected`,
         );
         continue;
       }
 
       this.run.selectedPlanIds.push(chosen.plan.id);
+      const source = isModelProposedPlanId(chosen.plan.id) ? ' (proposed by Nemotron Ultra)' : '';
       this.recorder.record(
         'SELECT',
-        `Lowest-cost feasible plan selected: ${chosen.plan.label} ` +
+        `Lowest-cost feasible plan selected${source}: ${chosen.plan.label} ` +
           `(cost ${chosen.cost.total}, restored slack ${formatSlackHours(chosen.feasibility.global_slack_minutes)})`,
-        { planId: chosen.plan.id, cost: chosen.cost, slack: chosen.feasibility.global_slack_minutes },
+        { planId: chosen.plan.id, cost: chosen.cost, slack: chosen.feasibility.global_slack_minutes, approvalRequired: needsApproval },
       );
 
       let created = 0;
       let revived = 0;
+      let awaiting = 0;
       for (const [seq, { action, decision }] of actions.entries()) {
         this.recorder.record(
           'POLICY',
@@ -526,40 +620,147 @@ export class DiraOrchestrator {
           decision.rule,
           { planId: roundPlanId, seq },
         );
-        if (isNew) {
-          created += 1;
-          await this.ledger.transition(record.actionId, 'AUTHORIZED');
-          await this.ledger.transition(record.actionId, 'PENDING_EXECUTION');
-        } else if (record.status === 'STALE') {
-          revived += 1;
-          await this.ledger.transition(record.actionId, 'AUTHORIZED', {}, 're-authorized by new plan');
-          await this.ledger.transition(record.actionId, 'PENDING_EXECUTION');
+        const priorApproval = record.approval?.decision === 'APPROVED';
+        if (isNew || record.status === 'STALE') {
+          if (isNew) created += 1;
+          else revived += 1;
+          if (decision.verdict === 'REQUIRE_APPROVAL' && !(record.status === 'STALE' && priorApproval)) {
+            if (record.status === 'STALE') {
+              // A stale, never-approved intent cannot be revived into approval
+              // waiting; the ledger only revives through AUTHORIZED.
+              continue;
+            }
+            await this.ledger.transition(record.actionId, 'AWAITING_APPROVAL', {
+              approval: { requestedAtIso: this.recorder.record('APPROVAL', `Awaiting owner approval: ${action.summary} [${decision.rule}]`).atIso },
+            }, 'feasible plan held for an authenticated owner decision');
+            awaiting += 1;
+          } else {
+            await this.ledger.transition(record.actionId, 'AUTHORIZED', {},
+              record.status === 'STALE' ? 're-authorized by new plan (identical approved intent)' : undefined);
+            if (!needsApproval) await this.ledger.transition(record.actionId, 'PENDING_EXECUTION');
+          }
         }
       }
       this.recorder.record(
         'LEDGER',
         `${created + revived} action intent(s) persisted to durable ledger` +
-          (revived ? ` (${revived} revived from invalidated plan)` : ''),
+          (revived ? ` (${revived} revived from invalidated plan)` : '') +
+          (awaiting ? `; ${awaiting} awaiting owner approval` : ''),
       );
-      return true;
+      if (needsApproval && awaiting > 0) return 'approval';
+      if (needsApproval) {
+        // Every approval-gated intent already carries an owner approval for
+        // this exact intent; release the plan for execution.
+        for (const r of this.ledger.byWorkflow(this.run.id)) {
+          if (r.status === 'AUTHORIZED' && r.planId === roundPlanId) {
+            await this.ledger.transition(r.actionId, 'PENDING_EXECUTION', {}, 'all approvals already recorded');
+          }
+        }
+      }
+      return 'executable';
     }
-    return false;
+    return 'none';
+  }
+
+  /**
+   * Resume a workflow paused in AWAITING_APPROVAL once every approval-gated
+   * action has an owner decision. The caller supplies a freshly re-read world
+   * model; the authorized plan is revalidated (feasibility, margin, and the
+   * exact policy verdicts) before anything is released for execution.
+   */
+  async resumeAfterApproval(workflowId: string, nowIso: string): Promise<WorkflowRun> {
+    const run = await this.workflows.get(workflowId);
+    if (!run) throw new Error(`workflow ${workflowId} not found`);
+    this.run = run;
+    try {
+      this.nowMin = Math.max(0, isoToMinutes(nowIso, this.state.horizonStartIso));
+    } catch {
+      this.nowMin = 0;
+    }
+    if (run.status !== 'AWAITING_APPROVAL') return structuredClone(run);
+    const latestPlanId = this.latestPlanRoundId();
+    const planRecords = this.ledger.byWorkflow(workflowId)
+      .filter((r) => r.planId === latestPlanId)
+      .sort((a, b) => (a.planSeq ?? 0) - (b.planSeq ?? 0));
+    if (planRecords.some((r) => r.status === 'REJECTED')) {
+      for (const r of planRecords) {
+        if (r.status === 'AUTHORIZED' || r.status === 'AWAITING_APPROVAL') {
+          await this.ledger.transition(r.actionId, 'STALE', { failureReason: 'a sibling action was rejected' }, 'plan rejected by owner');
+        }
+      }
+      this.run.userInterventions += 1;
+      return this.finish('WAITING_REVIEW', 'the account owner rejected an action in this plan');
+    }
+    if (planRecords.some((r) => r.status === 'AWAITING_APPROVAL')) return structuredClone(run);
+    const sources = this.opts.approvalSources ?? ['authenticated-web'];
+    const unapproved = planRecords.find((r) => r.policyVerdict === 'REQUIRE_APPROVAL'
+      && !(r.approval?.decision === 'APPROVED' && r.approval.source && sources.includes(r.approval.source)));
+    if (unapproved) {
+      return this.finish('WAITING_REVIEW', `no accepted owner approval for "${unapproved.action.summary}"`);
+    }
+
+    // Revalidate the exact authorized action set against the fresh state.
+    const actions = planRecords.map((r) => r.action);
+    const validation = validatePlan(this.state, { id: latestPlanId ?? 'resume', label: 'resume', actions, notes: [] });
+    const decisions = actions.map((a) => evaluateAction(this.state, a, this.opts.policyOverrides ?? []));
+    const policyChanged = planRecords.find((r, i) => decisions[i]!.verdict !== r.policyVerdict || decisions[i]!.rule !== r.policyRule);
+    if (!validation.acceptable || policyChanged) {
+      const reason = !validation.acceptable
+        ? `fresh state no longer supports the approved plan (${validation.rejectionReason ?? 'not acceptable'})`
+        : `policy changed for "${policyChanged!.action.summary}"`;
+      this.recorder.record('OBSERVE', `Approval revalidation failed: ${reason}`);
+      for (const r of planRecords) {
+        if (r.status === 'AUTHORIZED') {
+          await this.ledger.transition(r.actionId, 'STALE', { failureReason: reason }, 'stale approval');
+        }
+      }
+      this.recorder.record('REPLAN', 'Planning again against the fresh state');
+      return this.repairLoop();
+    }
+    this.recorder.record('APPROVAL', `Owner approval recorded; fresh-state revalidation passed for ${planRecords.length} action(s)`, {
+      slackAfter: validation.feasibility.global_slack_minutes,
+    });
+    for (const r of planRecords) {
+      if (r.status === 'AUTHORIZED') {
+        await this.ledger.transition(r.actionId, 'PENDING_EXECUTION', {}, 'released after owner approval and revalidation');
+      }
+    }
+    this.run.status = 'RUNNING';
+    this.run.statusReason = undefined;
+    await this.workflows.save(this.run);
+    return this.repairLoop();
+  }
+
+  private latestPlanRoundId(): string | undefined {
+    const records = this.ledger.byWorkflow(this.run.id);
+    const round = this.run.planningRounds.length;
+    const selected = this.run.selectedPlanIds[this.run.selectedPlanIds.length - 1];
+    const expected = selected ? `round${round}:${selected}` : undefined;
+    if (expected && records.some((r) => r.planId === expected)) return expected;
+    return records[records.length - 1]?.planId;
   }
 
   /**
    * Re-check policy per action and append the notifications ALLOW_AND_NOTIFY
-   * mandates. Returns null if any action (or mandated notification) is not
-   * autonomously executable — defense in depth behind the ranking filter.
+   * mandates. Returns null if any action (or mandated notification) is
+   * denied, or needs approval when approvals are not being collected —
+   * defense in depth behind the ranking filter.
    */
   private expandWithNotifications(
     planActions: PlannedAction[],
+    allowApproval = false,
   ): { action: PlannedAction; decision: PolicyDecision }[] | null {
+    const overrides = this.opts.policyOverrides ?? [];
+    const permitted = (d: PolicyDecision) =>
+      d.verdict === 'ALLOW' || d.verdict === 'ALLOW_AND_NOTIFY' || (allowApproval && d.verdict === 'REQUIRE_APPROVAL');
     const actions: { action: PlannedAction; decision: PolicyDecision }[] = [];
     for (const action of planActions) {
-      const decision = evaluateAction(this.state, action);
-      if (decision.verdict === 'DENY' || decision.verdict === 'REQUIRE_APPROVAL') return null;
+      const decision = evaluateAction(this.state, action, overrides);
+      if (!permitted(decision)) return null;
       actions.push({ action, decision });
-      if (decision.verdict === 'ALLOW_AND_NOTIFY' && action.type === 'DELEGATE_TASK') {
+      const delegationNeedsNotice = action.type === 'DELEGATE_TASK'
+        && (decision.verdict === 'ALLOW_AND_NOTIFY' || decision.rule === 'delegate-explicitly-delegatable');
+      if (delegationNeedsNotice) {
         const owner = (action.desired_state as { new_owner?: string }).new_owner ?? '';
         const person = this.state.people[owner];
         const task = this.state.commitments[action.target];
@@ -567,23 +768,28 @@ export class DiraOrchestrator {
         const windowNote = window
           ? ` It needs to happen between ${this.label(window.release)} and ${this.label(window.deadline)}.`
           : '';
+        const userName = this.state.people[this.state.userId]?.name;
         const notify: PlannedAction = {
           type: 'SEND_NOTIFICATION',
           target: owner,
           desired_state: {
+            about: action.target,
+            recipient_person_id: owner,
             thread_id: `thread-org-${action.target}`,
             to: person?.email ?? owner,
+            subject: `Handing over: ${task?.title ?? action.target}`,
             body:
               `Hi ${person?.name?.split(' ')[0] ?? owner} — a schedule conflict landed on my exam block, ` +
-              `so per our backup plan I'm handing you "${task?.title}".${windowNote} Thank you!`,
+              `so per our backup plan I'm handing you "${task?.title}".${windowNote} Thank you!` +
+              (userName ? ` (Sent by Dira on behalf of ${userName}.)` : ''),
             body_contains: task?.title ?? action.target,
           },
           provenance: ['user_policy_config:notify-on-delegation'],
           external_system: 'gmail',
           summary: `Notify ${person?.name ?? owner} about the delegation`,
         };
-        const notifyDecision = evaluateAction(this.state, notify);
-        if (notifyDecision.verdict === 'DENY' || notifyDecision.verdict === 'REQUIRE_APPROVAL') {
+        const notifyDecision = evaluateAction(this.state, notify, overrides);
+        if (!permitted(notifyDecision)) {
           return null; // the mandated notification itself must be executable
         }
         actions.push({ action: notify, decision: notifyDecision });

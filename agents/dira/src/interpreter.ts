@@ -1,4 +1,5 @@
 import { minutesToIso, type DomainState } from '@dira/commitment-model';
+import { tierForModel, tierModel } from './model-routing.js';
 import {
   InterpretationResultSchema,
   type InterpretationResult,
@@ -26,6 +27,8 @@ export interface ModelClient {
     model: string;
     latencyMs: number;
     provider: string;
+    /** Nemotron routing tier (nano, super, ultra) when known. */
+    tier?: string;
     promptTokens?: number;
     completionTokens?: number;
     totalTokens?: number;
@@ -128,7 +131,7 @@ export class NemotronModelClient implements ModelClient {
   lastCall?: ModelClient['lastCall'];
 
   constructor(
-    private readonly model = process.env.DIRA_NEMOTRON_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b',
+    private readonly model = tierModel('super'),
     private readonly baseUrl = process.env.NEBIUS_TOKEN_FACTORY_BASE_URL ?? 'https://api.tokenfactory.nebius.com/v1',
     private readonly apiKey = process.env.NEBIUS_API_KEY,
   ) {}
@@ -188,6 +191,7 @@ export class NemotronModelClient implements ModelClient {
           model: payload?.model ?? model,
           latencyMs: Date.now() - startedAt,
           provider: 'Nebius Token Factory',
+          tier: tierForModel(payload?.model ?? model) ?? tierForModel(model),
           promptTokens: payload?.usage?.prompt_tokens,
           completionTokens: payload?.usage?.completion_tokens,
           totalTokens: payload?.usage?.total_tokens,

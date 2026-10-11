@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tierModel } from './model-routing.js';
 import { NemotronModelClient } from './interpreter.js';
 
 export interface CalendarSourceItem {
@@ -107,9 +108,7 @@ const emailDraftJsonSchema = {
 export class EmailGraphBuilder {
   private readonly model: NemotronModelClient;
 
-  constructor(model = new NemotronModelClient(
-    process.env.DIRA_NEMOTRON_NANO_MODEL ?? 'nvidia/nemotron-3-nano-30b-a3b',
-  )) {
+  constructor(model = new NemotronModelClient(tierModel('nano'))) {
     this.model = model;
   }
 
@@ -203,9 +202,7 @@ const nanoSchema = {
 export class CalendarGraphBuilder {
   private readonly model: NemotronModelClient;
 
-  constructor(model = new NemotronModelClient(
-    process.env.DIRA_NEMOTRON_NANO_MODEL ?? 'nvidia/nemotron-3-nano-30b-a3b',
-  )) {
+  constructor(model = new NemotronModelClient(tierModel('nano'))) {
     this.model = model;
   }
 

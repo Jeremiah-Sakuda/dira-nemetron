@@ -12,6 +12,8 @@ export type FlightPhase =
   | 'PROPAGATE'
   | 'FEASIBILITY'
   | 'PLAN'
+  | 'PROPOSE'
+  | 'REJECT'
   | 'SELECT'
   | 'POLICY'
   | 'LEDGER'
@@ -21,6 +23,7 @@ export type FlightPhase =
   | 'REPLAN'
   | 'VERIFY'
   | 'RESOLVED'
+  | 'APPROVAL'
   | 'WAITING_REVIEW';
 
 export interface FlightEntry {

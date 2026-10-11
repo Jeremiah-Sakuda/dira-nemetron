@@ -339,6 +339,23 @@ export function findRelocationSlot(
   return undefined;
 }
 
+/**
+ * Complete an externally proposed action list (for example a Nemotron Ultra
+ * proposal that already passed provenance resolution) with the same
+ * deterministic study-plan rebuild every enumerated candidate receives.
+ */
+export function completeCandidatePlan(
+  state: DomainState,
+  id: string,
+  label: string,
+  baseActions: PlannedAction[],
+  nowMin: number,
+): CandidatePlan {
+  const iso = (m: number) => minutesToIso(m, state.horizonStartIso, state.timezone);
+  const plan = assemblePlan(state, id, baseActions, [], nowMin, iso);
+  return { ...plan, label };
+}
+
 function assemblePlan(
   state: DomainState,
   id: string,

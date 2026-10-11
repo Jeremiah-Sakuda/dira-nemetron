@@ -52,7 +52,8 @@ export interface ActionApproval {
   decisionAtIso?: string;
   decision?: 'APPROVED' | 'REJECTED';
   actorAccountId?: string;
-  source?: 'authenticated-web';
+  /** Only an authenticated owner action or a nonce-checked direct callback; never a model. */
+  source?: 'authenticated-web' | 'telegram-callback';
   revalidatedAtIso?: string;
   revalidationEvidenceHash?: string;
 }
@@ -106,7 +107,7 @@ export interface LedgerApi {
   transition(
     actionId: string,
     to: ActionStatus,
-    patch?: Partial<Pick<ActionRecord, 'externalResponse' | 'failureReason' | 'verification'>>,
+    patch?: Partial<Pick<ActionRecord, 'externalResponse' | 'failureReason' | 'verification' | 'approval'>>,
     note?: string,
   ): Promise<ActionRecord>;
   claimNext(workflowId: string): Promise<ActionRecord | undefined>;
