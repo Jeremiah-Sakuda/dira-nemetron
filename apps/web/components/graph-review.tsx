@@ -30,6 +30,8 @@ interface Proposal {
     flexibility: Flexibility;
     criticality: Criticality;
     estimatedEffortMin: number | null;
+    authorityName?: string | null;
+    authorityEmail?: string | null;
     confidence: number;
     reason: string;
   };
@@ -212,6 +214,8 @@ export function GraphReview({
             flexibility: proposal.draft.flexibility,
             criticality: proposal.draft.criticality,
             estimatedEffortMin: proposal.draft.kind === 'effort' ? proposal.draft.estimatedEffortMin : null,
+            authorityName: proposal.draft.authorityName?.trim() || null,
+            authorityEmail: proposal.draft.authorityEmail?.trim() || null,
           } : undefined,
         }),
       });
@@ -339,9 +343,11 @@ export function GraphReview({
               {proposal.draft.kind === 'effort' && <label>Estimated focus time (minutes)<input type="number" min={1} max={10080} step={15} value={proposal.draft.estimatedEffortMin ?? ''} onChange={(event) => setProposals((current) => current.map((item) => item.proposalId === proposal.proposalId ? { ...item, draft: { ...item.draft, estimatedEffortMin: event.target.value === '' ? null : Number(event.target.value) } } : item))} /><span className="muted">Required before this deadline can be scheduled.</span></label>}
               <label>Flexibility<select value={proposal.draft.flexibility} onChange={(event) => edit(proposal.proposalId, 'flexibility', event.target.value)}>{FLEXIBILITY.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>
               <label>Importance<select value={proposal.draft.criticality} onChange={(event) => edit(proposal.proposalId, 'criticality', event.target.value)}>{CRITICALITY.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>
+              <label>Who can change this commitment?<input autoComplete="name" maxLength={100} value={proposal.draft.authorityName ?? ''} onChange={(event) => edit(proposal.proposalId, 'authorityName', event.target.value)} placeholder="Optional; enter a source or user-confirmed authority" /><span className="muted">For promises you owe to someone else, name the person allowed to change the commitment.</span></label>
+              <label>Authority email<input type="email" autoComplete="email" maxLength={254} value={proposal.draft.authorityEmail ?? ''} onChange={(event) => edit(proposal.proposalId, 'authorityEmail', event.target.value)} placeholder="Optional" /><span className="muted">The contact is linked only to this commitment. Dira never infers authority from the email content.</span></label>
             </div>}
             <div className="proposal-actions">
-              <button className="btn" type="button" disabled={busyId === proposal.proposalId || (proposal.source.changeType !== 'CANCELLED' && proposal.draft.kind === 'effort' && (!proposal.draft.estimatedEffortMin || proposal.draft.estimatedEffortMin < 1))} onClick={() => review(proposal, 'CONFIRMED')}>
+              <button className="btn" type="button" disabled={busyId === proposal.proposalId || (proposal.source.changeType !== 'CANCELLED' && proposal.draft.kind === 'effort' && (!proposal.draft.estimatedEffortMin || proposal.draft.estimatedEffortMin < 1)) || hasPartialAuthorityContact(proposal)} onClick={() => review(proposal, 'CONFIRMED')}>
                 {busyId === proposal.proposalId ? 'Saving…' : proposal.source.changeType === 'CANCELLED' ? 'Confirm removal from graph' : proposal.source.changeType === 'UPDATED' ? `Confirm ${proposal.sourceType === 'ical-feed' ? 'feed' : 'Calendar'} update` : 'Confirm commitment'}
               </button>
               <button className="btn btn-secondary" type="button" disabled={busyId === proposal.proposalId} onClick={() => review(proposal, 'REJECTED')}>Reject</button>
@@ -402,6 +408,10 @@ export function GraphReview({
 
 function label(value: string): string {
   return value.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, (part) => part.toUpperCase());
+}
+
+function hasPartialAuthorityContact(proposal: Proposal): boolean {
+  return Boolean(proposal.draft.authorityName?.trim()) !== Boolean(proposal.draft.authorityEmail?.trim());
 }
 
 function formatDate(value: string, timezone: string): string {

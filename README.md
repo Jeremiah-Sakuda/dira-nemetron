@@ -287,8 +287,10 @@ external mutation.
 ## Security & policy boundaries
 
 Emails are untrusted input. Interpretation is schema-gated; entity resolution
-is structural; a **sender-authority check** means a random address cannot
-mutate your interview no matter how well-formed the extraction; policy and
+is structural; a **sender-authority check** requires either a commitment-specific
+confirmed participant or a user-confirmed `OWNED_BY` graph edge for the exact
+commitment, along with the declared authority domain. A random address cannot
+mutate your interview no matter how well-formed the extraction. Policy and
 provenance gates run after all of that. Prompt-injection fixtures are part of
 the eval corpus. More: [`docs/security/README.md`](docs/security/README.md).
 

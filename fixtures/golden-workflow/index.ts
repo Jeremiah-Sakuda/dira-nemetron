@@ -292,6 +292,8 @@ export function buildGoldenFixture(variation: GoldenVariation = {}): GoldenFixtu
     horizonEndMin: HORIZON_END_MIN,
     commitments: Object.fromEntries(commitments.map((c) => [c.id, c])),
     edges: [
+      { id: 'edge-exam-authority', type: 'OWNED_BY', from: IDS.exam, to: PEOPLE.professor.id,
+        data: { provenance: 'verified sender authority in the synthetic fixture' } },
       { id: 'edge-prep', type: 'REQUIRES_PREPARATION', from: IDS.exam, to: IDS.prep, data: { finalBufferMin: 0 } },
       {
         id: 'edge-recovery-buffer', type: 'REQUIRES_BUFFER', from: IDS.exam, to: IDS.interview,

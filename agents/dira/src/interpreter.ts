@@ -372,17 +372,19 @@ export async function interpretEmail(
         attempts,
       };
     }
-    // Sender authority: no email can mutate a commitment its sender has no
-    // standing over, no matter what the message (or the model) claims. This
-    // is deterministic code, outside the model's reach (PRD §47).
+    // Sender authority is commitment-scoped: a participant or an explicit
+    // OWNED_BY edge plus the declared domain is required. A matching email or
+    // domain alone is insufficient, regardless of what the message/model says.
     const senderEmail = email.from.toLowerCase();
     const sender = Object.values(state.people).find(
       (p) => p.email.toLowerCase() === senderEmail,
     );
+    const ownsCommitment = sender !== undefined && state.edges.some((edge) =>
+      edge.type === 'OWNED_BY' && edge.from === entity.id && edge.to === sender.id);
     const hasAuthority =
       sender !== undefined &&
       (entity.participants.includes(sender.id) ||
-        (sender.authorityDomains ?? []).includes(entity.domain));
+        (ownsCommitment && (sender.authorityDomains ?? []).includes(entity.domain)));
     if (!hasAuthority) {
       return {
         ok: false,

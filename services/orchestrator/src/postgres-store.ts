@@ -1223,6 +1223,30 @@ export class PostgresAccountStore {
       commitment.externalId = externalId;
       commitment.confidence = proposal.draft.confidence;
       commitment.updatedAtIso = nowIso;
+      if (edits.authorityName && edits.authorityEmail) {
+        const authorityEmail = edits.authorityEmail.toLowerCase();
+        const matchingPerson = Object.values(state.people).find(
+          (person) => person.email.toLowerCase() === authorityEmail,
+        );
+        const authorityId = matchingPerson?.id
+          ?? `person_${createHash('sha256').update(authorityEmail).digest('hex').slice(0, 24)}`;
+        const existingPerson = state.people[authorityId];
+        state.people[authorityId] = {
+          id: authorityId,
+          name: edits.authorityName,
+          email: authorityEmail,
+          authorityDomains: [...new Set([...(existingPerson?.authorityDomains ?? []), edits.domain])],
+          ...(existingPerson?.availability ? { availability: existingPerson.availability } : {}),
+        };
+        state.edges = state.edges.filter((edge) => !(edge.type === 'OWNED_BY' && edge.from === commitment.id));
+        state.edges.push({
+          id: `owner_${createHash('sha256').update(`${commitment.id}:${authorityId}`).digest('hex').slice(0, 32)}`,
+          type: 'OWNED_BY',
+          from: commitment.id,
+          to: authorityId,
+          data: { provenance: 'user-confirmed during graph review' },
+        });
+      }
       if (edits.kind === 'effort') {
         delete commitment.startMin;
         delete commitment.durationMin;

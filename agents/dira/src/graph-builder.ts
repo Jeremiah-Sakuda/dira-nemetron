@@ -33,9 +33,14 @@ export const GraphProposalEditsSchema = z.object({
   flexibility: z.enum(['FIXED', 'MOVE_WITHIN_WINDOW', 'FLEXIBLE', 'OPTIONAL']),
   criticality: z.enum(['CRITICAL', 'HIGH', 'NORMAL', 'LOW']),
   estimatedEffortMin: z.number().int().min(1).max(10_080).nullable(),
+  authorityName: z.string().trim().min(1).max(100).nullable().default(null),
+  authorityEmail: z.string().trim().toLowerCase().email().max(254).nullable().default(null),
 }).strict().superRefine((value, context) => {
   if (value.kind === 'effort' && value.estimatedEffortMin === null) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['estimatedEffortMin'], message: 'Enter a focus-time estimate for effort commitments.' });
+  }
+  if ((value.authorityName === null) !== (value.authorityEmail === null)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['authorityEmail'], message: 'Enter both the authority name and email, or leave both blank.' });
   }
 });
 
