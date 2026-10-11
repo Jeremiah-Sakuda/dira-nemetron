@@ -1,134 +1,23 @@
-# Deviations and evidence boundaries
+# Deviations from the v2 PRD and evidence boundaries
 
-This file records every deliberate departure from the product specification
-and every boundary that matters to a judge. It distinguishes implemented
-production code from deployment evidence; neither code nor prose treats a
-planned connector as a completed integration.
+This file records every deliberate departure from [`docs/product/dira-v2-prd.md`](docs/product/dira-v2-prd.md). It also records every boundary a judge should know about. Simulated and unverified pieces are named, never implied to be live.
 
-## 1. Dashboard hosting: Vercel instead of Cloud Run
+1. **Demo persona surfaces are simulated per session, not a per-session Google calendar.**
+   - The PRD asks for a calendar and a message tag per session in a demo Google account. The demo instead uses Postgres-backed simulators: a calendar, a mailbox, and a counterparty slot list, isolated by row-level security and labeled "simulated" everywhere.
+   - Why: concurrent judges cannot interfere, nothing can reach a real address, and the path needs no Google credentials through December. The engine, policy, ledger, approvals and read-back verification are the same code real accounts use.
+2. **Without a Nebius key, the demo runs on stored interpretations.**
+   - Sample emails use stored Super interpretations and a stored Ultra proposal. The screen and flight record label this "no inference".
+   - With `NEBIUS_API_KEY` set, Super and Ultra run live and the judge can edit the email.
+3. **The broker is not inside an OpenShell sandbox.** The broker holds OAuth credentials, so the PRD places it outside the sandbox. We do too. It enforces the same egress allowlist in-process, with an audited HTTP 403. OpenShell enforces default-deny egress for each account's Hermes sandbox.
+4. **Hermes's chat agent relays changes; it does not apply them.** "Tell Hermes my midterm moved" stores a note. The note runs only after the owner confirms it in the web app, and it can change only the owner's own commitments.
+5. **Approvals use Dira's own Telegram bot, not Hermes's.** Hermes's approvals are text replies a model reads. Dira's buttons carry single-use nonces checked outside any model.
+6. **Delegation on a personal account has no task tracker.** Ownership is recorded in Dira's delegation record, which is internal state. The external, verified effect is the notification to the backup.
+7. **Booking a counterparty-offered time is a reply plus a tentative hold.** The booking stays `AWAITING_COUNTERPARTY` until the counterparty confirms. Email offers cannot be checked live in advance, so the demo's counterparty simulator models a time that was already taken. That is the source of the 409.
+8. **Live runs not yet captured in this repository:**
+   - the Nemotron evals and routing cost report (they need `NEBIUS_API_KEY`);
+   - Google account flows against live credentials;
+   - Nebius VM, Serverless Job, NemoClaw and OpenShell commands.
 
-The PRD places `dira-web` on Cloud Run. The dashboard is a Next.js app hosted
-on Vercel. It is a visibility and control surface, not part of the repair
-authority. In production it proxies requests server-to-server to Cloud Run so
-the demo token never reaches the browser.
-
-## 2. Google Cloud deployment — live since 2026-08-16
-
-The production runtime is implemented **and deployed**: project
-`dira-agentic-2026`, Cloud Run service `dira-orchestrator` (us-central1,
-dedicated service account, max-instances 1), Vertex AI Gemini 3.5 Flash via
-the global endpoint, Firestore state/ledger, and a real service-account-owned
-Google Calendar shared to the demo account. Captured evidence lives in
-[docs/evidence/](docs/evidence/): one full production run, an 8/8 live Gemini
-corpus evaluation, and 10/10 consecutive production runs each recovering the
-injected 409. `infrastructure/cloud-run/provision.sh` and `deploy.sh` are the
-exact provisioning/deployment path used.
-
-The runtime boundary stays visible in the product: the replay is labeled
-`LIVE CLOUD` only after the server can reach the configured Cloud Run status
-endpoint. Otherwise it says `DETERMINISTIC EVIDENCE` or `CLOUD UNAVAILABLE`.
-Remaining gap: Pub/Sub topics are scripted but the exercised trigger is the
-token-protected webhook (`/events` accepts the Pub/Sub push envelope, so a
-subscription is configuration, not code).
-
-## 3. Google ADK is not used
-
-The rules accept Google ADK, GenAI SDK, Antigravity SDK, or GenKit. Dira uses
-the Google GenAI SDK. The orchestration loop is a native, deterministic,
-crash-resumable state machine. Wrapping that loop in ADK without moving real
-responsibility would be decorative; the system instead exposes explicit
-interpret, plan, execute, and verify stages that can become ADK tools later.
-
-## 4. Deterministic mode is the public fallback
-
-`REPLAY_MODE=deterministic` uses stored interpretation and stateful
-integration simulators, allowing judges and CI to reproduce the engine with
-zero credentials. `live-model` uses Gemini with local tools. `production`
-uses Vertex AI, Firestore, Google Calendar, and controlled integration
-surfaces. The UI and documentation do not call deterministic adapter actions
-real external mutations.
-
-## 5. Google Calendar is real; Gmail delivery is controlled
-
-Production creates and manages a service-account-owned Google Calendar,
-stores Dira IDs in private extended properties, and verifies every change by
-fresh API reads. Recruiter slots/bookings and organization assignments are
-Firestore-backed controlled integrations, allowed by the hackathon's mock
-integration rule and mutable from the Cloud console.
-
-Consumer Gmail sending from a service account is not claimed. Notifications
-are persisted to a Firestore `outbound_messages` collection for inspection
-and downstream delivery. Inbox provenance used by the workflow is seeded in
-Firestore. A Gmail OAuth or Workspace domain-wide-delegation connector is a
-future integration.
-
-## 6. One Cloud Run service, not four empty microservices
-
-The PRD sketches ingestor, orchestrator, executor, and verifier services. The
-deployed design uses one `dira-orchestrator` service. Those stages remain
-separate code paths behind the durable action ledger, but run in one process
-for the demo. The earlier empty service scaffolds were removed. Pub/Sub push
-envelopes are accepted by `/events`, while direct authenticated demo triggers
-are the exercised path.
-
-## 7. PRD per-path slack numbers are illustrative
-
-The headline trajectory is derived exactly by the solver: +4.1h before the
-mutation, −3.6h after, and +1.3h after repair. Some intermediate examples in
-the PRD cannot coexist with that same calendar. The implemented solver's
-derived values win; `docs/algorithms/global-slack.md` gives the derivation.
-
-## 8. Two explicit solver constants
-
-- `sessionOverheadMin = 6`: each distinct work session pays six minutes of
-  context switching.
-- `repairSlackMarginMin = 60`: a capacity repair must restore at least one
-  hour of margin rather than finish on a knife edge.
-
-Both are configurable and unit-tested.
-
-## 9. Exam duration is 60 minutes
-
-The PRD does not give an exam duration. Sixty minutes produces the specified
-post-mutation recovery-buffer violation and is stored as fixture data.
-
-## 10. Visual QA has a window that forces delegation
-
-Sponsor-deck QA must occur after assets arrive and before the deck freezes.
-When the exam moves into that window, the owner cannot complete it; a stored
-`DELEGATABLE_TO` edge authorizes the backup. In the earlier-exam variation,
-the window survives and delegation correctly disappears.
-
-## 11. Candidate counts come from state
-
-The default first round has six generated candidates rather than the PRD log's
-three illustrative candidates. The planner enumerates current recruiter
-slots, donor subsets, delegation options, and one deliberately policy-invalid
-deadline deferral. The flight recorder reports the actual count.
-
-## 12. Video, article, and social proof need human publication
-
-The repository contains a recording script, technical article draft, and
-social copy. They are not called published. Record only after the dashboard
-shows `LIVE CLOUD`, the real Calendar mutation is visible, and the Gemini
-evaluation passes. Publication and Devpost entry submission remain human
-account actions.
-
-## 13. Scope limits
-
-The fixture is one synthetic user, one week, and one timezone. Long-horizon,
-multi-user negotiation, LMS ingestion, Gmail OAuth delivery, and production
-third-party recruiter/org connectors are later work. The implemented safety
-and recovery properties are intentionally deeper than that integration
-breadth.
-
-## 14. Optional Gemma 3n voice-note intake
-
-The repository includes an optional, separately deployable GPU-backed Cloud
-Run service for `google/gemma-3n-E2B-it`. It accepts a short user voice note
-and returns a transcript only; it has no Dira tool credentials. The
-orchestrator converts that transcript to a visibly labeled `gemma_voice_note`
-event and restricts it to a commitment owned by the recording user before the
-standard schema, confidence, provenance, policy, ledger, and verification
-layers run. The Gemma service is not in the default deployment and must not be
-called live until its URL, secret, and successful end-to-end evidence exist.
+   Scripts and policies follow the official docs. See [`infrastructure/README.md`](infrastructure/README.md).
+9. **P1 items not built:** Tavily source checks, extension and renegotiation actions, the professional/Asana persona, Parakeet voice intake, exportable skill bundles beyond the memory repo, Canvas REST, and Calendar push.
+10. **The v1 Gemma voice intake was removed with the Google Cloud runtime.** Its captured run stays in `docs/evidence/v1`.

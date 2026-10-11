@@ -102,3 +102,43 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm --workspace apps/web run build
+
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Create a non-superuser app role (superusers bypass row-level security)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -c "CREATE ROLE dira_app LOGIN PASSWORD 'dira_app' NOSUPERUSER NOBYPASSRLS"
+          psql -h localhost -U postgres -c "CREATE DATABASE dira_test OWNER dira_app"
+      - name: Demo persona, repair engine, rules, Hermes MCP and Telegram against PostgreSQL
+        env:
+          DIRA_TEST_DATABASE_URL: postgresql://dira_app:dira_app@localhost:5432/dira_test
+        run: npm run test:postgres
+
+  repair-proposer-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run eval:repair -- --fixture

@@ -1,59 +1,35 @@
-# Submission readiness checklist
+# Judge checklist
 
-This is the final evidence gate. Do not convert an unchecked item into a prose
-claim; either complete it or disclose the limitation.
+**Stage One fit.** Personal AI, and an always-on, private, persistent assistant with skills and user-chosen tools. Nemotron runs on Nebius Token Factory at runtime: Super interprets, Ultra proposes repairs, Nano drafts. The flight record names the model, tier and latency on every call.
 
-## Stage-one eligibility
+## Three minutes, no sign-in
 
-- [ ] Devpost project is submitted before the deadline, not left in draft.
-- [ ] Public repository URL resolves without requesting access.
-- [ ] Public dashboard URL resolves in a signed-out browser.
-- [ ] Demo video is public/unlisted, under four minutes, and linked on Devpost.
-- [ ] Video shows a working application and a visible Google Cloud deployment.
-- [ ] Gemini usage is substantive and identified by model/framework.
-- [ ] All team members, synthetic-data disclosure, and hackathon track are set.
+1. Open the app and choose **Try the demo, no sign-in**.
+2. Keep **Professor moves the midterm** selected, leave the adversarial checkbox on, and press **Deliver this email to Dira**.
+3. Read the run:
+   - Global slack drops from +4.1h to −3.6h.
+   - A `PROPOSE` line shows Nemotron Ultra's plan.
+   - A `REJECT` line shows the labeled adversarial plan failing at provenance.
+   - Policy holds the delegation for you.
+4. Optional: in the plan, set the Workout step to **Not at that time**, then press **Suggest rule** and **Confirm rule and replan**. The Workout moves elsewhere.
+5. Press **Approve** on the delegation:
+   - Dira revalidates, hits a 409 on the first interview slot, replans, and resolves at +1.3h.
+   - **What actually changed** shows fresh reads of the calendar, the two sent messages (each saying it is from Dira), the booking awaiting the recruiter, and the new QA owner.
+6. Choose **Prompt-injection email** and send it. The run stops at sender authority, and nothing is sent.
+7. Press **Have Dira try to reach that host**. It returns HTTP 403 and an audit line.
+8. Open **Rules**, **Activity** and **Settings**. You'll find the rule committed with its Skill path, every flight record, and the egress allowlist, draft-only, export and delete controls.
 
-## Live production evidence
+## Labels you will see
 
-- [ ] A dedicated Dira GCP project—not an unrelated project—is active.
-- [ ] `provision.sh` and `deploy.sh` complete successfully.
-- [ ] Vercel server-only `DIRA_CLOUD_RUN_URL` and `DIRA_DEMO_TOKEN` are set.
-- [ ] Interventions says `LIVE CLOUD`; `DETERMINISTIC EVIDENCE` is not filmed
-      as production.
-- [ ] `POST /demo/reset` seeds Firestore and the real managed Calendar.
-- [ ] The default run reaches `RESOLVED`, +1.3h, zero human actions.
-- [ ] Vertex model name, latency, and `vertexai: true` appear in evidence.
-- [ ] Google Calendar before/after is visible.
-- [ ] Recruiter 409 is created by changing Firestore state immediately before
-      the run, then Dira observes and replans.
-- [ ] Firestore ledger contains authorized, executed, and verified lifecycle
-      evidence with no duplicate idempotency key.
+- "Stored interpretations · no inference" means the deployment has no Nebius key and the sample emails use stored interpretations.
+- "Nemotron live · Nebius Token Factory" means Super and Ultra are running live.
+- Demo surfaces are labeled as simulated. Real accounts use Google Calendar and Gmail.
 
-## Judge-control and failure proof
+## Credential-free engine proofs
 
-- [ ] Run **Earlier exam** and confirm the interview is not needlessly moved.
-- [ ] Run **No slots available** and confirm a safe non-success state.
-- [ ] Run **Alternate task owner** and confirm the stored edge changes the
-      assignee.
-- [ ] The runtime badge remains visible in screenshots/video.
-- [ ] Candidate table shows rejected plans and reasons.
-- [ ] Reference recorder stays labeled deterministic.
-
-## Model and reliability evidence
-
-- [ ] `DIRA_REQUIRE_VERTEX=true npm run eval:gemini` passes all cases.
-- [ ] `.dira-runtime/gemini-eval.json` is saved as a submission artifact.
-- [ ] `npm test`, `npm run typecheck`, and the web production build pass.
-- [ ] `make demo-variations` passes the complete variation matrix.
-- [ ] `make replay-20x` reports 20/20 and zero duplicate mutations.
-- [ ] GitHub Actions is green on the submitted commit.
-
-## Claims and links
-
-- [ ] Architecture diagram in README matches the deployed topology.
-- [ ] Devpost does not call the Firestore outbox a Gmail send.
-- [ ] Recruiter and organization surfaces are labeled controlled integrations.
-- [ ] Pub/Sub is described as optional unless a live subscription is shown.
-- [ ] No secret, project credential, or demo token appears in the repo/video.
-- [ ] Article and social links are included only after they are actually
-      published.
+```bash
+make demo-replay
+make replay-20x
+make test
+make eval-repair-fixture
+```

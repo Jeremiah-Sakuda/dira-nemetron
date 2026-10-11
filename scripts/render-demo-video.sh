@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Render a small, upload-ready evidence walkthrough from only repository assets
-# and measured replay results.  No scene claims live Cloud side effects: the
-# final Devpost recording must follow docs/demo/video-script.md and visibly
-# show LIVE CLOUD, Cloud Run, Vertex, and Google Calendar.
+# v1 artifact: renders the original deterministic evidence walkthrough from
+# repository assets and measured replay results. It makes no live claims. The
+# v2 submission video follows docs/demo/video-script.md and is recorded from
+# the running product.
 
-video_root="docs/demo"
+video_root="docs/demo/v1"
 output="$video_root/dira-demo-evidence.mp4"
 font_file="/System/Library/Fonts/Supplemental/Arial.ttf"
-architecture="docs/architecture/dira-production.png"
+architecture="docs/architecture/v1/dira-production.png"
 
 command -v ffmpeg >/dev/null || {
   echo "ffmpeg is required; install it and retry." >&2

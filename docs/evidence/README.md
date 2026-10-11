@@ -1,35 +1,10 @@
-# Production evidence
+# Evidence
 
-Captured from the deployed Google Cloud backend on 2026-08-16
-(project `dira-agentic-2026`, Cloud Run service `dira-orchestrator`,
-region us-central1, Vertex location global).
-
-| Artifact | What it proves |
-| --- | --- |
-| [`production-run.json`](production-run.json) | One complete production workflow: **Gemini 3.5 Flash on Vertex AI** (`vertexai: true`, latency recorded) interprets the professor email; slack derived +4.1h → −3.6h → +1.3h; a real 409 from the controlled recruiter surface is observed and replanned; **10 external mutations verified across 4 systems** — the Calendar ones against a **real Google Calendar** via independent API re-reads; RESOLVED with 0 user interventions. |
-| [`gemini-live-eval.json`](gemini-live-eval.json) | The PRD §40 email corpus run against **live Gemini on Vertex** (not fixtures): **8/8** — explicit/conversational/multi-date extractions with exact ISO timestamps, ambiguous emails safely held, prompt-injection ignored, forged-sender mutation blocked by the deterministic authority gate. Per-case latency and confidence included. |
-| [`production-10x.json`](production-10x.json) | **10 consecutive production runs** (PRD §44 bar): every run RESOLVED at +78 min with 10 verified mutations and the injected failure recovered; per-run Gemini latency 6.2–8.5s. |
-| [`gemma-voice-run.json`](gemma-voice-run.json) | **Gemma 3n voice intake, end to end** (captured 2026-08-31): a real spoken WAV posted to `/voice-notes`, transcribed by the separately deployed Gemma 3n Cloud Run service (`google/gemma-3n-E2B-it`, CPU, no Dira credentials), owner-scoped, then run through the full production pipeline — Gemini interprets the transcript, the repair executes, and the run ends **RESOLVED** with the verbatim transcript, Gemma latency, and the complete flight recording included. |
-
-Reproduce (needs `gcloud` auth on the project):
-
-```bash
-TOKEN=$(gcloud secrets versions access latest --secret dira-demo-token --project dira-agentic-2026)
-URL=$(gcloud run services describe dira-orchestrator --project dira-agentic-2026 \
-  --region us-central1 --format 'value(status.url)')
-curl -X POST "$URL/demo/reset"   -H "x-dira-demo-token: $TOKEN" -d '{}'
-curl -X POST "$URL/demo/trigger" -H "x-dira-demo-token: $TOKEN"
-curl        "$URL/eval/gemini"   -H "x-dira-demo-token: $TOKEN"
-```
-
-**Why 10 verified mutations here vs 13 in the deterministic replay:** the
-count is whatever plan the solver derives for the world it finds. Both modes
-book the interview, mirror it to the calendar, delegate QA, notify the
-backup, move two personal blocks, and rebuild the study plan; the modes
-differ only in how many invalidated study reservations exist to delete and
-how many rebuilt blocks the placement produces. Both clear the PRD's ≥4 bar
-across ≥2 systems, and every counted mutation passed an independent
-verification read.
-
-The deterministic evidence (CI `golden-replay-20x`, 77 local tests, 8-way
-variation matrix) lives in the repository and requires no credentials.
+| Artifact | How it is produced | Status in this repository |
+| --- | --- | --- |
+| `nemotron-eval.json` | `npm run eval:nemotron`: the 8-case interpretation corpus on Super through Token Factory, with per-case latency and tokens. | Produced when `NEBIUS_API_KEY` is set. Not yet committed. |
+| `nemotron-repair-eval.json` | `npm run eval:repair`: 7 repair scenarios with Super and Ultra. It reports the Ultra validation rate, the Ultra win share, adversarial probes rejected, and tokens, cost and latency per tier. | Produced when `NEBIUS_API_KEY` is set. Not yet committed. `--fixture` prints a labeled dry run and never writes this file. |
+| Routing cost report | The `usageByTier` and `costPerRepairUsd` fields of `nemotron-repair-eval.json`, priced from `agents/dira/src/model-routing.ts`. Prices checked 2026-10-11 against Nebius's Nemotron page. | Comes with the live repair eval. |
+| Injection proof | The demo's prompt-injection email: the run stops at sender authority, the labeled adversarial proposal is rejected, and the egress probe returns 403. All three appear in the flight record and the egress audit. In deployment, `openshell logs <sandbox> --source sandbox` shows the sandbox denial. | Reproducible in the demo and covered by `tests/postgres`. |
+| Deterministic replay | `make demo-replay` (18 assertions), `make replay-20x`, and the variation matrix. | Runs in CI. |
+| `v1/` | Captured during the v1 (Google Cloud) build: Gemini eval, production runs, and the Gemma voice run. | Historical. Not v2 evidence. |
