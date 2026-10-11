@@ -1,7 +1,12 @@
 import {
   commitmentStakeholders,
   delegationTargets,
+  isoToMinutes,
+  localDateTimeToIso,
+  overlaps,
+  subtractIntervals,
   type DomainState,
+  type Interval,
 } from '@dira/commitment-model';
 import type { PlannedAction } from '@dira/event-schema';
 
@@ -28,12 +33,26 @@ export interface PolicyRuleOverride {
   scope?: { domain?: string; commitmentId?: string; personId?: string };
 }
 
+/**
+ * A correction the account owner confirmed after editing or rejecting an
+ * action. Rules can only tighten policy: they deny or require approval, never
+ * grant a new action. Unconfirmed candidates never reach this engine.
+ */
+export type CorrectionRule =
+  | { id: string; kind: 'PROTECT_COMMITMENT'; commitmentId: string; label: string }
+  | { id: string; kind: 'AVOID_WINDOW'; weekdays: number[]; startMinute: number; endMinute: number; label: string }
+  | { id: string; kind: 'NEVER_CONTACT'; personId: string; label: string }
+  | { id: string; kind: 'ASK_FIRST'; actionType: PlannedAction['type']; label: string };
+
 export function evaluateAction(
   state: DomainState,
   action: PlannedAction,
   requireApproval: readonly PolicyRuleOverride[] = [],
+  rules: readonly CorrectionRule[] = [],
 ): PolicyDecision {
-  const decision = evaluateActionBase(state, action);
+  const base = evaluateActionBase(state, action);
+  if (base.verdict !== 'ALLOW' && base.verdict !== 'ALLOW_AND_NOTIFY') return base;
+  const decision = applyCorrectionRules(state, action, base, rules);
   if (decision.verdict !== 'ALLOW' && decision.verdict !== 'ALLOW_AND_NOTIFY') return decision;
   const target = state.commitments[action.target];
   const desired = action.desired_state as { new_owner?: unknown };
@@ -216,13 +235,115 @@ function evaluateActionBase(state: DomainState, action: PlannedAction): PolicyDe
   }
 }
 
+function applyCorrectionRules(
+  state: DomainState,
+  action: PlannedAction,
+  decision: PolicyDecision,
+  rules: readonly CorrectionRule[],
+): PolicyDecision {
+  const desired = action.desired_state as Record<string, unknown>;
+  const changesTarget = ['MOVE_CALENDAR_EVENT', 'DELETE_CALENDAR_EVENT', 'DELEGATE_TASK', 'BOOK_INTERVIEW_SLOT', 'DECLINE_INTERVIEW']
+    .includes(action.type);
+  let askFirst: CorrectionRule | undefined;
+  for (const rule of rules) {
+    switch (rule.kind) {
+      case 'PROTECT_COMMITMENT':
+        if (changesTarget && action.target === rule.commitmentId) {
+          return { verdict: 'DENY', rule: `user-rule:${rule.id}`, reason: `You asked Dira not to change ${rule.label}.` };
+        }
+        break;
+      case 'NEVER_CONTACT': {
+        const contacted = action.type === 'SEND_NOTIFICATION' ? desired.recipient_person_id
+          : action.type === 'DELEGATE_TASK' ? desired.new_owner : undefined;
+        if (contacted === rule.personId) {
+          return { verdict: 'DENY', rule: `user-rule:${rule.id}`, reason: `You asked Dira not to contact ${rule.label}.` };
+        }
+        break;
+      }
+      case 'AVOID_WINDOW': {
+        if (!['MOVE_CALENDAR_EVENT', 'CREATE_CALENDAR_EVENT', 'BOOK_INTERVIEW_SLOT'].includes(action.type)) break;
+        const start = typeof desired.start_min === 'number' ? desired.start_min : undefined;
+        const duration = typeof desired.duration_min === 'number' ? desired.duration_min : undefined;
+        if (start === undefined || duration === undefined) break;
+        const placed = { start, end: start + Math.max(duration, 1) };
+        if (materializeRuleWindows(state, [rule]).some((window) => overlaps(window, placed))) {
+          return { verdict: 'DENY', rule: `user-rule:${rule.id}`, reason: `You asked Dira to keep ${rule.label} free.` };
+        }
+        break;
+      }
+      case 'ASK_FIRST':
+        if (action.type === rule.actionType) askFirst = rule;
+        break;
+    }
+  }
+  if (askFirst) {
+    return { verdict: 'REQUIRE_APPROVAL', rule: `user-rule:${askFirst.id}`, reason: `You asked Dira to check with you before it will ${askFirst.label}. ${decision.reason}` };
+  }
+  return decision;
+}
+
+/** Expand AVOID_WINDOW rules into absolute solver intervals over the horizon (user's local time). */
+export function materializeRuleWindows(state: DomainState, rules: readonly CorrectionRule[]): Interval[] {
+  const windows: Interval[] = [];
+  const timezone = state.timezone ?? 'UTC';
+  const days = Math.ceil(state.horizonEndMin / 1440) + 1;
+  const startDate = localDate(new Date(Date.parse(state.horizonStartIso)), timezone);
+  for (const rule of rules) {
+    if (rule.kind !== 'AVOID_WINDOW') continue;
+    for (let offset = -1; offset < days; offset += 1) {
+      const date = addDays(startDate, offset);
+      const weekday = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+      if (!rule.weekdays.includes(weekday)) continue;
+      try {
+        const start = isoToMinutes(localDateTimeToIso(`${date}T${clock(rule.startMinute)}`, timezone), state.horizonStartIso);
+        const endDate = rule.endMinute >= 1440 ? addDays(date, 1) : date;
+        const end = isoToMinutes(localDateTimeToIso(`${endDate}T${clock(rule.endMinute % 1440)}`, timezone), state.horizonStartIso);
+        if (end > 0 && start < state.horizonEndMin && end > start) windows.push({ start, end });
+      } catch {
+        // A wall-clock time skipped by a DST change: that day has no window.
+      }
+    }
+  }
+  return windows;
+}
+
+/**
+ * Planning view of the world under confirmed rules: avoided windows leave the
+ * user's focus capacity and are blocked for relocations. The stored state is
+ * never changed, so deleting a rule restores the original behavior.
+ */
+export function applyRulesToPlanningState(state: DomainState, rules: readonly CorrectionRule[]): DomainState {
+  const windows = materializeRuleWindows(state, rules);
+  if (!windows.length) return state;
+  const next = structuredClone(state);
+  next.availability = state.availability.flatMap((window) => subtractIntervals(window, windows));
+  next.avoidWindows = windows;
+  return next;
+}
+
+function localDate(date: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function addDays(date: string, days: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(year!, month! - 1, day! + days)).toISOString().slice(0, 10);
+}
+
+function clock(minute: number): string {
+  return `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+}
+
 /** A plan is autonomously executable only if every action is ALLOW-class. */
 export function evaluatePlanActions(
   state: DomainState,
   actions: PlannedAction[],
   requireApproval: readonly PolicyRuleOverride[] = [],
+  rules: readonly CorrectionRule[] = [],
 ): { decisions: PolicyDecision[]; autonomous: boolean } {
-  const decisions = actions.map((a) => evaluateAction(state, a, requireApproval));
+  const decisions = actions.map((a) => evaluateAction(state, a, requireApproval, rules));
   const autonomous = decisions.every(
     (d) => d.verdict === 'ALLOW' || d.verdict === 'ALLOW_AND_NOTIFY',
   );

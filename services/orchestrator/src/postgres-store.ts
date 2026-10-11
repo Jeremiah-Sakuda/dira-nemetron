@@ -134,7 +134,7 @@ export class PostgresAccountStore {
       '005_account_availability.sql', '006_action_approvals.sql', '007_action_ledger_identity.sql',
       '008_workflow_execution_evidence.sql', '009_account_policy_settings.sql',
       '010_policy_block_events.sql', '011_source_sync_cursors.sql', '012_ical_deadline_feeds.sql',
-      '013_account_daily_reports.sql', '014_event_repair_and_demo.sql',
+      '013_account_daily_reports.sql', '014_event_repair_and_demo.sql', '015_correction_rule_candidates.sql',
     ]) {
       const migration = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
       await this.pool.query(migration);
@@ -483,9 +483,24 @@ export class PostgresAccountStore {
     });
   }
 
-  async saveAccountPolicySettings(accountId: string, input: unknown): Promise<AccountPolicySettings> {
-    const policy = AccountPolicySettingsSchema.parse(input);
+  async saveAccountPolicySettings(
+    accountId: string,
+    input: unknown,
+    options: { replaceCorrectionRules?: boolean } = {},
+  ): Promise<AccountPolicySettings> {
+    const parsed = AccountPolicySettingsSchema.parse(input);
     return this.withAccount(accountId, async (client) => {
+      // Correction rules change only through the rules API (confirm/delete);
+      // a settings form can never add or drop one by omission.
+      const existing = await client.query<{ policy: unknown }>(
+        'SELECT policy FROM dira_account_policy_settings WHERE account_id = $1 FOR UPDATE', [accountId],
+      );
+      const policy = options.replaceCorrectionRules ? parsed : {
+        ...parsed,
+        correctionRules: existing.rows[0]
+          ? AccountPolicySettingsSchema.parse(existing.rows[0].policy).correctionRules
+          : [],
+      };
       if (policy.fencedPersonIds.length) {
         const result = await client.query<{ state: DomainState }>(
           'SELECT state FROM dira_account_state WHERE account_id = $1 FOR SHARE', [accountId],

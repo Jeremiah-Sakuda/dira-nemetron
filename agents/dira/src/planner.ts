@@ -326,7 +326,7 @@ export function findRelocationSlot(
     if (c.startMin === undefined || !(c.durationMin ?? 0)) continue;
     busy.push(eventInterval(c)); // reservations included: they hold real time
   }
-  const blocked = [...busy, ...state.availability];
+  const blocked = [...busy, ...state.availability, ...(state.avoidWindows ?? [])];
 
   const start0 = Math.ceil(notBeforeMin / 15) * 15;
   for (let t = start0; t + durationMin <= state.horizonEndMin; t += 15) {

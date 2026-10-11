@@ -29,6 +29,7 @@ import { FlightRecorder } from '@dira/observability';
 import {
   evaluateAction,
   evaluatePlanActions,
+  type CorrectionRule,
   type PolicyDecision,
   type PolicyRuleOverride,
 } from '@dira/policy-engine';
@@ -123,6 +124,8 @@ export interface OrchestratorOptions {
   adversarialProbe?: boolean;
   /** Per-account REQUIRE_APPROVAL overrides; they can only tighten policy. */
   policyOverrides?: readonly PolicyRuleOverride[];
+  /** Owner-confirmed correction rules; they can only tighten policy. */
+  correctionRules?: readonly CorrectionRule[];
   /**
    * When true, a feasible plan that needs an owner decision is persisted with
    * its approval-gated actions in AWAITING_APPROVAL and the workflow pauses.
@@ -541,7 +544,7 @@ export class DiraOrchestrator {
     }
 
     const validations = candidates.map((plan) => validatePlan(this.state, plan));
-    const policies = validations.map((v) => evaluatePlanActions(this.state, v.plan.actions, overrides));
+    const policies = validations.map((v) => evaluatePlanActions(this.state, v.plan.actions, overrides, this.opts.correctionRules ?? []));
 
     const summaries: CandidateSummary[] = validations.map((v, i) => {
       const policy = policies[i]!;
@@ -634,11 +637,6 @@ export class DiraOrchestrator {
           if (isNew) created += 1;
           else revived += 1;
           if (decision.verdict === 'REQUIRE_APPROVAL' && !(record.status === 'STALE' && priorApproval)) {
-            if (record.status === 'STALE') {
-              // A stale, never-approved intent cannot be revived into approval
-              // waiting; the ledger only revives through AUTHORIZED.
-              continue;
-            }
             await this.ledger.transition(record.actionId, 'AWAITING_APPROVAL', {
               approval: { requestedAtIso: this.recorder.record('APPROVAL', `Awaiting owner approval: ${action.summary} [${decision.rule}]`).atIso },
             }, 'feasible plan held for an authenticated owner decision');
@@ -711,7 +709,7 @@ export class DiraOrchestrator {
     // Revalidate the exact authorized action set against the fresh state.
     const actions = planRecords.map((r) => r.action);
     const validation = validatePlan(this.state, { id: latestPlanId ?? 'resume', label: 'resume', actions, notes: [] });
-    const decisions = actions.map((a) => evaluateAction(this.state, a, this.opts.policyOverrides ?? []));
+    const decisions = actions.map((a) => evaluateAction(this.state, a, this.opts.policyOverrides ?? [], this.opts.correctionRules ?? []));
     const policyChanged = planRecords.find((r, i) => decisions[i]!.verdict !== r.policyVerdict || decisions[i]!.rule !== r.policyRule);
     if (!validation.acceptable || policyChanged) {
       const reason = !validation.acceptable
@@ -740,6 +738,33 @@ export class DiraOrchestrator {
     return this.repairLoop();
   }
 
+  /**
+   * Plan again for a workflow that stopped for review (for example after the
+   * owner rejected an action and confirmed a correction rule). Open intents
+   * of the old plan are invalidated; rejected intents can never be re-queued.
+   */
+  async replanWorkflow(workflowId: string, nowIso: string): Promise<WorkflowRun> {
+    const run = await this.workflows.get(workflowId);
+    if (!run) throw new Error(`workflow ${workflowId} not found`);
+    this.run = run;
+    try {
+      this.nowMin = Math.max(0, isoToMinutes(nowIso, this.state.horizonStartIso));
+    } catch {
+      this.nowMin = 0;
+    }
+    if (run.status !== 'WAITING_REVIEW' && run.status !== 'AWAITING_APPROVAL') return structuredClone(run);
+    for (const r of this.ledger.byWorkflow(workflowId)) {
+      if (r.status === 'AWAITING_APPROVAL' || r.status === 'AUTHORIZED') {
+        await this.ledger.transition(r.actionId, 'STALE', { failureReason: 'owner requested a new plan' }, 'replan requested');
+      }
+    }
+    this.run.status = 'RUNNING';
+    this.run.statusReason = undefined;
+    this.recorder.record('REPLAN', 'Owner asked for a new plan; planning again under current rules and state');
+    await this.workflows.save(this.run);
+    return this.repairLoop();
+  }
+
   private latestPlanRoundId(): string | undefined {
     const records = this.ledger.byWorkflow(this.run.id);
     const round = this.run.planningRounds.length;
@@ -764,7 +789,7 @@ export class DiraOrchestrator {
       d.verdict === 'ALLOW' || d.verdict === 'ALLOW_AND_NOTIFY' || (allowApproval && d.verdict === 'REQUIRE_APPROVAL');
     const actions: { action: PlannedAction; decision: PolicyDecision }[] = [];
     for (const action of planActions) {
-      const decision = evaluateAction(this.state, action, overrides);
+      const decision = evaluateAction(this.state, action, overrides, this.opts.correctionRules ?? []);
       if (!permitted(decision)) return null;
       actions.push({ action, decision });
       const delegationNeedsNotice = action.type === 'DELEGATE_TASK'
@@ -797,7 +822,7 @@ export class DiraOrchestrator {
           external_system: 'gmail',
           summary: `Notify ${person?.name ?? owner} about the delegation`,
         };
-        const notifyDecision = evaluateAction(this.state, notify, overrides);
+        const notifyDecision = evaluateAction(this.state, notify, overrides, this.opts.correctionRules ?? []);
         if (!permitted(notifyDecision)) {
           return null; // the mandated notification itself must be executable
         }

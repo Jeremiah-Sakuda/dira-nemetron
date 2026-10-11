@@ -7,7 +7,14 @@ import { promisify } from 'node:util';
 import { DEFAULT_ENGINE_CONFIG, isoToMinutes, minutesToIso, type DomainState } from '@dira/commitment-model';
 import { z } from 'zod';
 import { AvailabilityProfileSchema, type AvailabilityProfile } from './account-planning.js';
-import { AccountPolicySettingsSchema, DEFAULT_ACCOUNT_POLICY, type AccountPolicySettings } from './account-policy.js';
+import {
+  AccountPolicySettingsSchema,
+  CorrectionRuleSchema,
+  DEFAULT_ACCOUNT_POLICY,
+  describeCorrectionRule,
+  type AccountPolicySettings,
+  type StoredCorrectionRule,
+} from './account-policy.js';
 
 const execFile = promisify(execFileCallback);
 const repositoryRoot = process.env.DIRA_MEMORY_ROOT ?? '.dira-memory';
@@ -84,7 +91,7 @@ const AvailabilitySnapshotSchema = z.object({
   schemaVersion: z.literal(1), timezone: z.string().min(1),
   profile: AvailabilityProfileSchema.nullable(), focusWindows: z.array(IntervalSchema),
 });
-const RulesSnapshotSchema = z.object({ schemaVersion: z.literal(1), rules: z.array(z.unknown()) });
+const RulesSnapshotSchema = z.object({ schemaVersion: z.literal(1), rules: z.array(CorrectionRuleSchema).max(100) });
 
 function accountDirectory(accountId: string): string {
   const key = createHash('sha256').update(accountId).digest('hex');
@@ -123,6 +130,7 @@ export async function syncAccountMemory(
     profile: AvailabilityProfile | undefined;
     policy?: AccountPolicySettings;
   }>,
+  commitMessage?: string,
 ): Promise<{ commit: string; changed: boolean }> {
   const directory = accountDirectory(accountId);
   return withAccountLock(directory, async () => {
@@ -183,17 +191,24 @@ export async function syncAccountMemory(
       writePrivateFile(join(directory, 'policy.json'), `${JSON.stringify(validatedPolicy, null, 2)}\n`),
       mkdir(join(directory, 'rules'), { recursive: true, mode: 0o700 }),
     ]);
-    const rulesPath = join(directory, 'rules', 'correction-rules.json');
-    try {
-      await readFile(rulesPath, 'utf8');
-    } catch {
-      await writePrivateFile(rulesPath, '{\n  "schemaVersion": 1,\n  "rules": []\n}\n');
+    const rules = validatedPolicy.correctionRules;
+    await writePrivateFile(
+      join(directory, 'rules', 'correction-rules.json'),
+      `${JSON.stringify({ schemaVersion: 1, rules }, null, 2)}\n`,
+    );
+    // Read-only Hermes Skills mirror: one SKILL.md per confirmed rule. Hermes
+    // can read and explain them; Dira's policy engine is what enforces them.
+    await rm(join(directory, 'skills'), { recursive: true, force: true });
+    for (const rule of rules) {
+      const skillDirectory = join(directory, 'skills', 'dira', rule.id);
+      await mkdir(skillDirectory, { recursive: true, mode: 0o700 });
+      await writePrivateFile(join(skillDirectory, 'SKILL.md'), hermesSkill(rule));
     }
 
-    await git(directory, 'add', '--', 'graph.json', 'availability.json', 'policy.json', 'rules/correction-rules.json');
+    await git(directory, 'add', '-A', '--', 'graph.json', 'availability.json', 'policy.json', 'rules', 'skills');
     const changed = Boolean(await git(directory, 'status', '--porcelain'));
     if (changed) {
-      await git(directory, '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'Update confirmed Dira memory');
+      await git(directory, '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', commitMessage ?? 'Update confirmed Dira memory');
     }
     return { commit: await git(directory, 'rev-parse', 'HEAD'), changed };
   });
@@ -250,9 +265,16 @@ export async function importAccountMemoryBundle(accountId: string, bundle: Buffe
       throw new Error('This memory bundle belongs to a different Dira account or does not identify its owner.');
     }
     if (availability.timezone !== graph.timezone) throw new Error('Memory bundle timezone values do not match.');
-    if (rules.rules.length !== 0) {
-      throw new Error('This Dira version cannot restore correction rules stored in this bundle.');
+    for (const rule of rules.rules) {
+      if (rule.kind === 'PROTECT_COMMITMENT' && !graph.commitments[rule.commitmentId]) {
+        throw new Error(`Correction rule ${rule.id} refers to a commitment that is not in this bundle.`);
+      }
+      if (rule.kind === 'NEVER_CONTACT' && !graph.people[rule.personId]) {
+        throw new Error(`Correction rule ${rule.id} refers to a person who is not in this bundle.`);
+      }
     }
+    // The rules file is the memory source of truth for confirmed corrections.
+    policy.correctionRules = rules.rules;
     const commitments = Object.fromEntries(Object.entries(graph.commitments).map(([id, commitment]) => {
       const times = commitment.absoluteTimes;
       const startMin = times?.startIso ? isoToMinutes(times.startIso, graph.horizonStartIso) : commitment.startMin;
@@ -310,4 +332,34 @@ function parseMemoryPolicy(value: unknown): AccountPolicySettings {
 export async function deleteAccountMemory(accountId: string): Promise<void> {
   const directory = accountDirectory(accountId);
   await withAccountLock(directory, () => rm(directory, { recursive: true, force: true }));
+}
+
+/** Hermes Skill format: ~/.hermes/skills/<category>/<skill>/SKILL.md with name/description frontmatter. */
+export function hermesSkill(rule: StoredCorrectionRule): string {
+  const sentence = describeCorrectionRule(rule);
+  return [
+    '---',
+    `name: ${rule.id}`,
+    `description: ${JSON.stringify(`Dira rule: ${sentence} Read-only; confirmed by the account owner and enforced by Dira's policy engine.`)}`,
+    'version: 1.0.0',
+    'metadata:',
+    '  hermes:',
+    '    tags: [dira, scheduling, user-rule, read-only]',
+    '    category: dira',
+    '---',
+    '',
+    `# ${sentence}`,
+    '',
+    'The account owner confirmed this rule in Dira after correcting one of its actions.',
+    'Dira applies it deterministically when it plans and before it executes anything.',
+    '',
+    'When the owner asks about their schedule, plans, or why Dira did or did not do something,',
+    'you may cite this rule. You cannot change, waive, or override it, and you cannot approve',
+    'actions. To change a rule, the owner edits it in the Dira web app.',
+    '',
+    '```json',
+    JSON.stringify(rule, null, 2),
+    '```',
+    '',
+  ].join('\n');
 }

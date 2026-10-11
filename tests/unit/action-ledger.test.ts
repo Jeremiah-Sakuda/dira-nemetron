@@ -59,9 +59,12 @@ describe('durable action ledger (PRD §23–§26)', () => {
     );
   });
 
-  it('VERIFIED is immutable; STALE can only be revived through AUTHORIZED', () => {
+  it('VERIFIED is immutable; STALE is revived only by re-authorization or a fresh approval request', () => {
     expect(LEGAL_TRANSITIONS.VERIFIED).toEqual([]);
-    expect(LEGAL_TRANSITIONS.STALE).toEqual(['AUTHORIZED']);
+    // A re-issued intent never jumps straight to execution: it is either
+    // re-authorized by policy or goes back to waiting for an owner decision.
+    expect(LEGAL_TRANSITIONS.STALE).toEqual(['AUTHORIZED', 'AWAITING_APPROVAL']);
+    expect(LEGAL_TRANSITIONS.AWAITING_APPROVAL).not.toContain('PENDING_EXECUTION');
     expect(LEGAL_TRANSITIONS.REPLAN_REQUIRED).toEqual([]);
   });
 

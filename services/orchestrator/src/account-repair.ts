@@ -12,6 +12,7 @@ import {
   type WorkflowStore,
 } from '@dira/agent';
 import { isoToMinutes, type DomainState } from '@dira/commitment-model';
+import { applyRulesToPlanningState } from '@dira/policy-engine';
 import type { InterpretationResult, RawEmailEvent } from '@dira/event-schema';
 import { FlightRecorder, type FlightEntry } from '@dira/observability';
 import type { ToolSet } from '@dira/tool-contracts';
@@ -112,6 +113,28 @@ export async function resumeAccountRepair(
   return locked.value;
 }
 
+/** Plan again (after a rejection and a confirmed rule, for example). */
+export async function replanAccountRepair(
+  store: PostgresAccountStore,
+  accountId: string,
+  workflowId: string,
+  options: AccountRepairOptions = {},
+): Promise<AccountRepairResult> {
+  const locked = await store.withAdvisoryJobLock(accountId, 'event-repair', async () => {
+    const runtime = await prepareRuntime(store, accountId, options);
+    const run = await runtime.workflows.get(workflowId);
+    if (!run || run.kind !== 'event-repair') throw new Error('event repair workflow not found');
+    const clockIso = runtime.kind === 'demo' && run.clockIso ? run.clockIso : runtime.now().toISOString();
+    const orchestrator = runtime.orchestrator(new FixtureModelClient({}), clockIso);
+    const replanned = await runtime.withScope('owner-replan', () => orchestrator.replanWorkflow(workflowId, clockIso));
+    await runtime.flush(workflowId);
+    await afterRun(store, accountId, runtime, replanned, options);
+    return { run: replanned, flight: runtime.recorder.all(), labels: runtime.labels, modelMode: runtime.modelMode };
+  });
+  if (!locked.acquired) throw new AccountBusyError('Dira is already working on this account; try again in a moment.');
+  return locked.value;
+}
+
 /** Workflows awaiting approval whose gated actions all have owner decisions. */
 export async function workflowReadyToResume(store: PostgresAccountStore, accountId: string, workflowId: string): Promise<boolean> {
   const records = await store.listWorkflowActionRecords(accountId, workflowId);
@@ -193,6 +216,10 @@ async function prepareRuntime(store: PostgresAccountStore, accountId: string, op
     current = rebaseDomainState(stored, now());
     current.availability = availabilityIntervals(profile!, current, now());
   }
+  // Confirmed correction rules shape the planning view only; the stored
+  // focus windows are restored on every save.
+  const storedAvailability = stored.availability;
+  current = applyRulesToPlanningState(current, policy.correctionRules);
   const state = () => current;
   const credential = kind === 'google' ? await store.getCredential(accountId, 'google') : undefined;
   const tokenFor = options.tokenForAccount ?? googleAccessToken;
@@ -261,6 +288,7 @@ async function prepareRuntime(store: PostgresAccountStore, accountId: string, op
       return new DiraOrchestrator(current, tools, ledger, recorder, model, new ClockedWorkflowStore(workflows, clockIso), {
         approvals: true,
         policyOverrides: policy.requireApproval,
+        correctionRules: policy.correctionRules,
         approvalSources: ['authenticated-web', 'telegram-callback'],
         repairProposer: proposer,
         adversarialProbe: kind === 'demo' && options.adversarialProbe === true,
@@ -268,7 +296,8 @@ async function prepareRuntime(store: PostgresAccountStore, accountId: string, op
         onStateCommitted: async (next) => {
           current = next;
           const persisted = structuredClone(next);
-          if (kind === 'google') persisted.availability = [];
+          persisted.availability = kind === 'google' ? [] : storedAvailability;
+          delete persisted.avoidWindows;
           await store.saveDomainState(accountId, persisted);
           if (workflowId) await flush(workflowId);
         },

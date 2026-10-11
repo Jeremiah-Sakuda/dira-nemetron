@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { isoToMinutes, localDateTimeToIso, type DomainState, type Interval } from '@dira/commitment-model';
 import { computeFeasibility, rankValidations, validatePlan } from '@dira/constraint-engine';
-import { evaluatePlanActions } from '@dira/policy-engine';
+import { applyRulesToPlanningState, evaluatePlanActions } from '@dira/policy-engine';
 import { generateCandidatePlans } from '@dira/agent';
 import type { PlannedAction } from '@dira/event-schema';
 import type { AccountPolicySettings } from './account-policy.js';
@@ -113,14 +113,15 @@ export function analyzeAccountSchedule(state: DomainState, policy?: AccountPolic
 }
 
 export function prepareAccountSchedule(state: DomainState, policy?: AccountPolicySettings) {
-  const planningState = withoutFencedCalendarFacts(state, policy);
+  const rules = policy?.correctionRules ?? [];
+  const planningState = applyRulesToPlanningState(withoutFencedCalendarFacts(state, policy), rules);
   const feasibility = computeFeasibility(planningState);
   const nowMin = Math.max(0, isoToMinutes(new Date().toISOString(), planningState.horizonStartIso));
   const candidates = generateCandidatePlans({ state: planningState, feasibility, liveSlots: {}, nowMin });
   const validations = candidates.map((plan) => validatePlan(planningState, plan));
   const ranked = rankValidations(validations).map((validation) => ({
     ...validation,
-    policy: evaluatePlanActions(planningState, validation.plan.actions, policy?.requireApproval),
+    policy: evaluatePlanActions(planningState, validation.plan.actions, policy?.requireApproval, rules),
   }));
   return { feasibility, ranked };
 }

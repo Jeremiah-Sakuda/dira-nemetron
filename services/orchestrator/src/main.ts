@@ -26,6 +26,7 @@ import { handleAccountRoutes } from './account-routes.js';
 import { AccountBusyError, resumeAccountRepair, workflowReadyToResume, type AccountRepairOptions } from './account-repair.js';
 import { deleteExpiredDemoAccounts, getAccountKind, pruneFlightRecords, recordOwnerDecision } from './account-records.js';
 import { installEgressGuard } from './egress-guard.js';
+import { captureRuleCandidate, CORRECTION_REASONS, type CorrectionReason } from './account-rules.js';
 
 /**
  * dira-orchestrator — the single Cloud Run service hosting Dira's repair
@@ -268,6 +269,20 @@ const server = createServer(async (req, res) => {
       json,
       readBody: (request) => readBody(request),
       repairOptions,
+      syncMemory: async (store, accountId, message) => {
+        try {
+          await syncAccountMemory(accountId, async () => {
+            const [state, profile, policy] = await Promise.all([
+              store.ensureDomainState(accountId),
+              store.getAvailabilityProfile(accountId),
+              store.getAccountPolicySettings(accountId),
+            ]);
+            return { state, profile, policy };
+          }, message);
+        } catch (error) {
+          console.error('account memory mirror sync failed', error);
+        }
+      },
     })) return;
 
     if (req.method === 'GET' && url.pathname === '/auth/google/start') {
@@ -671,18 +686,21 @@ const server = createServer(async (req, res) => {
         json(req, res, 401, { error: 'unauthenticated' });
         return;
       }
-      const body = safeJson(await readBody(req)) as { actionId?: string; decision?: string } | null;
+      const body = safeJson(await readBody(req)) as { actionId?: string; decision?: string; correction?: string } | null;
       if (typeof body?.actionId !== 'string' || body.actionId.length < 1 || body.actionId.length > 500
-        || (body.decision !== 'APPROVED' && body.decision !== 'REJECTED')) {
+        || (body.decision !== 'APPROVED' && body.decision !== 'REJECTED')
+        || (body.correction !== undefined && !(CORRECTION_REASONS as readonly string[]).includes(body.correction))) {
         json(req, res, 400, { error: 'invalid_approval_decision' });
         return;
       }
+      const correction = body.decision === 'REJECTED' ? body.correction as CorrectionReason | undefined : undefined;
       try {
         const store = await accountStore();
         const target = await store.getActionRecord(accountId, body.actionId);
         const targetRun = target ? await new PostgresWorkflowStore(store, accountId).get(target.workflowId) : undefined;
         if (target && targetRun?.kind === 'event-repair') {
           const record = await recordOwnerDecision(store, accountId, body.actionId, body.decision, 'authenticated-web');
+          const candidate = correction ? await captureRuleCandidate(store, accountId, record, correction) : undefined;
           let execution: { status: string; verifiedActions: number; reason?: string } = {
             status: body.decision === 'APPROVED' ? 'AWAITING_APPROVAL' : 'REJECTED', verifiedActions: 0,
           };
@@ -696,7 +714,10 @@ const server = createServer(async (req, res) => {
             };
           }
           await syncMemoryFromStore(store, accountId);
-          json(req, res, 200, { actionId: record.actionId, status: record.status, decision: body.decision, workflowId: record.workflowId, execution });
+          json(req, res, 200, {
+            actionId: record.actionId, status: record.status, decision: body.decision, workflowId: record.workflowId, execution,
+            ...(candidate ? { ruleCandidate: candidate } : {}),
+          });
           return;
         }
         if (body.decision === 'APPROVED' && !await googleCalendarWriteEnabled(store, accountId)) {
@@ -716,6 +737,7 @@ const server = createServer(async (req, res) => {
           body.decision,
           revalidation?.ok ? revalidation.evidence : undefined,
         );
+        const scheduleCandidate = correction ? await captureRuleCandidate(store, accountId, record, correction) : undefined;
         let execution: { status: string; verifiedActions: number; reason?: string } | undefined;
         if (body.decision === 'APPROVED') {
           const workflowRecords = await store.listWorkflowActionRecords(accountId, record.workflowId);
@@ -734,6 +756,7 @@ const server = createServer(async (req, res) => {
           checkedCalendarEvents: revalidation?.ok ? revalidation.checkedCalendarEvents : 0,
           planLabel: revalidation?.ok ? revalidation.planLabel : undefined,
           execution: execution ?? { status: body.decision === 'APPROVED' ? 'AWAITING_APPROVAL' : 'REJECTED', verifiedActions: 0 },
+          ...(scheduleCandidate ? { ruleCandidate: scheduleCandidate } : {}),
         });
       } catch (error) {
         json(req, res, 409, { error: error instanceof Error ? error.message : 'approval_conflict' });

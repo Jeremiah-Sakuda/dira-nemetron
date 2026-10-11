@@ -184,6 +184,11 @@ export interface DomainState {
   availability: Interval[];
   /** Recruiter-approved alternatives for MOVE_WITHIN_WINDOW commitments. */
   approvedSlots: Record<string, ApprovedSlot[]>;
+  /**
+   * Planning-time only: windows a confirmed user rule keeps free. Relocations
+   * avoid them; they are materialized from rules and never persisted.
+   */
+  avoidWindows?: Interval[];
   config: EngineConfig;
 }
 

@@ -14,7 +14,9 @@ import {
   readExecutionSurfaces,
   recordEgressAttempt,
 } from './account-records.js';
-import { AccountBusyError, handleAccountEmail, liveModelConfigured, type AccountRepairOptions } from './account-repair.js';
+import { AccountBusyError, handleAccountEmail, liveModelConfigured, replanAccountRepair, type AccountRepairOptions } from './account-repair.js';
+import { captureRuleCandidate, CORRECTION_REASONS, decideRuleCandidate, deleteConfirmedRule, listRules, type CorrectionReason } from './account-rules.js';
+import { describeCorrectionRule } from './account-policy.js';
 import { accountToolLabels } from './account-tools.js';
 import { buildDemoWorld, buildDemoWorldAt, DEMO_DISCLOSURE, DEMO_SESSION_TTL_SECONDS } from './demo-world.js';
 import { withEgressContext, egressAllowlist } from './egress-guard.js';
@@ -26,6 +28,7 @@ export interface AccountRouteContext {
   json: (req: IncomingMessage, res: ServerResponse, code: number, body: unknown) => void;
   readBody: (req: IncomingMessage) => Promise<string>;
   repairOptions: (store: PostgresAccountStore, accountId: string) => AccountRepairOptions;
+  syncMemory: (store: PostgresAccountStore, accountId: string, message?: string) => Promise<void>;
 }
 
 const demoStarts = new Map<string, number[]>();
@@ -60,6 +63,7 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
   }
 
   if (!url.pathname.startsWith('/api/demo/') && !url.pathname.startsWith('/api/workflows') && url.pathname !== '/api/surfaces'
+    && !url.pathname.startsWith('/api/rules')
     && url.pathname !== '/api/egress' && url.pathname !== '/api/account') {
     return false;
   }
@@ -225,6 +229,61 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
         verifiedAtIso: record.verification?.verifiedAtIso,
       })),
     });
+    return true;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/rules') {
+    json(req, res, 200, await listRules(store, accountId));
+    return true;
+  }
+  const candidateMatch = /^\/api\/rules\/candidates\/(cand-[0-9a-f-]{36})$/.exec(url.pathname);
+  if (req.method === 'POST' && candidateMatch) {
+    const body = safeParse(await ctx.readBody(req)) as { decision?: string } | null;
+    if (body?.decision !== 'CONFIRMED' && body?.decision !== 'DISMISSED') { json(req, res, 400, { error: 'invalid_decision' }); return true; }
+    try {
+      const rule = await decideRuleCandidate(store, accountId, candidateMatch[1]!, body.decision);
+      if (rule) await ctx.syncMemory(store, accountId, `Confirm rule: ${describeCorrectionRule(rule)}`);
+      json(req, res, 200, { decision: body.decision, ...(rule ? { rule: { ...rule, sentence: describeCorrectionRule(rule) } } : {}), ...(await listRules(store, accountId)) });
+    } catch (error) {
+      json(req, res, 409, { error: error instanceof Error ? error.message : String(error) });
+    }
+    return true;
+  }
+  const ruleMatch = /^\/api\/rules\/(rule-[a-z0-9-]{4,64})$/.exec(url.pathname);
+  if (req.method === 'DELETE' && ruleMatch) {
+    const removed = await deleteConfirmedRule(store, accountId, ruleMatch[1]!);
+    if (removed) await ctx.syncMemory(store, accountId, `Remove rule ${ruleMatch[1]}`);
+    json(req, res, removed ? 200 : 404, removed ? await listRules(store, accountId) : { error: 'rule not found' });
+    return true;
+  }
+  const correctionMatch = /^\/api\/workflows\/([A-Za-z0-9_:.\-]{1,300})\/corrections$/.exec(url.pathname);
+  if (req.method === 'POST' && correctionMatch) {
+    // An owner edit of a pending plan: captured as a candidate rule. Nothing
+    // changes until the owner confirms the rule and asks for a new plan.
+    const body = safeParse(await ctx.readBody(req)) as { actionId?: string; reason?: string } | null;
+    const workflowId = decodeURIComponent(correctionMatch[1]!);
+    if (typeof body?.actionId !== 'string' || !(CORRECTION_REASONS as readonly string[]).includes(body.reason ?? '')) {
+      json(req, res, 400, { error: 'invalid_correction' });
+      return true;
+    }
+    const record = await store.getActionRecord(accountId, body.actionId);
+    if (!record || record.workflowId !== workflowId || !['AUTHORIZED', 'AWAITING_APPROVAL'].includes(record.status)) {
+      json(req, res, 409, { error: 'That action is not part of a pending plan.' });
+      return true;
+    }
+    const candidate = await captureRuleCandidate(store, accountId, record, body.reason as CorrectionReason);
+    json(req, res, candidate ? 200 : 409, candidate ? { ruleCandidate: candidate } : { error: 'No rule can be derived from that correction, or the same rule is already waiting for review.' });
+    return true;
+  }
+  const replanMatch = /^\/api\/workflows\/([A-Za-z0-9_:.\-]{1,300})\/replan$/.exec(url.pathname);
+  if (req.method === 'POST' && replanMatch) {
+    try {
+      const result = await replanAccountRepair(store, accountId, decodeURIComponent(replanMatch[1]!), ctx.repairOptions(store, accountId));
+      await ctx.syncMemory(store, accountId);
+      json(req, res, 200, { run: result.run, flight: result.flight });
+    } catch (error) {
+      json(req, res, error instanceof AccountBusyError ? 429 : 409, { error: error instanceof Error ? error.message : String(error) });
+    }
     return true;
   }
 

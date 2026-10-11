@@ -10,7 +10,12 @@ import {
   readExecutionSurfaces,
   recordOwnerDecision,
 } from '../../services/orchestrator/src/account-records.js';
-import { handleAccountEmail, resumeAccountRepair, workflowReadyToResume } from '../../services/orchestrator/src/account-repair.js';
+import { handleAccountEmail, replanAccountRepair, resumeAccountRepair, workflowReadyToResume } from '../../services/orchestrator/src/account-repair.js';
+import { captureRuleCandidate, decideRuleCandidate, listRules } from '../../services/orchestrator/src/account-rules.js';
+import { mkdtemp, readFile, readdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 /**
  * Runs only when DIRA_TEST_DATABASE_URL points at a disposable database owned
@@ -125,4 +130,55 @@ suite('demo persona: event repair against PostgreSQL', () => {
     const noContext = await store.pool.query('SELECT count(*)::int AS n FROM dira_sim_messages');
     expect(noContext.rows[0].n).toBe(0);
   });
+
+  it('an owner edit becomes a confirmed rule, the replan respects it, and the rule lands in memory as a Hermes Skill', async () => {
+    const { accountId, world } = await newDemo();
+    const first = await handleAccountEmail(store, accountId, world.presets[0]!.email);
+    expect(first.run.status).toBe('AWAITING_APPROVAL');
+    const records = await store.listWorkflowActionRecords(accountId, first.run.id);
+    const workoutMove = records.find((record) => record.action.type === 'MOVE_CALENDAR_EVENT' && record.action.target === 'tuesday-workout')!;
+    expect(workoutMove).toBeTruthy();
+
+    const candidate = await captureRuleCandidate(store, accountId, workoutMove, 'not-this-time');
+    expect(candidate!.rule.kind).toBe('AVOID_WINDOW');
+    expect((await listRules(store, accountId)).candidates).toHaveLength(1);
+    // A candidate alone changes nothing.
+    expect((await store.getAccountPolicySettings(accountId)).correctionRules).toHaveLength(0);
+    await decideRuleCandidate(store, accountId, candidate!.candidateId, 'CONFIRMED');
+    const rules = (await store.getAccountPolicySettings(accountId)).correctionRules;
+    expect(rules).toHaveLength(1);
+
+    const replanned = await replanAccountRepair(store, accountId, first.run.id);
+    expect(replanned.run.status).toBe('AWAITING_APPROVAL');
+    const pending = await store.listPendingApprovals(accountId);
+    expect(pending.map((record) => record.action.type)).toEqual(['DELEGATE_TASK']);
+    await recordOwnerDecision(store, accountId, pending[0]!.actionId, 'APPROVED', 'authenticated-web');
+    const resumed = await resumeAccountRepair(store, accountId, first.run.id);
+    expect(resumed.run.status).toBe('RESOLVED');
+
+    const rule = rules[0]! as { weekdays: number[]; startMinute: number; endMinute: number };
+    const workout = (await readExecutionSurfaces(store, accountId)).calendar.find((event) => event.id === 'cal-tuesday-workout')!;
+    const local = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' })
+      .formatToParts(new Date(workout.startIso));
+    const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(local.find((part) => part.type === 'weekday')!.value);
+    const minute = Number(local.find((part) => part.type === 'hour')!.value) * 60 + Number(local.find((part) => part.type === 'minute')!.value);
+    const insideRule = rule.weekdays.includes(weekday) && minute + 60 > rule.startMinute && minute < rule.endMinute;
+    expect(insideRule).toBe(false);
+
+    process.env.DIRA_MEMORY_ROOT = await mkdtemp(join(tmpdir(), 'dira-memory-test-'));
+    const memory = await import('../../services/orchestrator/src/account-memory.js?rules');
+    const state = (await store.loadDomainState(accountId))!;
+    await memory.syncAccountMemory(accountId, async () => ({
+      state, profile: undefined, policy: await store.getAccountPolicySettings(accountId),
+    }), 'Confirm rule');
+    const root = process.env.DIRA_MEMORY_ROOT;
+    const [repo] = await readdir(root);
+    const skill = await readFile(join(root, repo!, 'skills', 'dira', rules[0]!.id, 'SKILL.md'), 'utf8');
+    expect(skill.startsWith('---\nname: ')).toBe(true);
+    expect(skill).toContain('cannot change, waive, or override');
+    const stored = JSON.parse(await readFile(join(root, repo!, 'rules', 'correction-rules.json'), 'utf8'));
+    expect(stored.rules[0].id).toBe(rules[0]!.id);
+    expect(execFileSync('git', ['-C', join(root, repo!), 'log', '-1', '--format=%s']).toString().trim()).toBe('Confirm rule');
+  });
 });
+
