@@ -29,5 +29,15 @@
     "stable public address or owned domain",
     "funding through December 15",
     "public submission video and Devpost submission"
-  ]
+  ],
+  "releaseVerification": {
+    "publishedCodeCommit": "34c8d2314e15b7e5f15c4d8e318e8236df714250",
+    "repository": "Jeremiah-Sakuda/dira-nemetron",
+    "githubChecks": "https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/runs/38485342755",
+    "githubConclusion": "success",
+    "serverPinnedToCodeCommit": true,
+    "criticalRunningContainerSourceHashesMatched": 4,
+    "publicDemoHttpStatus": 200,
+    "apiHealthy": true
+  }
 }

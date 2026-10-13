@@ -2,6 +2,7 @@
 
 ## Completed and measured
 
+- Published code/evidence/video draft to `dira-nemetron` only at `34c8d23`; GitHub checks passed. The server checkout is pinned to that code revision and critical container source hashes match.
 - Public HTTPS demo: https://213-239-172-39.nip.io/try. API health: https://api.213-239-172-39.nip.io/health.
 - Persistent Postgres, per-account isolation, private Git memory, broker and web deployment.
 - Live Super interpretation and Ultra proposals through Nebius Token Factory. Final synthetic corpus: 8/8 interpretation cases; 7/7 repair scenarios; no truncated Ultra calls. See [evidence review](../evidence/2026-10-13-bounded-model-review.md).
@@ -17,11 +18,11 @@
 | Google OAuth | Finish Cloud console login; create/configure a web client; keep credentials in ignored `infrastructure/nebius/dira.env`; choose a controlled test account/recipient | Actual source change, authenticated owner approval, Calendar/Gmail broker actions, and independent provider reads; publish only redacted metadata |
 | Sandbox | Approve a bounded restart of the stopped 4 vCPU / 16 GiB VM; install maintained NemoClaw/Hermes and inspect its pinned OpenShell version | Allowed host succeeds from the agent runtime, forbidden host and cloud metadata fail, method restrictions fail, matching enforce-mode logs; stop VM afterward |
 | Stable hosting | Choose domain or retain nip.io; reserve/preserve public address; fund the entire judge period | URL survives a controlled restart, TLS renews, full off-VM recovery succeeds, and Cloud funds cover December 15 |
-| Submission | Publish to `dira-nemetron` only; review current claims; finish public English video under three minutes; submit Devpost | Public repo revision, video URL, completed required fields and actual submission confirmation |
+| Submission | Code and reviewable 2:29 video draft are published in v2; finish verified footage/public YouTube upload and submit Devpost | Public video URL, completed required fields and actual submission confirmation |
 
 ## Funding decision
 
-Cloud balance observed in the console: **$24.11**. Token Factory inference credits are separate and cannot pay for the VM. The existing demo VM was quoted at roughly **$0.08/hour including its selected disk**, or $1.92/day. About 63 days from October 13 through December 15 therefore needs roughly **$121**, before any unquoted charges or taxes. The observed balance covers only about 12.6 days at that rate. No new funds or automatic top-up were authorized or enabled by this work.
+Cloud balance observed in the console: **$24.11**. Token Factory inference credits are separate and cannot pay for the VM. The [official FAQ](https://nebiusglobalaihackathon.devpost.com/details/faqs) confirms that the hackathon promo and Builders Program credits are Token Factory credits and that there is no separately published AI Cloud credit grant. The existing demo VM was quoted at roughly **$0.08/hour including its selected disk**, or $1.92/day. About 63 days from October 13 through December 15 therefore needs roughly **$121**, before any unquoted charges or taxes. The observed balance covers only about 12.6 days at that rate. No new funds or automatic top-up were authorized or enabled by this work.
 
 The temporary validation VM was quoted at about $0.15/hour including its selected disk. It remains stopped pending authorization to use at most $0.50 of the existing balance. Stopped storage can still incur charges. Do not restart it for ongoing hosting.
 
