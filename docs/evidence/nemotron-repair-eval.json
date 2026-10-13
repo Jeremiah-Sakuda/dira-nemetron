@@ -1,0 +1,204 @@
+{
+  "generatedAtIso": "2026-10-12T18:47:10.159Z",
+  "mode": "live",
+  "note": "Model calls are live Nemotron calls on Nebius Token Factory. External tools are Dira's local stateful simulators.",
+  "provider": "Nebius Token Factory",
+  "scenarios": [
+    {
+      "name": "48-hour-shock",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 5873,
+        "promptTokens": 872,
+        "completionTokens": 1088
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 14190,
+        "promptTokens": 6116,
+        "completionTokens": 8192,
+        "proposed": 0,
+        "compiled": 0,
+        "acceptable": 0,
+        "rejectedByStage": {},
+        "error": "Nemotron Ultra unavailable; continuing with deterministic candidates (Token Factory returned an incomplete or non-text completion) — nvidia/Nemotron-3-Ultra-550b-a55b via Nebius Token Factory, 16.8s"
+      },
+      "adversarialProbeRejected": false,
+      "winner": "deterministic",
+      "selectedPlan": "plan-3-s3660",
+      "finalSlackMin": 78
+    },
+    {
+      "name": "exam-at-1pm",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 5888,
+        "promptTokens": 872,
+        "completionTokens": 1086
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 14784,
+        "promptTokens": 3002,
+        "completionTokens": 4096,
+        "proposed": 0,
+        "compiled": 0,
+        "acceptable": 0,
+        "rejectedByStage": {},
+        "error": "Nemotron Ultra unavailable; continuing with deterministic candidates (Token Factory returned an incomplete or non-text completion) — nvidia/Nemotron-3-Ultra-550b-a55b via Nebius Token Factory, 14.8s"
+      },
+      "adversarialProbeRejected": false,
+      "winner": "deterministic",
+      "selectedPlan": "plan-3-snone",
+      "finalSlackMin": 0
+    },
+    {
+      "name": "exam-at-3pm",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 13769,
+        "promptTokens": 872,
+        "completionTokens": 2655
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 16474,
+        "promptTokens": 6118,
+        "completionTokens": 8192,
+        "proposed": 0,
+        "compiled": 0,
+        "acceptable": 0,
+        "rejectedByStage": {},
+        "error": "Nemotron Ultra unavailable; continuing with deterministic candidates (Token Factory returned an incomplete or non-text completion) — nvidia/Nemotron-3-Ultra-550b-a55b via Nebius Token Factory, 19.5s"
+      },
+      "adversarialProbeRejected": false,
+      "winner": "deterministic",
+      "selectedPlan": "plan-3-s3660",
+      "finalSlackMin": 102
+    },
+    {
+      "name": "alternate-backup-owner",
+      "status": "WAITING_REVIEW",
+      "interpretation": {},
+      "ultra": {
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "proposed": 0,
+        "compiled": 0,
+        "acceptable": 0,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": false,
+      "winner": "none"
+    },
+    {
+      "name": "shorter-personal-block",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 3941,
+        "promptTokens": 872,
+        "completionTokens": 695
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 19589,
+        "promptTokens": 6116,
+        "completionTokens": 8192,
+        "proposed": 0,
+        "compiled": 0,
+        "acceptable": 0,
+        "rejectedByStage": {},
+        "error": "Nemotron Ultra unavailable; continuing with deterministic candidates (Token Factory returned an incomplete or non-text completion) — nvidia/Nemotron-3-Ultra-550b-a55b via Nebius Token Factory, 16.6s"
+      },
+      "adversarialProbeRejected": false,
+      "winner": "deterministic",
+      "selectedPlan": "plan-3-s3660",
+      "finalSlackMin": 78
+    },
+    {
+      "name": "recruiter-reschedule",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 6975,
+        "promptTokens": 865,
+        "completionTokens": 1252
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 22822,
+        "promptTokens": 2953,
+        "completionTokens": 4027,
+        "proposed": 2,
+        "compiled": 2,
+        "acceptable": 2,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "deterministic",
+      "selectedPlan": "plan-0-s960",
+      "finalSlackMin": 246
+    },
+    {
+      "name": "overlap-flexible-block",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 3114,
+        "promptTokens": 498,
+        "completionTokens": 556
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 5133,
+        "promptTokens": 768,
+        "completionTokens": 937,
+        "proposed": 2,
+        "compiled": 2,
+        "acceptable": 2,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "nemotron-ultra",
+      "selectedPlan": "ultra-0",
+      "finalSlackMin": 4320
+    }
+  ],
+  "summary": {
+    "scenarios": 7,
+    "resolved": 6,
+    "ultraPlansProposed": 4,
+    "ultraPlansCompiled": 4,
+    "ultraPlansAcceptable": 4,
+    "ultraValidationRate": 1,
+    "ultraWinShare": 0.16666666666666666,
+    "adversarialProbesRejected": 2
+  },
+  "usageByTier": {
+    "super": {
+      "calls": 6,
+      "promptTokens": 4851,
+      "completionTokens": 7332,
+      "costUsd": 0.0080541,
+      "meanLatencyMs": 6593.333333333333
+    },
+    "ultra": {
+      "calls": 9,
+      "promptTokens": 25073,
+      "completionTokens": 33636,
+      "costUsd": 0.125981,
+      "meanLatencyMs": 16207.888888888889
+    }
+  },
+  "costPerRepairUsd": 0.022339183333333335
+}

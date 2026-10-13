@@ -145,7 +145,6 @@ export class GraphEdgeBuilder {
       prompt,
       'dira_typed_graph_edges',
       jsonSchema,
-      process.env.DIRA_NEMETRON_ULTRA_MODEL ?? 'nvidia/nemotron-3-ultra-550b-a55b',
     );
     const parsed = GraphEdgeDraftSchema.safeParse(raw);
     if (!parsed.success) throw new Error(`Nemotron Ultra returned invalid graph edges: ${parsed.error.issues.map((issue) => issue.message).join('; ')}`);

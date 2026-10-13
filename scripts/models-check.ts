@@ -7,9 +7,22 @@ if (!apiKey) {
   process.exit(1);
 }
 const base = (process.env.NEBIUS_TOKEN_FACTORY_BASE_URL ?? 'https://api.tokenfactory.nebius.com/v1').replace(/\/+$/, '');
-const response = await fetch(`${base}/models`, { headers: { authorization: `Bearer ${apiKey}` } });
+const endpoint = new URL(`${base}/models`);
+if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password) {
+  console.error('Token Factory base URL must use HTTPS without embedded credentials.');
+  process.exit(1);
+}
+const response = await fetch(endpoint, {
+  headers: { authorization: `Bearer ${apiKey}` },
+  signal: AbortSignal.timeout(20_000),
+  redirect: 'error',
+}).catch(() => {
+  console.error('Token Factory catalog request failed (network, TLS or timeout).');
+  process.exit(1);
+});
 if (!response.ok) {
   console.error(`Token Factory /models failed: HTTP ${response.status}`);
+  if (response.status === 401) console.error('Replace NEBIUS_API_KEY with a valid Token Factory key in the selected environment file.');
   process.exit(1);
 }
 const payload = await response.json() as { data?: { id: string }[] };

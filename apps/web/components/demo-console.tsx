@@ -309,7 +309,7 @@ export function DemoConsole() {
 
       <section className="panel demo-egress" aria-labelledby="egress-title">
         <h2 id="egress-title">The sandbox boundary</h2>
-        <p className="muted">The prompt-injection email asks Dira to upload your inbox to outside-collector.example. Dira&rsquo;s runtime only reaches allowlisted hosts; in deployment OpenShell enforces the same list at the network edge.</p>
+        <p className="muted">The prompt-injection email asks Dira to upload your inbox to outside-collector.example. This demo verifies the broker&rsquo;s application-level allowlist and audited HTTP 403. OpenShell/NemoClaw is not enabled on this deployment, so network-edge sandbox enforcement is not active here.</p>
         <button className="btn btn-secondary" type="button" onClick={() => void tryEgress()} disabled={busy === 'egress'}>
           {busy === 'egress' ? 'Trying…' : 'Have Dira try to reach that host'}
         </button>

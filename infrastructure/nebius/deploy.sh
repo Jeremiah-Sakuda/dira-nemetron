@@ -10,4 +10,10 @@ cd infrastructure/nebius
 chmod 600 dira.env
 docker compose --env-file dira.env --profile tls up -d --build
 docker compose --env-file dira.env ps
-curl -fsS "http://127.0.0.1:${DIRA_ORCHESTRATOR_HOST_PORT:-8081}/health"
+health_url="http://127.0.0.1:${DIRA_ORCHESTRATOR_HOST_PORT:-8081}/health"
+for attempt in {1..30}; do
+  if curl -fsS "$health_url"; then exit 0; fi
+  sleep 2
+done
+echo "Orchestrator health check timed out: $health_url" >&2
+exit 1

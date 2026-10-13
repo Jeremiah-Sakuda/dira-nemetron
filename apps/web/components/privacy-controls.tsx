@@ -38,7 +38,7 @@ export function PrivacyControls() {
       <section className="panel policy-settings" aria-labelledby="network-title">
         <div className="section-label">Privacy boundary</div>
         <h2 id="network-title">Where Dira may connect</h2>
-        <p className="muted">Dira&rsquo;s runtime can only reach these hosts. Anything else is refused with HTTP 403 and recorded below. In deployment the OpenShell sandbox enforces the same list at the network boundary.</p>
+        <p className="muted">The broker allowlist refuses unapproved hosts with HTTP 403 and records the attempt below. OpenShell/NemoClaw is not enabled on this deployment, so network-edge sandbox enforcement is not active here.</p>
         <p className="mono allowlist">{allowlist.join(' · ')}</p>
         {audit.length === 0 ? <p className="muted">No blocked connection attempts.</p> : (
           <ol className="egress-audit">{audit.slice(0, 10).map((row) => (

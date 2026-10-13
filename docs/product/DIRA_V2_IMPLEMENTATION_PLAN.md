@@ -13,18 +13,20 @@ This plan translates [`dira-v2-prd.md`](dira-v2-prd.md) into reviewable stages. 
 
 **Stage One pass/fail gate:** the product must genuinely fit Personal AI and make meaningful runtime use of Nebius Token Factory or eligible Nebius AI Cloud compute plus an NVIDIA open-source model. The judge path must work consistently and match the claims in the submission.
 
-## Status as of 2026-10-11
+## Status as of 2026-10-12
+
+**Live Token Factory evidence (2026-10-12):** `docs/evidence/nemotron-eval.json` records a real Super inference run on the eight-case synthetic corpus: 7/8 passed (14,577 tokens). The only miss was an injection case where the model proposed a cancellation; the unauthorized-sender gate blocked it, but the expected pipeline label was `NO_ACTION`. `docs/evidence/nemotron-repair-eval.json` records live Super/Ultra calls with local simulated action adapters: 6/7 scenarios resolved, 4/4 Ultra proposals compiled and accepted, two adversarial probes rejected, and Ultra won 1/6 resolved scenarios. The alternate-backup-owner scenario remained in `WAITING_REVIEW`. Four Ultra requests returned incomplete completions at the provider's 8,192-token limit and safely fell back to deterministic candidates; investigate the discrepancy with the configured 4,096-token request bound before relying on Ultra for harder cases. The repair eval reported $0.134 in estimated cost; including the interpretation corpus at the configured Super rates, the combined estimated cost was about $0.143. These are runtime-inference evidence, not a live account, deployment, or external-action verification.
 
 | Stage | State | What remains |
 | --- | --- | --- |
-| 1. Nemotron path | Built. Super interprets, Nano drafts, Ultra proposes edges and repairs. Tier routing has prices; model ids are checked against the catalog. | Run `eval:nemotron` and `eval:repair` with a key, commit the evidence, and confirm ids with `models:check`. |
+| 1. Nemotron path | Built. Super interprets, Nano drafts, Ultra proposes edges and repairs. Tier routing has prices; all three configured model ids passed the catalog check. Live Super/Ultra calls and eval artifacts are recorded above. | Fix the one interpretation corpus mismatch, investigate Ultra incomplete completions at 8,192 tokens despite the 4,096-token configured bound, then rerun and review the evals. |
 | 2. Accounts and persistence | Built, including demo accounts, migration locking, and restore of confirmed rules. | Verify against a persistent deployment. |
 | 3. Security boundary | Built: approval pause and resume with fresh revalidation, nonce-checked Telegram approvals, recipient restriction, template-only bodies, a broker egress guard with audit, and an OpenShell policy per Hermes sandbox. | Live OpenShell and NemoClaw enrollment. |
 | 4. Read sources and intake | Built. Stakeholder mail on real accounts now enters the same repair engine. The daily jobs deliver the summary to Telegram and prune flight records. | Live credentials; Serverless Job run. |
 | 5. Graph builder | Built, including authority capture. | Delegation details from sources. |
-| 6. Repair proposer and actions | Built: the Ultra proposer with typed provenance and its eval. Booking replies are held as awaiting the counterparty. Delegations and notifications are verified by read-back. Draft-only policy. | Live eval numbers. |
+| 6. Repair proposer and actions | Built: the Ultra proposer with typed provenance and its eval. Booking replies are held as awaiting the counterparty. Delegations and notifications are verified by read-back. Draft-only policy. Live eval results are recorded above. | Improve the one unresolved scenario and investigate incomplete Ultra responses before making a quality claim. |
 | 7. Product surfaces and memory skills | Built: landing, demo, Today, plan inbox with edit-to-rule, Activity, Rules, Settings, Hermes MCP, Telegram, and the Skills mirror. | Polish after live use. |
-| 8. Deployment and submission | Built: compose stack, Nebius scripts, docs, feedback, Devpost text, video script. | Provision the VM, deploy a pinned tag, record the video, publish. |
+| 8. Deployment and submission | Built: compose stack, Nebius scripts, docs, feedback, Devpost text, video script. | Set up rotated production secrets, public hostnames and OAuth; decide VM budget; provision and verify a pinned deployment, then record the video and publish. |
 
 ## Working product decisions
 

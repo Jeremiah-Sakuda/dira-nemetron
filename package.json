@@ -27,7 +27,10 @@
     "eval:repair": "tsx scripts/repair-eval.ts",
     "models:check": "tsx scripts/models-check.ts",
     "test:postgres": "vitest run tests/postgres",
-    "job:daily": "tsx scripts/daily-job.ts"
+    "job:daily": "tsx scripts/daily-job.ts",
+    "models:check:nebius": "node --env-file=infrastructure/nebius/dira.env --import tsx scripts/models-check.ts",
+    "eval:nemotron:nebius": "node --env-file=infrastructure/nebius/dira.env --import tsx scripts/nemotron-eval.ts",
+    "eval:repair:nebius": "node --env-file=infrastructure/nebius/dira.env --import tsx scripts/repair-eval.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

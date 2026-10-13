@@ -30,9 +30,66 @@ Model calls go to Nemotron on Nebius Token Factory.
 | `nemoclaw/setup-hermes.sh` | One Hermes sandbox per account with Nebius inference, the Dira MCP server, and Telegram. |
 | `nemoclaw/sync-skills.sh` | Mirror confirmed rules (`skills/dira/*/SKILL.md`) into the sandbox, read-only. |
 
-## Steps
+## Token Factory integration without provisioning a VM
 
-1. Run `nebius/provision.sh` with `NEBIUS_SUBNET_ID` set. Point the web and API domains at the VM's public IP.
+Use Node 22 from the repository root. The following command explicitly loads
+`infrastructure/nebius/dira.env` without shell-sourcing it or printing secrets:
+
+```sh
+npm run models:check:nebius
+```
+
+This reads `/models` and performs no inference. Exported shell variables take
+precedence over the env file, following Node's `--env-file` behavior. Keep the
+file ignored and mode 0600. Use a **Token Factory API key**, not a Cloud CLI token.
+The shared model routing config supplies Nano, Super and Ultra; exact availability
+must pass the catalog check for this account.
+
+The owner selected credits-only testing for inference. Catalog success does not
+establish credit coverage; check balance, expiry, and automatic top-ups in
+[Token Factory billing](https://docs.tokenfactory.nebius.com/other-capabilities/billing)
+before additional model calls. The two live evaluations were run on October 12,
+2026 and are documented in `docs/evidence/2026-10-12-live-evaluation-review.md`.
+
+Once credentials and credit coverage are verified, run synthetic-data evaluations:
+
+```sh
+npm run eval:nemotron:nebius
+npm run eval:repair:nebius
+```
+
+The repair evaluation uses local simulated action adapters; it does not send mail
+or modify a real calendar. These commands generate evidence artifacts only when
+actually run. Review all failures before making quality claims. Model HTTP requests
+cap output at 4,096 tokens and serialized request size at 128 KiB by default.
+`DIRA_MODEL_MAX_OUTPUT_TOKENS`, `DIRA_MODEL_MAX_REQUEST_BYTES` and
+`DIRA_MODEL_MAX_ATTEMPTS` override the bounds (see the example env file).
+The request byte cap is not an exact token count. The example uses one HTTP attempt;
+the client's fallback default is three. Higher-level schema or planning retries can
+make additional calls. These controls are not a total spending cap or credit-balance
+check. Truncated/refused/incomplete completions fail closed even if their text parses.
+
+**October 12 checks:** an initial catalog request returned HTTP 401. The final
+`npm run models:check:nebius` request succeeded using the deployment env file
+(with no shell API-key override), and all three configured model IDs were present.
+The live interpretation run passed 7/8 checks; the repair run resolved six of
+seven scenarios, with incomplete Ultra responses in five calls. See the evidence
+review for details. TypeScript and 92 tests passed; nine Postgres-dependent tests
+were skipped. Eleven new client tests cover limits, incomplete responses,
+authentication errors, bounded retries, HTTPS and Ultra routing. No cloud
+provisioning was performed. On October 13 the Nebius console showed a $25 account
+balance; automatic top-up status has not been verified. At the console estimate,
+$25 covers roughly 312 hours of runtime; set a maximum uptime before leaving the VM on.
+
+## VM deployment and billing
+
+The provisioning default is `cpu-d3` with 2 vCPUs and 8 GiB RAM. On October 13,
+2026, the Nebius Console estimated the regular VM plus the selected 80-GiB boot
+disk at $0.08/hour ($58.40 per 730-hour month); verify the estimate in the
+console before creation. The account balance observed that day was $25, and
+automatic top-up status was not verified.
+
+1. Run `nebius/provision.sh` with `NEBIUS_SUBNET_ID` set and an SSH public key at `~/.ssh/id_ed25519.pub` (or set `DIRA_SSH_PUBLIC_KEY_FILE`). The script adds that key to the `dira` account at first boot. Point DNS for the web and API domains at the VM's public IP.
 2. On the VM, copy `nebius/dira.env.example` to `nebius/dira.env`, fill it in, and `chmod 600` it.
 3. Run `nebius/deploy.sh v2.0.0`. The judged deployment pins a release tag; the author's own instance runs separately.
 4. Register the Telegram webhook with the secret token:
@@ -57,3 +114,12 @@ Model calls go to Nemotron on Nebius Token Factory.
 - Serverless Jobs. The Jobs CLI has no schedule flag, so the VM cron launches them, and their CPU-only support should be confirmed.
 
 Each command cites the doc it follows.
+
+## Current Nebius demo deployment (October 13, 2026)
+
+- The live VM is `dira-nemetron-demo-access` (`cpu-d3`, 2 vCPU/8 GiB, 80-GiB network SSD) at `213.239.172.39`. It runs Postgres, the orchestrator, web app and Caddy. The original empty VM was replaced after its first-boot config omitted an SSH key; the replacement now receives the local public key through cloud-init.
+- Temporary judge URLs: [web demo](https://213-239-172-39.nip.io) and [orchestrator health](https://api.213-239-172-39.nip.io/health). Both returned HTTP 200 with valid TLS from outside the VM. The hostnames use nip.io and the VM's dynamic public IP; use a project-owned domain and static IP for a stable submission URL.
+- The live `/try` path was exercised with a synthetic email. The labeled forged-provenance proposal was rejected; policy required approval for delegation; approval revalidated 13 ledger intents; a stale simulated interview slot returned 409 and triggered a replan; 13 actions then passed fresh read-back verification. The result restored global slack from −3.6 hours to +1.3 hours.
+- The public egress probe returned audited HTTP 403 for `outside-collector.example`. This verifies the broker's application-level allowlist only. **OpenShell/NemoClaw is not enrolled or running on this VM; network-edge sandbox enforcement is not active or verified.** The UI states this explicitly.
+- This deployment has no `NEBIUS_API_KEY` or Google OAuth credentials. Its synthetic demo uses stored interpretations (`Stored interpretations · no inference`); live runtime inference and sign-in are not enabled. The demo requires no account and uses simulated calendar/mail/broker surfaces; it does not mutate real accounts.
+- Compose initially returned from its first health probe before the orchestrator was ready. `deploy.sh` now retries health for up to 60 seconds. The stack subsequently passed local and public health checks.

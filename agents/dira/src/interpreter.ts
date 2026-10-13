@@ -85,36 +85,46 @@ export class NemotronModelClient implements ModelClient {
   ): Promise<unknown> {
     this.lastCall = undefined;
     if (!this.apiKey) throw new Error('NEBIUS_API_KEY is required for Token Factory inference');
-    const backoffsMs = [0, 2_000, 6_000];
+    const endpoint = new URL(`${this.baseUrl.replace(/\/+$/, '')}/chat/completions`);
+    if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password) {
+      throw new Error('Token Factory base URL must use HTTPS without embedded credentials');
+    }
+    const maxTokens = modelLimit('DIRA_MODEL_MAX_OUTPUT_TOKENS', 4096, 32768);
+    const maxBytes = modelLimit('DIRA_MODEL_MAX_REQUEST_BYTES', 131072, 1048576);
+    const maxAttempts = modelLimit('DIRA_MODEL_MAX_ATTEMPTS', 3, 3);
+    const body = JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0,
+      max_tokens: maxTokens,
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: schemaName, strict: false, schema },
+      },
+    });
+    if (Buffer.byteLength(body, 'utf8') > maxBytes) {
+      throw new Error('Token Factory request exceeds DIRA_MODEL_MAX_REQUEST_BYTES');
+    }
+    const backoffsMs = [0, 2_000, 6_000].slice(0, maxAttempts);
     let lastErr: unknown;
     for (const backoff of backoffsMs) {
       if (backoff > 0) await new Promise((resolve) => setTimeout(resolve, backoff));
       try {
         const startedAt = Date.now();
-        const response = await fetch(`${this.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
             authorization: `Bearer ${this.apiKey}`,
             'content-type': 'application/json',
           },
           signal: AbortSignal.timeout(60_000),
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0,
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: schemaName,
-                strict: false,
-                schema,
-              },
-            },
-          }),
+          redirect: 'error',
+          body,
         });
         const payload = (await response.json().catch(() => null)) as TokenFactoryResponse | null;
         if (!response.ok) {
-          const message = `${payload?.error?.message ?? 'Token Factory inference failed'} (HTTP ${response.status})`;
+          // Provider bodies can echo private prompts; surface only the status.
+          const message = `Token Factory inference failed (HTTP ${response.status})`;
           const error = new Error(message);
           Object.assign(error, { status: response.status });
           throw error;
@@ -129,6 +139,9 @@ export class NemotronModelClient implements ModelClient {
           completionTokens: payload?.usage?.completion_tokens,
           totalTokens: payload?.usage?.total_tokens,
         };
+        if (payload?.choices?.[0]?.finish_reason !== 'stop') {
+          throw new Error('Token Factory returned an incomplete or non-text completion');
+        }
         const content = payload?.choices?.[0]?.message?.content;
         if (typeof content !== 'string') return { malformed: content ?? 'missing completion content' };
         try {
@@ -181,14 +194,25 @@ const interpretationJsonSchema = {
 
 interface TokenFactoryResponse {
   model?: string;
-  choices?: { message?: { content?: unknown } }[];
+  choices?: { finish_reason?: string; message?: { content?: unknown } }[];
   usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   error?: { message?: string };
 }
 
+function modelLimit(name: string, fallback: number, maximum: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1 || value > maximum) {
+    throw new Error(`${name} must be an integer between 1 and ${maximum}`);
+  }
+  return value;
+}
+
 function isTransientModelError(err: unknown): boolean {
-  const s = String(err);
-  return /429|RESOURCE_EXHAUSTED|503|UNAVAILABLE|500|INTERNAL|ECONNRESET|ETIMEDOUT|TimeoutError|fetch failed/i.test(s);
+  const status = (err as { status?: number } | null)?.status;
+  if (typeof status === 'number') return status === 429 || status >= 500;
+  return /ECONNRESET|ETIMEDOUT|TimeoutError|fetch failed/i.test(String(err));
 }
 
 export function buildInterpretationPrompt(

@@ -6,6 +6,8 @@ users:
     groups: [docker]
     shell: /bin/bash
     sudo: ["ALL=(ALL) NOPASSWD:/usr/bin/systemctl"]
+    ssh_authorized_keys:
+      - __DIRA_SSH_AUTHORIZED_KEY__
 runcmd:
   - systemctl enable --now docker
   - sudo -u dira git clone https://github.com/Jeremiah-Sakuda/dira-nemetron.git /home/dira/dira
