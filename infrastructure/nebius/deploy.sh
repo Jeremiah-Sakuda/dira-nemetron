@@ -4,7 +4,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REF="${1:-main}"
-git fetch --tags origin && git checkout --quiet "$REF"
+git fetch --tags origin
+if git show-ref --verify --quiet "refs/remotes/origin/$REF"; then
+  REF="origin/$REF"
+fi
+git checkout --quiet --detach "$REF"
 cd infrastructure/nebius
 [ -f dira.env ] || { echo "dira.env is missing (copy dira.env.example)"; exit 1; }
 chmod 600 dira.env
