@@ -29,7 +29,7 @@ You can also correct a step ("not at that time") and watch the confirmed rule sh
 
 The demo is a synthetic student with a simulated calendar, mailbox and counterparty, isolated per session by row-level security and deleted after four hours. It cannot contact anyone real. Without a Nebius key it runs on stored interpretations and says so on screen. With a key, Super and Ultra run live.
 
-**Your own account:** sign in with Google. Grant Calendar, then Gmail, then drafting, one scope at a time. Confirm the graph Nemotron proposes, including who has authority and how much effort things take. From then on, a change from a person you named reaches the same repair path.
+**Your own account:** the implemented flow grants Calendar, Gmail and drafting one scope at a time, then asks you to confirm the proposed graph, source authority and effort estimates. Google sign-in on the hosted deployment still needs its OAuth client configured and real provider actions verified. Follow [the controlled Google verification guide](docs/submission/google-live-verification.md).
 
 **From a terminal:**
 
@@ -105,7 +105,7 @@ Action broker (holds OAuth tokens, egress allowlist) → Calendar · Gmail draft
         └─ fresh read-back → graph commit → memory repo (Git) → Hermes Skills mirror
 ```
 
-One Nebius VM runs Postgres, the orchestrator and broker, the web app, Caddy, and the NemoClaw/OpenShell gateway. See [`infrastructure/README.md`](infrastructure/README.md) and [`docs/architecture/README.md`](docs/architecture/README.md).
+One Nebius VM runs Postgres, the orchestrator and broker, the web app, and Caddy at [the public demo](https://213-239-172-39.nip.io/try). NemoClaw/OpenShell validation is planned on a separate temporary VM; its network enforcement is not active on this judge VM. See [`infrastructure/README.md`](infrastructure/README.md) and [remaining launch work](docs/submission/remaining-launch-work.md).
 
 ## Verification status
 
@@ -114,10 +114,10 @@ One Nebius VM runs Postgres, the orchestrator and broker, the web app, Caddy, an
 | Deterministic core (propagation, slack, planner, policy, ledger, crash-resume) | Unit, property, chaos and replay suites in CI. The golden replay passes 18/18. |
 | Ultra proposer gates, approval pause and resume, correction rules | Tests on fixture proposals, including adversarial proposals. |
 | Demo persona, account repair engine, RLS, Hermes MCP, Telegram nonces | Postgres integration tests under a non-superuser role (`make test-postgres`), and clicked through end to end in the browser. |
-| Live Nemotron calls (Nano, Super, Ultra) | Implemented, with live telemetry, evals and cost reporting. **Not yet run in this repository:** the evidence files are produced when `NEBIUS_API_KEY` is configured. |
+| Live Nemotron | Super and Ultra verified on Token Factory: October 13 interpretation 8/8, repair 7/7, 11 Ultra calls without truncation. Ultra wins two cases; 3/11 plans pass every downstream gate. Nano's catalog access is verified; live graph drafting remains unverified. [Evidence review](docs/evidence/2026-10-13-bounded-model-review.md). |
 | Tavily official-source checks | Tested against a stubbed Tavily response. A live run needs `TAVILY_API_KEY`. |
 | Google Calendar and Gmail on a real account | Implemented behind narrow adapters with scope checks and read-back. Not yet exercised against live credentials in this repository. |
-| Nebius VM, Serverless Jobs, NemoClaw/Hermes, OpenShell | Scripts and policies are written from the official docs and the images build locally. Commands that have not been run against live services are marked in `infrastructure/README.md`. |
+| Deployment | Public HTTPS CPU VM with persistent Postgres and memory, durable inference quotas, configured nightly backup and a successful isolated database restore. Funding/stable address through December 15, Serverless Jobs, NemoClaw/Hermes and OpenShell remain open. |
 
 ## What carried over from v1, and what is new
 

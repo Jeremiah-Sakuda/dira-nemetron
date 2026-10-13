@@ -1,5 +1,7 @@
 # Video script (2:50, English)
 
+The original full-launch script below is a target, not a claim about the current deployment. The October 13 walkthrough in `v2/` uses captured product screens and explicitly labels simulated action integrations. Record the real-account, Telegram and Hermes beats only after their live checks pass. See `docs/submission/remaining-launch-work.md`.
+
 Record from the running product. Use a clean second Google account for beat 5, with no classmates' or professors' details on screen. Every beat names the criterion it supports.
 
 **0:00–0:30 · The cascade (Quality of the Idea).** Demo week on screen. The professor email lands and the week turns red: slack drops from +4.1h to −3.6h, with three broken constraints.

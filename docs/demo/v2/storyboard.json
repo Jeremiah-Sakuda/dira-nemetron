@@ -1,0 +1,55 @@
+{
+  "title": "Dira v2 \u2014 measured product walkthrough",
+  "capturedDate": "2026-10-13",
+  "disclosure": "Captured actual product screens, held and edited for narration. Inference is live; action integrations are synthetic. This is a draft, not a submitted video.",
+  "scenes": [
+    {
+      "image": "01-week.jpg",
+      "title": "Your commitments, kept",
+      "caption": "A source change can break\nmore than one calendar slot.",
+      "narration": "Dira keeps the commitments your calendar cannot explain. An exam, an interview, preparation time, and a teammate's deck review depend on one another. Each visitor gets a separate demo account. Calendar and mail actions here are simulated. Nemotron inference runs live on Nebius Token Factory."
+    },
+    {
+      "image": "02-approval.jpg",
+      "title": "See the whole cascade",
+      "caption": "Slack falls from +4.1 hours\nto minus 3.6 hours.",
+      "narration": "One professor email moves the midterm from Friday to Wednesday. Dira follows twelve typed links and finds three broken constraints: preparation capacity, the interview recovery buffer, and the teammate's available time. The repair waits for owner approval before any action runs."
+    },
+    {
+      "image": "03-flight.jpg",
+      "title": "Nemotron proposes. Code decides.",
+      "caption": "Typed provenance, feasibility,\npolicy and durable approval.",
+      "narration": "Super interprets the email. Ultra proposes a structured repair. A deterministic compiler checks its references, and the solver checks whether the plan actually fits. The labeled adversarial proposal cites a message that does not exist. Dira rejects it before execution."
+    },
+    {
+      "image": "04-verified.jpg",
+      "title": "Read back before calling it done",
+      "caption": "13 simulated actions verified.\nSlack restored to +1.3 hours.",
+      "narration": "After authenticated approval, the first interview slot is already taken. Dira refreshes external state and replans. It books the offered alternative, hands Q A to the stored backup, moves flexible blocks, and rebuilds study time. Thirteen simulated actions are verified by fresh reads. Slack returns to plus one point three hours."
+    },
+    {
+      "image": "05-egress.jpg",
+      "title": "Untrusted content stays untrusted",
+      "caption": "Injection changes nothing.\nBroker egress: audited 403.",
+      "narration": "A malicious email asks Dira to upload the inbox to an outside collector. It changes no commitments and sends no messages. The broker's application allowlist blocks the outbound probe with an audited four oh three. This verifies broker protection. OpenShell network enforcement remains unverified."
+    },
+    {
+      "image": "06-controls.jpg",
+      "title": "The owner sets the boundary",
+      "caption": "Approval rules, draft-only,\ncalendar and mailbox fences.",
+      "narration": "The owner can require more approvals, fence sources, and keep outbound mail in drafts. These settings can restrict existing authority; they cannot override a denial. Model output cannot change permissions or approve its own plan."
+    },
+    {
+      "image": "07-memory.jpg",
+      "title": "Persistent, private account memory",
+      "caption": "Graph, policy, rules and Skills\nin per-account Git memory.",
+      "narration": "PostgreSQL keeps account state partitioned. Private Git memory holds each account's graph, policies, confirmed rules, and reusable Skills. The Google adapters and Hermes connection are implemented. Actual Google provider changes and the full sandbox deployment are still pending validation."
+    },
+    {
+      "image": "08-replay.jpg",
+      "title": "A free, reproducible judge path",
+      "caption": "8 of 8 interpretation checks.\n7 of 7 repair scenarios resolved.",
+      "narration": "The Evidence page runs without OAuth or model credits. The latest live synthetic evaluations passed eight of eight interpretation cases and resolved all seven repair scenarios. Eleven Ultra calls completed without truncation; three proposals passed every downstream gate. Explore the demo and the public dira nemetron repository. Dira keeps your commitments connected."
+    }
+  ]
+}

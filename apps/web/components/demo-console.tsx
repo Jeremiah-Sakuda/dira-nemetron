@@ -50,7 +50,11 @@ export function DemoConsole() {
 
   const refresh = useCallback(async () => {
     const response = await fetch('/api/demo/state', { cache: 'no-store' });
-    if (response.status === 401 || response.status === 404) { setPhase('needs-session'); return; }
+    if (response.status === 401 || response.status === 404) {
+      setPhase('needs-session');
+      if (response.status === 401) await loadSession(true);
+      return;
+    }
     const body = await readJson<DemoState>(response);
     if (!response.ok) throw new Error(body.error ?? 'The demo could not be loaded.');
     setState(body);
@@ -84,6 +88,7 @@ export function DemoConsole() {
     setBusy('reset'); setError('');
     try {
       const response = await fetch('/api/demo/reset', { method: 'POST' });
+      if (response.status === 401) { setPhase('needs-session'); await loadSession(true); return; }
       if (!response.ok) throw new Error((await readJson(response)).error ?? 'Reset failed.');
       await loadSession(true);
       setBaseline(null); setRun(null); setFlight([]); setEgress(null); setDraft(null);
@@ -103,6 +108,7 @@ export function DemoConsole() {
         body: JSON.stringify({ presetId, ...(edited ? email : {}), adversarialProbe: probe }),
       });
       const body = await readJson<{ run: RunView; flight: FlightLine[] }>(response);
+      if (response.status === 401) { setPhase('needs-session'); await loadSession(true); return; }
       if (!response.ok) throw new Error(body.error ?? 'Dira could not process that email.');
       setRun(body.run);
       setFlight(body.flight);

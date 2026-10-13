@@ -228,12 +228,16 @@ export class DiraOrchestrator {
     // ---- INTERPRET (model / fixture; strict schema + entity resolution) ---
     const outcome = await interpretEmail(this.model, trigger, this.state);
     if (!outcome.ok) {
-      this.recorder.record('ERROR', `Interpretation failed: ${outcome.failure} (${outcome.detail ?? ''})`);
+      this.recorder.record('ERROR', `Interpretation failed: ${outcome.failure} (${outcome.detail ?? ''})`, {
+        modelClient: this.model.name, modelCall: this.model.lastCall, attempts: outcome.attempts,
+      });
       return this.finish('WAITING_REVIEW', `interpretation ${outcome.failure}`);
     }
     const interpretation = outcome.result!;
     if (!interpretation.relevant || !interpretation.mutation) {
-      this.recorder.record('INTERPRET', `Not a commitment mutation: ${interpretation.reason}`);
+      this.recorder.record('INTERPRET', `Not a commitment mutation: ${interpretation.reason}`, {
+        modelClient: this.model.name, modelCall: this.model.lastCall, attempts: outcome.attempts,
+      });
       return this.finish('NO_ACTION_NEEDED', interpretation.reason);
     }
     const mutation = interpretation.mutation;

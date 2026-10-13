@@ -1,0 +1,33 @@
+{
+  "verifiedAtIso": "2026-10-13T23:25:37Z",
+  "webUrl": "https://213-239-172-39.nip.io/try",
+  "apiHealth": "https://api.213-239-172-39.nip.io/health",
+  "nightlyBackup": {
+    "scheduleUtc": "15 3 * * *",
+    "cronService": "active",
+    "privateBackupTimestamp": "20261013T2315Z",
+    "isolatedDatabaseRestore": "passed",
+    "restoredInferenceReservations": 9,
+    "memoryArchiveReadable": true,
+    "offVmCopies": "private ignored local runtime directory",
+    "fullMemoryRecovery": "not verified"
+  },
+  "focusedChecks": {
+    "typecheck": "passed",
+    "webBuild": "passed",
+    "unitAndWeb": 61,
+    "integration": 22,
+    "property": 6,
+    "chaos": 7,
+    "replay": 4,
+    "postgresQuota": 3,
+    "total": 103
+  },
+  "pending": [
+    "Google OAuth and actual Calendar/Gmail changes",
+    "NemoClaw/OpenShell install and network enforcement",
+    "stable public address or owned domain",
+    "funding through December 15",
+    "public submission video and Devpost submission"
+  ]
+}

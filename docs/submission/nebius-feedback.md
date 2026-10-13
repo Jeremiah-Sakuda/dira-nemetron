@@ -16,7 +16,7 @@ Written during the Dira v2 build, October 2026. Each item says what we observed,
 
 ## Nebius AI Cloud
 
-5. **Serverless Jobs have no schedule.** *From docs.* The docs describe jobs as "one-off or scheduled", but `nebius ai job create` has no schedule or cron flag, and no scheduling procedure is documented. We run the daily pass from cron on the always-on VM and launch the job from there.
+5. **Serverless Jobs have no schedule.** *From docs.* The docs describe jobs as "one-off or scheduled", but `nebius ai job create` has no schedule or cron flag, and no scheduling procedure is documented. Our scripts propose launching the daily pass from cron; this job deployment has not yet been run. Only the nightly backup cron is verified as configured.
    - **Ask:** a schedule field, or documentation that scheduling is out of scope.
 6. **CPU-only jobs are unclear.** *From docs.* The job platform defaults to a GPU platform, and non-GPU VMs are described as supporting only the regular type. Our daily recompute needs no GPU.
    - **Ask:** state whether `cpu-d3` is a valid job platform.

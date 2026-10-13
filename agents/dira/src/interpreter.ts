@@ -38,6 +38,31 @@ export interface ModelClient {
 export interface InterpretationContext {
   /** Commitment ids + titles the model may resolve entities against. */
   commitments: { id: string; title: string; startIso?: string }[];
+  timezone?: string;
+}
+
+/** Server-owned admission and accounting. Never receives prompts or credentials. */
+export interface ModelRequest {
+  model: string;
+  requestBytes: number;
+  maxOutputTokens: number;
+}
+
+export interface ModelRequestResult {
+  status: 'completed' | 'failed';
+  httpStatus?: number;
+  telemetry?: NonNullable<ModelClient['lastCall']>;
+}
+
+export type ModelRequestGuard = (request: ModelRequest) => Promise<{
+  finish(result: ModelRequestResult): Promise<void>;
+}>;
+
+let modelRequestGuard: ModelRequestGuard | undefined;
+
+/** Install before serving requests; standalone evaluations can supply their own guard. */
+export function configureModelRequestGuard(guard: ModelRequestGuard | undefined): void {
+  modelRequestGuard = guard;
 }
 
 export class FixtureModelClient implements ModelClient {
@@ -97,18 +122,33 @@ export class NemotronModelClient implements ModelClient {
       messages: [{ role: 'user', content: prompt }],
       temperature: 0,
       max_tokens: maxTokens,
+      store: false,
+      // Ultra's default reasoning can consume the entire output allowance.
+      // Repairs are bounded structured proposals; deterministic engines perform
+      // the actual arithmetic and safety checks. NVIDIA's chat template toggle
+      // leaves the token allowance available for the complete proposal.
+      ...((schemaName === 'dira_repair_proposal' && tierForModel(model) === 'ultra')
+        || (schemaName === 'dira_interpretation' && tierForModel(model) === 'super')
+        ? { chat_template_kwargs: { enable_thinking: false } } : {}),
       response_format: {
         type: 'json_schema',
         json_schema: { name: schemaName, strict: false, schema },
       },
     });
-    if (Buffer.byteLength(body, 'utf8') > maxBytes) {
+    const requestBytes = Buffer.byteLength(body, 'utf8');
+    if (requestBytes > maxBytes) {
       throw new Error('Token Factory request exceeds DIRA_MODEL_MAX_REQUEST_BYTES');
     }
     const backoffsMs = [0, 2_000, 6_000].slice(0, maxAttempts);
     let lastErr: unknown;
     for (const backoff of backoffsMs) {
       if (backoff > 0) await new Promise((resolve) => setTimeout(resolve, backoff));
+      // Reserve each HTTP attempt before sending it, including retries. Admission
+      // failures never trigger a provider call; failed/unknown calls retain quota.
+      const reservation = await modelRequestGuard?.({ model, requestBytes, maxOutputTokens: maxTokens });
+      this.lastCall = undefined;
+      let httpStatus: number | undefined;
+      let completed = false;
       try {
         const startedAt = Date.now();
         const response = await fetch(endpoint, {
@@ -121,6 +161,7 @@ export class NemotronModelClient implements ModelClient {
           redirect: 'error',
           body,
         });
+        httpStatus = response.status;
         const payload = (await response.json().catch(() => null)) as TokenFactoryResponse | null;
         if (!response.ok) {
           // Provider bodies can echo private prompts; surface only the status.
@@ -143,6 +184,7 @@ export class NemotronModelClient implements ModelClient {
           throw new Error('Token Factory returned an incomplete or non-text completion');
         }
         const content = payload?.choices?.[0]?.message?.content;
+        completed = true;
         if (typeof content !== 'string') return { malformed: content ?? 'missing completion content' };
         try {
           return JSON.parse(content);
@@ -152,6 +194,12 @@ export class NemotronModelClient implements ModelClient {
       } catch (err) {
         lastErr = err;
         if (!isTransientModelError(err)) throw err;
+      } finally {
+        await reservation?.finish({
+          status: completed ? 'completed' : 'failed',
+          httpStatus,
+          telemetry: this.lastCall,
+        });
       }
     }
     throw lastErr;
@@ -229,6 +277,8 @@ export function buildInterpretationPrompt(
     ...context.commitments.map((c) => `- ${c.id}: ${c.title}${c.startIso ? ` @ ${c.startIso}` : ''}`),
     '',
     `The email arrived at ${email.receivedAtIso}. Resolve relative phrases`,
+    `Calendar date anchors in ${context.timezone ?? 'the supplied timestamp offset'}:`,
+    ...interpretationDateAnchors(email.receivedAtIso, context.timezone),
     '("this Wednesday", "Friday") against that date and the commitment times',
     'above, and emit full ISO 8601 timestamps INCLUDING the same UTC offset',
     'the commitment times use. schedule_change and deadline_change MUST',
@@ -260,6 +310,18 @@ export function buildInterpretationPrompt(
   ].join('\n');
 }
 
+/** Calendar labels are computed locally, so the model need not infer weekdays. */
+function interpretationDateAnchors(receivedAtIso: string, timezone?: string): string[] {
+  const localDate = timezone
+    ? new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(receivedAtIso))
+    : receivedAtIso.slice(0, 10);
+  const start = Date.parse(`${localDate}T12:00:00Z`);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start + index * 86_400_000);
+    return `- ${date.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long' })}: ${date.toISOString().slice(0, 10)}`;
+  });
+}
+
 export interface InterpretOutcome {
   ok: boolean;
   result?: InterpretationResult;
@@ -288,6 +350,7 @@ export async function interpretEmail(
   // The model needs date anchors to resolve phrases like "this Wednesday":
   // give it each commitment's current scheduled time or deadline.
   const context: InterpretationContext = {
+    timezone: state.timezone,
     commitments: Object.values(state.commitments)
       .filter((c) => !c.reservesEffortFor)
       .map((c) => ({

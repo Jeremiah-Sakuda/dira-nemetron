@@ -4,9 +4,18 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REF="${1:-main}"
-git fetch --tags origin
-if git show-ref --verify --quiet "refs/remotes/origin/$REF"; then
-  REF="origin/$REF"
+REMOTE=v2
+if ! git remote get-url "$REMOTE" >/dev/null 2>&1; then REMOTE=origin; fi
+case "$(git remote get-url "$REMOTE")" in
+  https://github.com/Jeremiah-Sakuda/dira-nemetron.git|git@github.com:Jeremiah-Sakuda/dira-nemetron.git) ;;
+  *) echo 'Refusing deployment: remote must be Jeremiah-Sakuda/dira-nemetron.' >&2; exit 1 ;;
+esac
+git fetch --tags "$REMOTE"
+if git show-ref --verify --quiet "refs/remotes/$REMOTE/$REF"; then
+  REF="$REMOTE/$REF"
+fi
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo 'Tracked deployment changes must be saved before selecting a release.' >&2; exit 1
 fi
 git checkout --quiet --detach "$REF"
 cd infrastructure/nebius

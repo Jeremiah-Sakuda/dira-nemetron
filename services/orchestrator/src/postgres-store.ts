@@ -136,6 +136,7 @@ export class PostgresAccountStore {
       '008_workflow_execution_evidence.sql', '009_account_policy_settings.sql',
       '010_policy_block_events.sql', '011_source_sync_cursors.sql', '012_ical_deadline_feeds.sql',
       '013_account_daily_reports.sql', '014_event_repair_and_demo.sql', '015_correction_rule_candidates.sql', '016_hermes_and_telegram.sql',
+      '017_inference_usage.sql',
     ]) {
       migrations.push(await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8'));
     }

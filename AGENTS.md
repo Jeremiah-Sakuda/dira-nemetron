@@ -15,7 +15,7 @@ The official rules currently use a Stage One pass/fail gate followed by four equ
 
 Stage One requires genuine track fit and meaningful use of the required APIs/SDKs; a superficial rebrand does not qualify. For the Personal AI track, keep the always-on, private, persistent-memory, reusable-skills, and user-chosen-tools experience visible in the product and judge path.
 
-Official references (checked October 9, 2026):
+Official references (rechecked October 13, 2026):
 
 - [Official rules and judging criteria](https://nebiusglobalaihackathon.devpost.com/rules)
 - [Hackathon overview and criteria](https://nebiusglobalaihackathon.devpost.com/)

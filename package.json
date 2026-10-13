@@ -15,7 +15,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:unit": "vitest run tests/unit packages",
+    "test:unit": "vitest run tests/unit packages apps/web/tests",
     "test:integration": "vitest run tests/integration",
     "test:property": "vitest run tests/property",
     "test:chaos": "vitest run tests/chaos",

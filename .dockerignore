@@ -13,6 +13,7 @@ infrastructure/nebius/dira.env
 coverage
 *.tsbuildinfo
 docs/demo/*.mp4
+docs/demo/**/*.mp4
 .next
 .vercel
 .claude

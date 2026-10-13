@@ -12,10 +12,11 @@ export interface SessionInfo {
 }
 
 let cached: Promise<SessionInfo> | undefined;
+const SESSION_CHANGED = 'dira-session-changed';
 
 export function loadSession(force = false): Promise<SessionInfo> {
   if (!cached || force) {
-    cached = fetch('/api/me', { cache: 'no-store' })
+    const pending = fetch('/api/me', { cache: 'no-store' })
       .then(async (response) => {
         if (response.status === 401) return { status: 'signed-out' } as SessionInfo;
         if (!response.ok) return { status: 'unavailable' } as SessionInfo;
@@ -29,6 +30,13 @@ export function loadSession(force = false): Promise<SessionInfo> {
         } as SessionInfo;
       })
       .catch(() => ({ status: 'unavailable' }) as SessionInfo);
+    cached = pending;
+    void pending.then((value) => {
+      // A slower old request must not overwrite a newly authenticated session.
+      if (cached === pending && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent<SessionInfo>(SESSION_CHANGED, { detail: value }));
+      }
+    });
   }
   return cached;
 }
@@ -37,8 +45,11 @@ export function useSession(): SessionInfo {
   const [session, setSession] = useState<SessionInfo>({ status: 'loading' });
   useEffect(() => {
     let active = true;
-    void loadSession().then((value) => { if (active) setSession(value); });
-    return () => { active = false; };
+    const initial = loadSession();
+    void initial.then((value) => { if (active && cached === initial) setSession(value); });
+    const update = (event: Event) => setSession((event as CustomEvent<SessionInfo>).detail);
+    window.addEventListener(SESSION_CHANGED, update);
+    return () => { active = false; window.removeEventListener(SESSION_CHANGED, update); };
   }, []);
   return session;
 }

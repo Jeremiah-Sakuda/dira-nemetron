@@ -5,7 +5,7 @@ Dira runs on one always-on Nebius CPU VM. The VM hosts four things:
 - Postgres, the operational store, with row-level security per account.
 - The Dira orchestrator. It is also the action broker and holds every OAuth credential.
 - The web app.
-- The scheduler and the NemoClaw/OpenShell gateway for per-account Hermes sandboxes.
+- Caddy for HTTPS. The daily scheduler and per-account NemoClaw/OpenShell sandboxes remain separate deployment work.
 
 Model calls go to Nemotron on Nebius Token Factory.
 
@@ -49,7 +49,7 @@ The owner selected credits-only testing for inference. Catalog success does not
 establish credit coverage; check balance, expiry, and automatic top-ups in
 [Token Factory billing](https://docs.tokenfactory.nebius.com/other-capabilities/billing)
 before additional model calls. The two live evaluations were run on October 12,
-2026 and are documented in `docs/evidence/2026-10-12-live-evaluation-review.md`.
+2026; the latest October 13 runs and bounded structured output fix are documented in `docs/evidence/2026-10-13-bounded-model-review.md`.
 
 Once credentials and credit coverage are verified, run synthetic-data evaluations:
 
@@ -121,5 +121,7 @@ Each command cites the doc it follows.
 - Temporary judge URLs: [web demo](https://213-239-172-39.nip.io) and [orchestrator health](https://api.213-239-172-39.nip.io/health). Both returned HTTP 200 with valid TLS from outside the VM. The hostnames use nip.io and the VM's dynamic public IP; use a project-owned domain and static IP for a stable submission URL.
 - The live `/try` path was exercised with a synthetic email. The labeled forged-provenance proposal was rejected; policy required approval for delegation; approval revalidated 13 ledger intents; a stale simulated interview slot returned 409 and triggered a replan; 13 actions then passed fresh read-back verification. The result restored global slack from −3.6 hours to +1.3 hours.
 - The public egress probe returned audited HTTP 403 for `outside-collector.example`. This verifies the broker's application-level allowlist only. **OpenShell/NemoClaw is not enrolled or running on this VM; network-edge sandbox enforcement is not active or verified.** The UI states this explicitly.
-- This deployment has no `NEBIUS_API_KEY` or Google OAuth credentials. Its synthetic demo uses stored interpretations (`Stored interpretations · no inference`); live runtime inference and sign-in are not enabled. The demo requires no account and uses simulated calendar/mail/broker surfaces; it does not mutate real accounts.
+- Live Token Factory inference was enabled on October 13 after the initial stored-interpretation deployment. The API key is present only in the orchestrator's mode-0600 env file; the web container has no model key. The `/try` interface reports `Nemotron live · Nebius Token Factory` and accepts edited synthetic emails. There are no Google OAuth credentials; the demo requires no personal sign-in and uses simulated calendar/mail/broker surfaces. It does not mutate real accounts.
+- Each service model HTTP attempt reserves durable Postgres quota: 100 total, 20 in a rolling 24 hours, 12 per hour and 2 concurrently. Failed attempts consume quota. The live configuration requests at most 4,096 output tokens, serializes at most 65,536 request bytes and permits one HTTP attempt. Usage survives demo resets and service restarts, and tokens plus estimated cost are recorded without prompts or credentials. These are deployment call limits, not a provider-enforced spending cap; standalone evals do not use this service quota.
+- The public live inference verification made four model calls with 20,855 reported tokens, about $0.036 estimated cost. Super interpreted the exam change; the two incomplete Ultra calls failed closed, and deterministic candidates repaired the synthetic world after authenticated demo-session approval. Thirteen actions passed read-back verification. The live injection email changed no surfaces, the application egress probe returned 403, and credential-free Evidence replay completed without model calls. See [`../docs/evidence/2026-10-13-live-demo-inference-review.md`](../docs/evidence/2026-10-13-live-demo-inference-review.md).
 - Compose initially returned from its first health probe before the orchestrator was ready. `deploy.sh` now retries health for up to 60 seconds. The stack subsequently passed local and public health checks.

@@ -3,7 +3,7 @@ import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAc
 import { PostgresAccountStore, PostgresWorkflowStore } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
-import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema } from '@dira/agent';
+import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema, configureModelRequestGuard } from '@dira/agent';
 import { GoogleUserGmailTool } from '@dira/adapter-gmail/user-google';
 import { analyzeAccountSchedule, AvailabilityProfileSchema, prepareAccountSchedule } from './account-planning.js';
 import { revalidateAccountApproval } from './account-approval.js';
@@ -19,6 +19,7 @@ import { handleAccountRoutes } from './account-routes.js';
 import { AccountBusyError, resumeAccountRepair, workflowReadyToResume, type AccountRepairOptions } from './account-repair.js';
 import { deleteExpiredDemoAccounts, getAccountKind, pruneFlightRecords, recordOwnerDecision } from './account-records.js';
 import { installEgressGuard } from './egress-guard.js';
+import { createInferenceBudgetGuard } from './inference-budget.js';
 import { captureRuleCandidate, CORRECTION_REASONS, type CorrectionReason } from './account-rules.js';
 import { handleHermesMcp } from './hermes-mcp.js';
 import { handleTelegramUpdate, notifyApprovalRequested, verifyTelegramSecret } from './telegram.js';
@@ -1202,6 +1203,7 @@ function friendlyError(err: unknown): string {
 }
 
 
+configureModelRequestGuard(createInferenceBudgetGuard(accountStore));
 installEgressGuard();
 
 server.listen(PORT, () => {

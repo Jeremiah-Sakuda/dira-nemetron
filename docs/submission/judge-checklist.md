@@ -1,6 +1,6 @@
 # Judge checklist
 
-**Stage One fit.** Personal AI, and an always-on, private, persistent assistant with skills and user-chosen tools. Nemotron runs on Nebius Token Factory at runtime: Super interprets, Ultra proposes repairs, Nano drafts. The flight record names the model, tier and latency on every call.
+**Stage One fit.** Personal AI with a persistent commitment graph, private account memory, confirmed rules and reviewed tools. The public synthetic path runs Super and Ultra on Nebius Token Factory and records the model, tier and latency. Live Nano drafting and real-account integrations remain unverified. See [current readiness](remaining-launch-work.md).
 
 ## Three minutes, no sign-in
 
@@ -15,15 +15,16 @@
 5. Press **Approve** on the delegation:
    - Dira revalidates, hits a 409 on the first interview slot, replans, and resolves at +1.3h.
    - **What actually changed** shows fresh reads of the calendar, the two sent messages (each saying it is from Dira), the booking awaiting the recruiter, and the new QA owner.
-6. Choose **Prompt-injection email** and send it. The run stops at sender authority, and nothing is sent.
+6. Choose **Prompt-injection email** and send it. The latest measured run classified it as unrelated; sender authority independently blocks unauthorized mutations. Nothing is sent or changed.
 7. Press **Have Dira try to reach that host**. It returns HTTP 403 and an audit line.
 8. Open **Rules**, **Activity** and **Settings**. You'll find the rule committed with its Skill path, every flight record, and the egress allowlist, draft-only, export and delete controls.
 
 ## Labels you will see
 
 - "Stored interpretations · no inference" means the deployment has no Nebius key and the sample emails use stored interpretations.
-- "Nemotron live · Nebius Token Factory" means Super and Ultra are running live.
-- Demo surfaces are labeled as simulated. Real accounts use Google Calendar and Gmail.
+- "Nemotron live · Nebius Token Factory" means the provider is configured for real Super/Ultra calls. Calls pause safely when the durable quota is exhausted; stored Evidence replay remains free.
+- Demo surfaces are labeled as simulated. Real-account Google adapters are implemented; deployed OAuth and actual provider changes still need verification.
+- The application egress test does not establish OpenShell enforcement. The UI explicitly identifies that remaining work.
 
 ## Credential-free engine proofs
 

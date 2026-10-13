@@ -13,20 +13,20 @@ This plan translates [`dira-v2-prd.md`](dira-v2-prd.md) into reviewable stages. 
 
 **Stage One pass/fail gate:** the product must genuinely fit Personal AI and make meaningful runtime use of Nebius Token Factory or eligible Nebius AI Cloud compute plus an NVIDIA open-source model. The judge path must work consistently and match the claims in the submission.
 
-## Status as of 2026-10-12
+## Status as of 2026-10-13
 
-**Live Token Factory evidence (2026-10-12):** `docs/evidence/nemotron-eval.json` records a real Super inference run on the eight-case synthetic corpus: 7/8 passed (14,577 tokens). The only miss was an injection case where the model proposed a cancellation; the unauthorized-sender gate blocked it, but the expected pipeline label was `NO_ACTION`. `docs/evidence/nemotron-repair-eval.json` records live Super/Ultra calls with local simulated action adapters: 6/7 scenarios resolved, 4/4 Ultra proposals compiled and accepted, two adversarial probes rejected, and Ultra won 1/6 resolved scenarios. The alternate-backup-owner scenario remained in `WAITING_REVIEW`. Four Ultra requests returned incomplete completions at the provider's 8,192-token limit and safely fell back to deterministic candidates; investigate the discrepancy with the configured 4,096-token request bound before relying on Ultra for harder cases. The repair eval reported $0.134 in estimated cost; including the interpretation corpus at the configured Super rates, the combined estimated cost was about $0.143. These are runtime-inference evidence, not a live account, deployment, or external-action verification.
+Live Token Factory inference is deployed at https://213-239-172-39.nip.io/try. Super uses explicit date anchors and direct structured extraction; Ultra returns bounded proposals without reasoning consuming the output allowance. The final synthetic interpretation corpus passed 8/8. All seven repair scenarios resolved, all eleven Ultra calls completed without truncation, three proposals survived all downstream gates, and Ultra won two repairs. Seven labeled adversarial plans were rejected. The public synthetic workflow paused for owner approval, recovered from a stale slot, and independently verified thirteen simulated actions. See [the evidence review](../evidence/2026-10-13-bounded-model-review.md).
 
 | Stage | State | What remains |
 | --- | --- | --- |
-| 1. Nemotron path | Built. Super interprets, Nano drafts, Ultra proposes edges and repairs. Tier routing has prices; all three configured model ids passed the catalog check. Live Super/Ultra calls and eval artifacts are recorded above. | Fix the one interpretation corpus mismatch, investigate Ultra incomplete completions at 8,192 tokens despite the 4,096-token configured bound, then rerun and review the evals. |
-| 2. Accounts and persistence | Built, including demo accounts, migration locking, and restore of confirmed rules. | Verify against a persistent deployment. |
-| 3. Security boundary | Built: approval pause and resume with fresh revalidation, nonce-checked Telegram approvals, recipient restriction, template-only bodies, a broker egress guard with audit, and an OpenShell policy per Hermes sandbox. | Live OpenShell and NemoClaw enrollment. |
-| 4. Read sources and intake | Built. Stakeholder mail on real accounts now enters the same repair engine. The daily jobs deliver the summary to Telegram and prune flight records. | Live credentials; Serverless Job run. |
-| 5. Graph builder | Built, including authority capture. | Delegation details from sources. |
-| 6. Repair proposer and actions | Built: the Ultra proposer with typed provenance and its eval. Booking replies are held as awaiting the counterparty. Delegations and notifications are verified by read-back. Draft-only policy. Live eval results are recorded above. | Improve the one unresolved scenario and investigate incomplete Ultra responses before making a quality claim. |
-| 7. Product surfaces and memory skills | Built: landing, demo, Today, plan inbox with edit-to-rule, Activity, Rules, Settings, Hermes MCP, Telegram, and the Skills mirror. | Polish after live use. |
-| 8. Deployment and submission | Built: compose stack, Nebius scripts, docs, feedback, Devpost text, video script. | Set up rotated production secrets, public hostnames and OAuth; decide VM budget; provision and verify a pinned deployment, then record the video and publish. |
+| Nemotron path | Live Super/Ultra measured; durable call quotas; model failures fail closed | Broader repeated evaluations and live Nano graph drafting |
+| Accounts and persistence | Postgres/memory deployed; quotas survive restart; private backup restored into an isolated database and copied off VM | Live Google account onboarding and provider changes |
+| Security boundary | Deterministic gates, authenticated synthetic approval, fresh revalidation, application egress 403 verified | NemoClaw/OpenShell runtime and actual network enforcement |
+| Sources and actions | Narrow Google adapters, incremental scopes, feeds, broker, read-back implemented | Google OAuth setup, actual Calendar/Gmail approval and read-back, live Tavily and daily Serverless Job |
+| Product and memory | Full web surfaces, per-account memory, confirmed rules and Skills implementation | Real account and Hermes use; broader UX checks |
+| Deployment and submission | Public HTTPS CPU VM, persistent storage, nightly backup, working free replay | Stable address/domain, funding through December 15, sandbox validation, public video and Devpost confirmation |
+
+The temporary 4 vCPU / 16 GiB validation VM is stopped. The Cloud balance observed October 13 was $24.11, insufficient for roughly $121 of current-VM hosting through December 15. Funding, domain and controlled Google test-account decisions are pending. See [remaining launch work](../submission/remaining-launch-work.md). Historical October 12 evidence remains in its dated review; canonical evaluation files now contain the latest October 13 results.
 
 ## Working product decisions
 

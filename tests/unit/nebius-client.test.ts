@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NemotronModelClient } from '../../agents/dira/src/interpreter.js';
+import { buildInterpretationPrompt, configureModelRequestGuard, NemotronModelClient } from '../../agents/dira/src/interpreter.js';
 import { GraphEdgeBuilder } from '../../agents/dira/src/edge-builder.js';
 import { buildGoldenFixture } from '@dira/fixtures/golden';
 
@@ -17,9 +17,63 @@ beforeEach(() => {
   vi.stubEnv('DIRA_MODEL_MAX_REQUEST_BYTES', '131072');
   vi.stubEnv('DIRA_MODEL_MAX_ATTEMPTS', '1');
 });
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { configureModelRequestGuard(undefined); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('Nebius client request and failure boundaries', () => {
+  it('uses direct Super extraction and supplies local calendar dates', async () => {
+    const fetcher = vi.fn().mockResolvedValue(completion()); vi.stubGlobal('fetch', fetcher);
+    const email = { ...buildGoldenFixture().trigger, receivedAtIso: '2026-10-13T01:00:00Z' };
+    const context = { timezone: 'America/Chicago', commitments: [] };
+    const prompt = buildInterpretationPrompt(email, context);
+    expect(prompt).toContain('Monday: 2026-10-12');
+    expect(prompt).toContain('Wednesday: 2026-10-14');
+    await client().interpret(email, context);
+    const body = JSON.parse(fetcher.mock.calls[0]![1].body);
+    expect(body.chat_template_kwargs).toEqual({ enable_thinking: false });
+    expect(body.messages[0].content).toContain('Monday: 2026-10-12');
+  });
+
+  it('makes no HTTP request when the durable quota refuses admission', async () => {
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    configureModelRequestGuard(async () => { throw new Error('Live inference paused: total call limit reached.'); });
+    await expect(client().generateStructured('prompt', 'test', schema)).rejects.toThrow('total call limit');
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('accounts for incomplete paid output before rejecting it', async () => {
+    const finish = vi.fn().mockResolvedValue(undefined);
+    configureModelRequestGuard(async () => ({ finish }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(completion('length')));
+    await expect(client().generateStructured('prompt', 'test', schema)).rejects.toThrow('incomplete');
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'failed', httpStatus: 200, telemetry: expect.objectContaining({ totalTokens: 20 }),
+    }));
+  });
+
+  it('reserves each retry and records the failed HTTP attempt without provider content', async () => {
+    vi.useFakeTimers(); vi.stubEnv('DIRA_MODEL_MAX_ATTEMPTS', '2');
+    const finish = vi.fn().mockResolvedValue(undefined);
+    const guard = vi.fn().mockResolvedValue({ finish }); configureModelRequestGuard(guard);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response('{}', { status: 503 })).mockResolvedValueOnce(completion()));
+    const result = client().generateStructured('prompt', 'test', schema);
+    await vi.runAllTimersAsync();
+    expect(await result).toEqual({ ok: true });
+    expect(guard).toHaveBeenCalledTimes(2);
+    expect(guard.mock.calls[0]![0]).toEqual({
+      model: 'nvidia/nemotron-3-super-120b-a12b', requestBytes: expect.any(Number), maxOutputTokens: 4096,
+    });
+    expect(finish.mock.calls[0]![0]).toEqual({ status: 'failed', httpStatus: 503, telemetry: undefined });
+    expect(finish.mock.calls[1]![0].status).toBe('completed');
+  });
+
+  it('retains the reservation when a transport timeout leaves billing unknown', async () => {
+    const finish = vi.fn().mockResolvedValue(undefined);
+    configureModelRequestGuard(async () => ({ finish }));
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('TimeoutError')));
+    await expect(client().generateStructured('prompt', 'test', schema)).rejects.toThrow('TimeoutError');
+    expect(finish).toHaveBeenCalledWith({ status: 'failed', httpStatus: undefined, telemetry: undefined });
+  });
+
   it('sends bounded structured output and records real response telemetry', async () => {
     const fetcher = vi.fn().mockResolvedValue(completion());
     vi.stubGlobal('fetch', fetcher);
@@ -29,9 +83,19 @@ describe('Nebius client request and failure boundaries', () => {
     expect(String(url)).toBe(`${endpoint}/chat/completions`);
     const body = JSON.parse(init.body);
     expect(body.max_tokens).toBe(4096);
+    expect(body.store).toBe(false);
+    expect(body.chat_template_kwargs).toBeUndefined();
     expect(body.response_format.json_schema.schema).toEqual(schema);
     expect(init.redirect).toBe('error');
     expect(model.lastCall).toMatchObject({ provider: 'Nebius Token Factory', promptTokens: 12, completionTokens: 8 });
+  });
+
+  it('disables Ultra reasoning only for bounded repair proposals', async () => {
+    const fetcher = vi.fn().mockImplementation(async () => completion()); vi.stubGlobal('fetch', fetcher);
+    await client().generateStructured('repair', 'dira_repair_proposal', schema, 'nvidia/Nemotron-3-Ultra-550b-a55b');
+    expect(JSON.parse(fetcher.mock.calls[0]![1].body).chat_template_kwargs).toEqual({ enable_thinking: false });
+    await client().generateStructured('edges', 'dira_edges', schema, 'nvidia/Nemotron-3-Ultra-550b-a55b');
+    expect(JSON.parse(fetcher.mock.calls[1]![1].body).chat_template_kwargs).toBeUndefined();
   });
 
   it.each(['length', 'content_filter', 'tool_calls'])('rejects %s even with parseable JSON', async (reason) => {

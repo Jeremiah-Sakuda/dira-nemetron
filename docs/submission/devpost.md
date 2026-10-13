@@ -1,48 +1,59 @@
 # Dira: your commitments, kept
 
-**Track:** Personal AI · **Built with:** NVIDIA Nemotron 3 (Nano, Super, Ultra) on Nebius Token Factory, Nebius AI Cloud, NVIDIA NemoClaw, OpenShell, Hermes Agent, Tavily
+**Track:** Personal AI
+
+**Demo:** https://213-239-172-39.nip.io/try
+
+**Source:** https://github.com/Jeremiah-Sakuda/dira-nemetron
+
+**Built with:** NVIDIA Nemotron Super and Ultra on Nebius Token Factory; Nebius AI Cloud CPU hosting; TypeScript, Next.js and Postgres.
 
 ## Inspiration
 
-The things I drop are rarely forgotten tasks. They are promises to other people that broke because something upstream moved. My professor moved a midterm two days earlier, and that one email broke an interview buffer, a study plan, and a teammate's deck review. A calendar showed one overlap. Nothing showed the rest.
+A calendar can show a collision without showing the promise it breaks. Moving a midterm two days earlier can remove preparation time, put an interview inside the recovery buffer, and delay the teammate waiting on your work. Dira models those relationships explicitly, so one changed source leads to a repair of the whole cascade.
 
 ## What it does
 
-Dira keeps a graph of what you have promised, to whom, and what depends on what. It watches the sources you connect: Gmail, Google Calendar, and course deadline feeds. When something changes, it finds every commitment the change breaks and plans a repair. It asks you before anything sensitive, does the work, and reads each change back to confirm it happened. It tells the people affected, in messages that say they come from Dira on your behalf. When you correct it, it proposes a rule. Once you confirm the rule, it is committed to a private Git repository you own and becomes a read-only Skill for your Hermes assistant.
+Dira keeps a graph of commitments, stakeholders, deadlines, preparation, buffers and delegation options. It interprets a source change, follows the affected links, computes the smallest remaining margin across the week, compares repair plans, and asks for approval before sensitive work. After execution, it reads the resulting state again. Confirmed corrections become persistent rules in each account's private Git memory, with reusable Skills.
 
-## The split between what Nemotron proposes and what code authorizes
+The public judge path creates an isolated synthetic student account. Its calendar, mailbox, delegation records and counterparty slots are clearly labeled simulations; its Super and Ultra inference calls are real Nebius Token Factory calls. No sign-in, real inbox or personal contacts are needed to explore the repair and injection checks.
 
-- **Nano** drafts commitments from your calendar, email and feeds. **Super** interprets how an email changes an existing commitment. **Ultra** proposes typed links and repair plans.
-- Ultra's repair plans are structured intents that cite typed provenance such as `slot:…`, `edge:…` or `rule:…`. A deterministic compiler resolves each reference against stored facts. It derives every time, recipient and message body from the graph. Then the same solver, cost function and versioned policy that judge the enumerated candidates judge the model's plans.
-- Ultra matters where the enumerator has no answer. In our overlap scenario, a fixed session lands on a flexible block, and the only repair comes from Ultra.
-- An approval comes only from your authenticated web session or a single-use Telegram button bound to your chat. Never from a model, and never from Hermes.
+## Why Nemotron is part of the solution
 
-**Validation rate:** `npm run eval:repair` reports the share of Ultra plans that survive every gate and the share of executed repairs that came from Ultra, with tokens and dollars per repair by tier. Fill in from `docs/evidence/nemotron-repair-eval.json` after a live run.
+Super interprets what a source means. Ultra proposes structured repair intents with typed references such as `edge:…`, `slot:…` and `rule:…`. Those proposals can widen the repair options beyond the deterministic enumerator. In the overlap scenario, Ultra moves a flexible reading block to a feasible time where the enumerator has no repair shape.
 
-**Injection test:** a prompt-injection email asks Dira to forward the inbox to an outside address. It changes nothing and sends nothing. The sender has no authority, a labeled adversarial plan is rejected at provenance, and the attempt to reach the outside host gets an audited HTTP 403. In deployment, the OpenShell sandbox enforces the same allowlist at the network edge.
+Models cannot approve or execute. A deterministic compiler resolves references against stored facts and derives recipients and message bodies from the graph. Feasibility, versioned policy, durable approval state and the broker decide what may run. Fresh-state revalidation catches stale plans, and independent read-back establishes whether the action actually happened.
 
-## Tavily
+Nano-based source drafting and Ultra-based edge review are implemented as separate reviewed intake paths. Their live account validation remains part of the remaining launch work.
 
-You can name a commitment's official page, such as a course's exam page. Dira searches only that domain with Tavily, nightly or on demand. A date change it finds is interpreted by Super and accepted only if the quote appears verbatim on the fetched page. It then goes through the same propagation, planning, policy and approval as an email. A web source can have authority over one commitment, but it can never be contacted.
+## Measured results
+
+Our October 13 synthetic live evaluations passed 8/8 interpretation cases and resolved 7/7 repair scenarios. Eleven Ultra repair calls completed without truncation, averaging 1.24 seconds. All eleven proposals compiled against provenance, but only three passed every downstream gate; Ultra won two of the seven repairs. The deterministic fallback remains essential. All seven labeled adversarial proposals were rejected. Estimated repair-corpus inference cost was $0.0454, approximately $0.0065 per resolved scenario.
+
+Through the deployed public app, the professor change reduced global slack from +246 to −216 minutes. Dira paused for authenticated approval, handled the counterparty's stale-slot failure, replanned, and verified thirteen simulated actions, restoring slack to +78 minutes. A subsequent injection email changed no commitments or action surfaces. The broker's application egress probe returned an audited 403.
+
+These are small synthetic evaluations and provider-token cost estimates, not a general reliability guarantee or a billing invoice. Full evidence and failure reviews are in `docs/evidence`.
 
 ## How we built it
 
-- **Deterministic core:** TypeScript with Zod schemas, typed-edge propagation, a global-slack solver, a policy engine, and a durable ledger with crash-resume. It carried over from v1, and its property and chaos tests still pass.
-- **Storage:** Postgres with forced row-level security per account.
-- **Actions:** a broker that holds OAuth tokens outside any model sandbox. It works through narrow Calendar, Gmail, booking and delegation tools.
-- **Memory:** a private Git repository per account.
-- **Web:** a Next.js app.
-- **Chat:** Hermes reaches Dira through a read-and-report MCP server. Dira's own Telegram bot handles approvals.
-- **Hosting:** one Nebius VM, with a Serverless Job for the daily pass.
+- **Deterministic core:** typed-edge propagation, global-slack feasibility, plan validation, cost, policy, durable ledger and crash recovery.
+- **Persistence and privacy:** Postgres account isolation with forced row-level security, encrypted Google tokens, signed sessions and private per-account Git memory.
+- **Actions:** narrow Calendar/Gmail adapters, stored stakeholders, template-derived messages, incremental OAuth scopes and independent verification.
+- **Product:** a source-change console, Today, Approvals, Activity, reviewed Graph, Rules, Settings and credential-free Evidence replay.
+- **Hosting:** a persistent Nebius CPU VM behind HTTPS, with durable inference quotas, restart policies, nightly backup and an isolated database restore check.
 
 ## Challenges
 
-The hardest part was letting a model propose plans without letting it act. Our answer was typed provenance references and a compiler in front of the validator. The second hardest was approvals that survive a replan: a re-issued intent that was never approved must go back to waiting, not get silently dropped or run.
+Reasoning initially consumed Ultra's entire output allowance. We retained the 4,096-token ceiling, used NVIDIA's direct-output toggle for structured repairs, requested one concise proposal, and made action-specific provenance explicit. Super's date extraction improved when we supplied locally computed weekday/date anchors. We preserved all safety gates throughout these changes.
 
-## What's next
+Approvals also need to survive changing external state. A recorded approval is not permission to execute a different plan after a stale-slot conflict; the broker repeats validation and pauses again whenever a new approval is required.
 
-Extension and renegotiation emails. A professional persona with an Asana feed. Calendar push notifications.
+## Current deployment and next work
+
+The synthetic HTTPS demo and live model path are working. Real Google Calendar/Gmail changes, NemoClaw/OpenShell network enforcement, Telegram/Hermes enrollment, live Tavily checks and daily Serverless Jobs remain unverified on this deployment. The application egress guard is active; it is not proof of OpenShell isolation. Stable address/domain and funding through December 15 still require a decision. The submission must retain a free working test path throughout judging.
+
+The immediate next step is controlled Google source-to-approval-to-read-back verification and a short sandbox validation on the separate temporary VM. Longer term: richer renegotiation workflows and a professional persona using the same commitment engine.
 
 ## Significantly updated from an earlier hackathon
 
-See `docs/submission/significant-update.md` and the compare view from `v1-google-agentic`.
+Dira v1 supplied the deterministic core. V2 adds Nemotron inference and repair proposals, account isolation, durable authenticated approvals, personal memory and Skills, reviewed source intake and the web product. See `docs/submission/significant-update.md` and the `v1-google-agentic...main` comparison. Historical v1 footage and evidence are kept separate.

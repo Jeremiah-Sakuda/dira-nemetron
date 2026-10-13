@@ -23,10 +23,10 @@ fi
 
 # Inference: Nemotron Super through Nebius Token Factory's OpenAI-compatible API.
 NEMOCLAW_PROVIDER=custom \
-NEMOCLAW_ENDPOINT_URL="https://api.tokenfactory.nebius.com" \
+NEMOCLAW_ENDPOINT_URL="https://api.tokenfactory.nebius.com/v1" \
 NEMOCLAW_MODEL="nvidia/nemotron-3-super-120b-a12b" \
 COMPATIBLE_API_KEY="$NEBIUS_API_KEY" \
-  nemohermes onboard
+  nemohermes onboard --non-interactive
 
 # Network policy: default deny plus Dira's MCP host and Telegram only.
 envsubst < "$HERE/../openshell/hermes-sandbox-policy.yaml" > "/tmp/${SANDBOX}-policy.yaml"

@@ -1,0 +1,210 @@
+{
+  "generatedAtIso": "2026-10-13T23:12:59.633Z",
+  "mode": "live",
+  "note": "Model calls are live Nemotron calls on Nebius Token Factory. External tools are Dira's local stateful simulators.",
+  "provider": "Nebius Token Factory",
+  "scenarios": [
+    {
+      "name": "48-hour-shock",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 1494,
+        "promptTokens": 985,
+        "completionTokens": 180
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 1280,
+        "promptTokens": 6516,
+        "completionTokens": 524,
+        "proposed": 2,
+        "compiled": 2,
+        "acceptable": 0,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "deterministic",
+      "selectedPlan": "plan-3-s3660",
+      "finalSlackMin": 78
+    },
+    {
+      "name": "exam-at-1pm",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 1398,
+        "promptTokens": 985,
+        "completionTokens": 192
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 934,
+        "promptTokens": 3202,
+        "completionTokens": 194,
+        "proposed": 1,
+        "compiled": 1,
+        "acceptable": 0,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "deterministic",
+      "selectedPlan": "plan-3-snone",
+      "finalSlackMin": 0
+    },
+    {
+      "name": "exam-at-3pm",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 1293,
+        "promptTokens": 985,
+        "completionTokens": 192
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 1289,
+        "promptTokens": 6518,
+        "completionTokens": 554,
+        "proposed": 2,
+        "compiled": 2,
+        "acceptable": 0,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "deterministic",
+      "selectedPlan": "plan-3-s3660",
+      "finalSlackMin": 102
+    },
+    {
+      "name": "alternate-backup-owner",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 1045,
+        "promptTokens": 985,
+        "completionTokens": 180
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 1386,
+        "promptTokens": 6520,
+        "completionTokens": 654,
+        "proposed": 2,
+        "compiled": 2,
+        "acceptable": 0,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "deterministic",
+      "selectedPlan": "plan-3-s3660",
+      "finalSlackMin": 78
+    },
+    {
+      "name": "shorter-personal-block",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 1383,
+        "promptTokens": 985,
+        "completionTokens": 184
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 1472,
+        "promptTokens": 6516,
+        "completionTokens": 750,
+        "proposed": 2,
+        "compiled": 2,
+        "acceptable": 1,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "nemotron-ultra",
+      "selectedPlan": "ultra-0",
+      "finalSlackMin": 78
+    },
+    {
+      "name": "recruiter-reschedule",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 1415,
+        "promptTokens": 978,
+        "completionTokens": 216
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 1092,
+        "promptTokens": 3153,
+        "completionTokens": 173,
+        "proposed": 1,
+        "compiled": 1,
+        "acceptable": 1,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "deterministic",
+      "selectedPlan": "plan-0-s960",
+      "finalSlackMin": 246
+    },
+    {
+      "name": "overlap-flexible-block",
+      "status": "RESOLVED",
+      "interpretation": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "tier": "super",
+        "latencyMs": 1335,
+        "promptTokens": 612,
+        "completionTokens": 170
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "latencyMs": 651,
+        "promptTokens": 968,
+        "completionTokens": 98,
+        "proposed": 1,
+        "compiled": 1,
+        "acceptable": 1,
+        "rejectedByStage": {}
+      },
+      "adversarialProbeRejected": true,
+      "winner": "nemotron-ultra",
+      "selectedPlan": "ultra-0",
+      "finalSlackMin": 4320
+    }
+  ],
+  "summary": {
+    "scenarios": 7,
+    "resolved": 7,
+    "ultraPlansProposed": 11,
+    "ultraPlansCompiled": 11,
+    "ultraPlansAcceptable": 3,
+    "ultraValidationRate": 0.2727272727272727,
+    "ultraWinShare": 0.2857142857142857,
+    "adversarialProbesRejected": 7
+  },
+  "usageByTier": {
+    "super": {
+      "calls": 7,
+      "promptTokens": 6515,
+      "completionTokens": 1314,
+      "costUsd": 0.0031371,
+      "meanLatencyMs": 1337.5714285714287
+    },
+    "ultra": {
+      "calls": 11,
+      "promptTokens": 33393,
+      "completionTokens": 2947,
+      "costUsd": 0.042234,
+      "meanLatencyMs": 1238.090909090909
+    }
+  },
+  "costPerRepairUsd": 0.006481585714285714
+}

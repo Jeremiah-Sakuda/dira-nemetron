@@ -26,6 +26,7 @@ import { buildDemoWorld, buildDemoWorldAt, DEMO_DISCLOSURE, DEMO_SESSION_TTL_SEC
 import { withEgressContext, egressAllowlist } from './egress-guard.js';
 import { createSessionCookie, getSessionAccountId, isAllowedOrigin } from './google-auth.js';
 import type { PostgresAccountStore } from './postgres-store.js';
+import { inferenceUsageSummary } from './inference-budget.js';
 
 export interface AccountRouteContext {
   store: () => Promise<PostgresAccountStore>;
@@ -96,6 +97,7 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
       disclosure: DEMO_DISCLOSURE,
       labels: accountToolLabels('demo'),
       modelMode: liveModelConfigured() ? 'live' : 'fixture',
+      ...(liveModelConfigured() ? { inferenceUsage: await inferenceUsageSummary(store) } : {}),
       clockIso: world.clockIso,
       timezone: state.timezone,
       presets: world.presets.map((preset) => ({
