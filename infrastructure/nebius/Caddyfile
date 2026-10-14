@@ -1,12 +1,13 @@
-# Web app for people; the API host is only for Hermes (/mcp) and Telegram
-# (/telegram/webhook). Everything else on the API host is closed.
+# Web app for people. The API host serves the Vercel server-side bridge,
+# authenticated account endpoints, Hermes and Telegram. Account mutations
+# still require a signed session and an exact trusted browser origin.
 {$DIRA_WEB_DOMAIN} {
 	encode gzip
 	reverse_proxy web:3000
 }
 
 {$DIRA_API_DOMAIN} {
-	@public path /mcp /telegram/webhook /health
+	@public path /mcp /telegram/webhook /health /api/* /auth/demo/start /auth/google/start /auth/google/* /auth/logout
 	handle @public {
 		reverse_proxy orchestrator:8081
 	}
