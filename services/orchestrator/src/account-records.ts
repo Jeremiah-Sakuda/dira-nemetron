@@ -68,6 +68,10 @@ export async function deleteAccountData(store: PostgresAccountStore, accountId: 
     await client.query('DELETE FROM dira_accounts WHERE account_id = $1', [accountId]);
   });
   await store.pool.query('DELETE FROM dira_demo_sessions WHERE account_id = $1', [accountId]);
+  // Expiry and reset must remove private Git checkouts too, not only the
+  // explicit account-deletion route. Durable bundles cascade with the account.
+  const { deleteAccountMemory } = await import('./account-memory.js');
+  await deleteAccountMemory(accountId);
 }
 
 export async function deleteExpiredDemoAccounts(store: PostgresAccountStore, now = new Date()): Promise<number> {

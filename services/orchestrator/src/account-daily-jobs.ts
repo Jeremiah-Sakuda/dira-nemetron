@@ -47,7 +47,9 @@ export async function runDailyJobsForAccounts(
   accountIds: readonly string[],
   mirrorMemory: (store: PostgresAccountStore, accountId: string) => Promise<void>,
   now = new Date(),
+  failOnError = false,
 ): Promise<void> {
+  let failures = 0;
   for (const accountId of accountIds) {
     try {
       const account = await store.getAccount(accountId);
@@ -60,10 +62,12 @@ export async function runDailyJobsForAccounts(
         await runDailyReport(store, accountId, clock.localDate, 'MORNING_SUMMARY', mirrorMemory);
       }
     } catch (error) {
+      failures++;
       console.error(JSON.stringify({ severity: 'WARN', msg: 'account daily schedule job failed',
         failure: error instanceof Error ? error.message : String(error) }));
     }
   }
+  if (failures && failOnError) throw new Error(`Daily schedule processing failed for ${failures} account(s).`);
 }
 
 async function runDailyReport(

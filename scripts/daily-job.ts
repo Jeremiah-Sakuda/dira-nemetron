@@ -2,6 +2,7 @@ import { PostgresAccountStore } from '../services/orchestrator/src/postgres-stor
 import { runDailyJobsForAccounts } from '../services/orchestrator/src/account-daily-jobs.js';
 import { syncAccountMemory } from '../services/orchestrator/src/account-memory.js';
 import { installEgressGuard } from '../services/orchestrator/src/egress-guard.js';
+import { configureDurableMemoryStore } from '../services/orchestrator/src/durable-memory.js';
 
 /**
  * One idempotent pass of the 02:00 recompute and 07:00 summary for the
@@ -17,6 +18,7 @@ if (!accountIds.length) {
 }
 const store = new PostgresAccountStore();
 await store.initialize();
+configureDurableMemoryStore(store);
 try {
   await runDailyJobsForAccounts(store, accountIds, async (target, accountId) => {
     await syncAccountMemory(accountId, async () => {

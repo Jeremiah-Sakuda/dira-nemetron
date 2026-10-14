@@ -136,7 +136,7 @@ export class PostgresAccountStore {
       '008_workflow_execution_evidence.sql', '009_account_policy_settings.sql',
       '010_policy_block_events.sql', '011_source_sync_cursors.sql', '012_ical_deadline_feeds.sql',
       '013_account_daily_reports.sql', '014_event_repair_and_demo.sql', '015_correction_rule_candidates.sql', '016_hermes_and_telegram.sql',
-      '017_inference_usage.sql',
+      '017_inference_usage.sql', '018_durable_memory.sql',
     ]) {
       migrations.push(await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8'));
     }
@@ -144,6 +144,14 @@ export class PostgresAccountStore {
     // job, tests) so concurrent startups never race on CREATE statements.
     const client = await this.pool.connect();
     try {
+      if (process.env.DIRA_REQUIRE_SAFE_DB_ROLE === 'true') {
+        const role = await client.query<{ rolsuper: boolean; rolbypassrls: boolean }>(
+          'SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname=current_user',
+        );
+        if (!role.rows[0] || role.rows[0].rolsuper || role.rows[0].rolbypassrls) {
+          throw new Error('The application database role must not bypass account isolation.');
+        }
+      }
       await client.query("SELECT pg_advisory_lock(hashtext('dira-schema-migrations'))");
       for (const migration of migrations) await client.query(migration);
     } finally {
@@ -1595,12 +1603,14 @@ export class PostgresLedgerStore implements LedgerStore {
   }
 }
 
-function createPostgresPool(): Pool {
+export function createPostgresPool(max = Number(process.env.DIRA_DATABASE_POOL_SIZE ?? 10)): Pool {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL is required for PostgreSQL persistence');
   return new Pool({
     connectionString,
-    max: Number(process.env.DIRA_DATABASE_POOL_SIZE ?? 10),
+    max,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 20_000,
     ssl: process.env.DIRA_DATABASE_SSL === 'true'
       ? { rejectUnauthorized: process.env.DIRA_DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false' }
       : undefined,

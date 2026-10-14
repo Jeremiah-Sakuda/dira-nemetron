@@ -6,9 +6,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  * OAuth/Calendar/Gmail, Telegram, Tavily). Anything else gets a synthetic 403
  * and an audit line, and never leaves the process.
  *
- * In deployment the same allowlist is enforced a second time at the network
- * boundary by the OpenShell sandbox proxy (infrastructure/nebius/openshell),
- * which also covers code paths that do not use fetch. User-chosen deadline
+ * A separately validated OpenShell agent sandbox can enforce a network
+ * boundary too. The broker deployment does not claim that isolation unless
+ * its actual runtime has been validated. User-chosen deadline
  * feeds use their own IP-pinned HTTPS client and are allowed per feed.
  */
 

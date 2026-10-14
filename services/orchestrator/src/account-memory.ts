@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { DEFAULT_ENGINE_CONFIG, isoToMinutes, minutesToIso, type DomainState } from '@dira/commitment-model';
 import { z } from 'zod';
+import { withDurableMemory } from './durable-memory.js';
 import { AvailabilityProfileSchema, type AvailabilityProfile } from './account-planning.js';
 import {
   AccountPolicySettingsSchema,
@@ -136,7 +137,7 @@ export async function syncAccountMemory(
   commitMessage?: string,
 ): Promise<{ commit: string; changed: boolean }> {
   const directory = accountDirectory(accountId);
-  return withAccountLock(directory, async () => {
+  return withAccountLock(directory, () => withDurableMemory(accountId, directory, async () => {
     const { state, profile, policy = DEFAULT_ACCOUNT_POLICY } = await loadSnapshot();
     await mkdir(repositoryRoot(), { recursive: true, mode: 0o700 });
     await chmod(repositoryRoot(), 0o700);
@@ -202,6 +203,9 @@ export async function syncAccountMemory(
     // Read-only Hermes Skills mirror: one SKILL.md per confirmed rule. Hermes
     // can read and explain them; Dira's policy engine is what enforces them.
     await rm(join(directory, 'skills'), { recursive: true, force: true });
+    await mkdir(join(directory, 'skills'), { recursive: true, mode: 0o700 });
+    await writePrivateFile(join(directory, 'skills', 'README.md'),
+      'Only owner-confirmed rules become reusable Skills. The agent can read them; the deterministic broker enforces them.\n');
     for (const rule of rules) {
       const skillDirectory = join(directory, 'skills', 'dira', rule.id);
       await mkdir(skillDirectory, { recursive: true, mode: 0o700 });
@@ -214,11 +218,12 @@ export async function syncAccountMemory(
       await git(directory, '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', commitMessage ?? 'Update confirmed Dira memory');
     }
     return { commit: await git(directory, 'rev-parse', 'HEAD'), changed };
-  });
+  }));
 }
 
 export async function exportAccountMemory(accountId: string): Promise<Buffer> {
   const directory = accountDirectory(accountId);
+  return withAccountLock(directory, () => withDurableMemory(accountId, directory, async () => {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), 'dira-memory-'));
   const bundlePath = join(temporaryDirectory, 'dira-memory.bundle');
   try {
@@ -227,6 +232,13 @@ export async function exportAccountMemory(accountId: string): Promise<Buffer> {
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
+  }));
+}
+
+/** Migration only: preserve the existing Git history before changing storage. */
+export async function persistExistingAccountMemory(accountId: string): Promise<void> {
+  const directory = accountDirectory(accountId);
+  await withAccountLock(directory, () => withDurableMemory(accountId, directory, async () => {}, { restore: false }));
 }
 
 export interface ImportedAccountMemory {
@@ -304,9 +316,9 @@ export async function importAccountMemoryBundle(accountId: string, bundle: Buffe
       config: graph.config ?? { ...DEFAULT_ENGINE_CONFIG },
     };
     const directory = accountDirectory(accountId);
-    await withAccountLock(directory, async () => {
+    await withAccountLock(directory, () => withDurableMemory(accountId, directory, async () => {
       await git(directory, 'fetch', '--quiet', '--no-tags', bundlePath, `+${sourceCommit}:refs/imported/${sourceCommit}`);
-    });
+    }));
     return { state, profile: availability.profile ?? undefined, policy, sourceCommit };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -334,7 +346,8 @@ function parseMemoryPolicy(value: unknown): AccountPolicySettings {
 /** Delete an account's private memory repository (account deletion). */
 export async function deleteAccountMemory(accountId: string): Promise<void> {
   const directory = accountDirectory(accountId);
-  await withAccountLock(directory, () => rm(directory, { recursive: true, force: true }));
+  await withAccountLock(directory, () => withDurableMemory(accountId, directory,
+    () => rm(directory, { recursive: true, force: true }), { remove: true }));
 }
 
 /** Hermes Skill format: ~/.hermes/skills/<category>/<skill>/SKILL.md with name/description frontmatter. */

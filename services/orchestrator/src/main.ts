@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { beginGoogleOAuth, clearSessionCookie, completeGoogleOAuth, getSessionAccountId, googleCalendarWriteEnabled, isAllowedOrigin } from './google-auth.js';
-import { PostgresAccountStore, PostgresWorkflowStore } from './postgres-store.js';
+import { PostgresAccountStore, PostgresWorkflowStore, createPostgresPool } from './postgres-store.js';
 import { googleAccessToken } from './google-auth.js';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { CalendarGraphBuilder, GraphEdgeBuilder, GraphEdgeDataEditsSchema, GraphProposalEditsSchema, configureModelRequestGuard } from '@dira/agent';
@@ -20,6 +20,8 @@ import { AccountBusyError, resumeAccountRepair, workflowReadyToResume, type Acco
 import { deleteExpiredDemoAccounts, getAccountKind, pruneFlightRecords, recordOwnerDecision } from './account-records.js';
 import { installEgressGuard } from './egress-guard.js';
 import { createInferenceBudgetGuard } from './inference-budget.js';
+import { configureDurableMemoryStore } from './durable-memory.js';
+import { runScheduledPass, scheduledRequestAuthorized } from './scheduled-pass.js';
 import { captureRuleCandidate, CORRECTION_REASONS, type CorrectionReason } from './account-rules.js';
 import { handleHermesMcp } from './hermes-mcp.js';
 import { handleTelegramUpdate, notifyApprovalRequested, verifyTelegramSecret } from './telegram.js';
@@ -55,6 +57,9 @@ function accountStore(): Promise<PostgresAccountStore> {
   accountStorePromise ??= (async () => {
     const store = new PostgresAccountStore();
     await store.initialize();
+    // Memory holds a database lock while loading the source snapshot. A
+    // separate small pool prevents it from exhausting the snapshot pool.
+    configureDurableMemoryStore(new PostgresAccountStore(createPostgresPool(2)));
     return store;
   })();
   return accountStorePromise;
@@ -179,6 +184,16 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/healthz')) {
       json(req, res, 200, { ok: true });
       return;
+    }
+
+    if (url.pathname === '/internal/scheduled-pass') {
+      if (req.method !== 'POST' || !scheduledRequestAuthorized(req.headers.authorization)) {
+        json(req, res, 401, { error: 'unauthorized' }); return;
+      }
+      const input = await readBody(req);
+      if (input && input !== '{}') { json(req, res, 400, { error: 'scheduled pass accepts no account or action input' }); return; }
+      const result = await runScheduledPass(await accountStore(), syncMemoryFromStore, repairOptions);
+      json(req, res, result.failed ? 503 : 200, result); return;
     }
 
     if (req.method === 'POST' && url.pathname === '/mcp') {
@@ -1211,6 +1226,9 @@ installEgressGuard();
 
 server.listen(PORT, () => {
   console.log(`dira-orchestrator listening on :${PORT}`);
+  // Request-billed serverless instances suspend CPU between requests. The
+  // authenticated scheduler owns background work; startup must not run it.
+  if (process.env.DIRA_BACKGROUND_MODE === 'scheduled') return;
   if (process.env.DATABASE_URL) {
     const housekeeping = async () => {
       try {

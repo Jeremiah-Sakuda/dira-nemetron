@@ -13,6 +13,8 @@
 
 ## Required before claiming completion
 
+October 14 migration preparation: encrypted durable memory and authenticated scheduled jobs are implemented; eleven focused checks and an isolated restore passed. A private Cloud Run staging service boots, but its database is not configured and Vercel still points to the VM. Neon creation awaits Vercel 2FA/terms acceptance. Local OpenShell installation hit Apple's developer-tools prerequisite, and automatic approval review rejected broad Docker-socket access for the standalone gateway. See [preparation evidence](../evidence/2026-10-14-serverless-preparation-review.md). These are prerequisites to finish, not a completed cost removal or sandbox deployment.
+
 | Work | Concrete next action | Completion evidence |
 | --- | --- | --- |
 | Google OAuth | Finish Cloud console login; create/configure a web client; keep credentials in ignored `infrastructure/nebius/dira.env`; choose a controlled test account/recipient | Actual source change, authenticated owner approval, Calendar/Gmail broker actions, and independent provider reads; publish only redacted metadata |

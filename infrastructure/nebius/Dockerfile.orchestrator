@@ -11,9 +11,9 @@ COPY fixtures ./fixtures
 COPY apps/web/package.json ./apps/web/package.json
 COPY scripts ./scripts
 COPY tsconfig.json tsconfig.base.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm ci --omit=dev --workspace services/orchestrator --include-workspace-root --no-audit --no-fund
 ENV NODE_ENV=production PORT=8081 DIRA_MEMORY_ROOT=/var/lib/dira/memory
 RUN useradd --system --uid 10001 dira && mkdir -p /var/lib/dira/memory && chown -R dira /var/lib/dira
 USER dira
 EXPOSE 8081
-CMD ["node_modules/.bin/tsx", "services/orchestrator/src/main.ts"]
+CMD ["node_modules/.bin/tsx", "services/orchestrator/src/bootstrap.ts"]

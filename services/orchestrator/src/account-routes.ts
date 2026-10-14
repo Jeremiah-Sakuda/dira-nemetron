@@ -200,8 +200,6 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
 
   if (req.method === 'DELETE' && url.pathname === '/api/account') {
     await deleteAccountData(store, accountId);
-    const { deleteAccountMemory } = await import('./account-memory.js');
-    await deleteAccountMemory(accountId).catch((error) => console.error('memory deletion failed', error));
     const { clearSessionCookie } = await import('./google-auth.js');
     res.setHeader('set-cookie', clearSessionCookie());
     json(req, res, 200, { deleted: true });
