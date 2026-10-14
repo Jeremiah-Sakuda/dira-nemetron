@@ -4,6 +4,8 @@
 
 ## Three minutes, no sign-in
 
+Public demo: https://dira-nemetron.vercel.app/try. Credential-free replay: https://dira-nemetron.vercel.app/evidence.
+
 1. Open the app and choose **Try the demo, no sign-in**.
 2. Keep **Professor moves the midterm** selected, leave the adversarial checkbox on, and press **Deliver this email to Dira**.
 3. Read the run:

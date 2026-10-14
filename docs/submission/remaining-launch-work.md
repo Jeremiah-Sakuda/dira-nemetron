@@ -1,9 +1,9 @@
-# Launch and judging readiness — October 13, 2026
+# Launch and judging readiness — October 14, 2026
 
 ## Completed and measured
 
-- Published code/evidence/video draft to `dira-nemetron` only at `34c8d23`; GitHub checks passed. The server checkout is pinned to that code revision and critical container source hashes match.
-- Public HTTPS demo: https://213-239-172-39.nip.io/try. API health: https://api.213-239-172-39.nip.io/health.
+- Published code/evidence/video draft to `dira-nemetron` only at `34c8d23`; GitHub checks passed. October 14 added Vercel hosting and exact trusted-origin support. The Vercel Git connection uses v2 `main`; the backend image includes the origin changes at `ead2893` and the server routing checkout is `897738d`. The original VM web remains the fallback.
+- Public HTTPS frontend: https://dira-nemetron.vercel.app/try on Vercel Hobby. Existing fallback: https://213-239-172-39.nip.io/try. API health: https://api.213-239-172-39.nip.io/health. The frontend deployment preserves the VM backend and its charges; see [Vercel configuration](../../infrastructure/vercel/README.md).
 - Persistent Postgres, per-account isolation, private Git memory, broker and web deployment.
 - Live Super interpretation and Ultra proposals through Nebius Token Factory. Final synthetic corpus: 8/8 interpretation cases; 7/7 repair scenarios; no truncated Ultra calls. See [evidence review](../evidence/2026-10-13-bounded-model-review.md).
 - Global durable inference admission: 100 lifetime attempts, 20 rolling-day, 12 rolling-hour, two concurrent. Failed/unknown calls retain quota. These are call limits, not a dollar cap.
@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | Google OAuth | Finish Cloud console login; create/configure a web client; keep credentials in ignored `infrastructure/nebius/dira.env`; choose a controlled test account/recipient | Actual source change, authenticated owner approval, Calendar/Gmail broker actions, and independent provider reads; publish only redacted metadata |
 | Sandbox | Approve a bounded restart of the stopped 4 vCPU / 16 GiB VM; install maintained NemoClaw/Hermes and inspect its pinned OpenShell version | Allowed host succeeds from the agent runtime, forbidden host and cloud metadata fail, method restrictions fail, matching enforce-mode logs; stop VM afterward |
-| Stable hosting | Choose domain or retain nip.io; reserve/preserve public address; fund the entire judge period | URL survives a controlled restart, TLS renews, full off-VM recovery succeeds, and Cloud funds cover December 15 |
+| Stable hosting | Vercel frontend is deployed; migrate backend, database, memory and background work to lower-cost hosting, or fund the existing VM | Full persistent workflow and recovery verified on replacement hosting; free judge access remains available through December 15 |
 | Submission | Code and reviewable 2:29 video draft are published in v2; finish verified footage/public YouTube upload and submit Devpost | Public video URL, completed required fields and actual submission confirmation |
 
 ## Funding decision
@@ -26,6 +26,6 @@ Cloud balance observed in the console: **$24.11**. Token Factory inference credi
 
 The temporary validation VM was quoted at about $0.15/hour including its selected disk. It remains stopped pending authorization to use at most $0.50 of the existing balance. Stopped storage can still incur charges. Do not restart it for ongoing hosting.
 
-**Recommendation:** keep the small existing VM for the complete persistent product if funding permits. For $0 additional spend, keep the source/test build and credential-free replay as the submission access path and clearly describe hosted-demo availability; do not promise funded uptime through December 15. A static frontend alone does not run Postgres, the broker, or persistent assistant workflows.
+**Selected direction:** Vercel Hobby now hosts the frontend and credential-free replay. The next cost reduction is migrating the orchestrator and broker to Cloud Run, with durable Postgres and a replacement for local Git memory/background timers. That migration is not implemented yet; do not stop the current backend or promise zero-cost full-product availability through December 15. Token Factory remains the inference provider, as allowed by the official FAQ.
 
 Official rules rechecked October 13: [rules](https://nebiusglobalaihackathon.devpost.com/rules). A functional test build with free judge access is required; a hosted website is one delivery option. Submission closes October 30 at 10:00 AM Pacific; judging runs December 1–15. Track fit and meaningful Nebius/NVIDIA use remain the first-stage gate; implementation, design, impact, and idea have equal second-stage weight.

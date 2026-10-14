@@ -1,0 +1,167 @@
+{
+  "checkedAt": "2026-10-14T04:23:03.540Z",
+  "web": "https://dira-nemetron.vercel.app",
+  "backend": "https://api.213-239-172-39.nip.io",
+  "checks": [
+    {
+      "name": "public /",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "public /try",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "public /evidence",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "public /policies",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "anonymous account state rejected",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "untrusted mutation origin rejected",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "signed synthetic session created",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "persistent demo state through Vercel",
+      "passed": true,
+      "status": 200,
+      "modelMode": "live",
+      "disclosure": "Synthetic demo world. Calendar, mailbox and counterparty slots are simulated per session.",
+      "inferenceUsage": {
+        "limits": {
+          "total": 100,
+          "daily": 20,
+          "hourly": 12,
+          "concurrent": 2
+        },
+        "calls": {
+          "total": 15,
+          "daily": 15,
+          "hourly": 0,
+          "concurrent": 0
+        },
+        "reportedTokens": 59651,
+        "estimatedCostUsd": 0.0805487,
+        "unreportedCalls": 0,
+        "disclosure": "Call limits are enforced locally. Cost is estimated from reported usage, not a provider invoice or a hard dollar cap."
+      }
+    },
+    {
+      "name": "shared session bridge",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "fallback judge origin still works",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "preview origin not implicitly trusted",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "credential-free replay completes",
+      "passed": true,
+      "status": 200,
+      "streamBytes": 31193
+    },
+    {
+      "name": "API health",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "direct API account auth",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "unmatched API closed",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "name": "generated deployment protected",
+      "status": 302,
+      "passed": true
+    }
+  ],
+  "project": {
+    "name": "dira-nemetron",
+    "plan": "hobby",
+    "rootDirectory": "apps/web",
+    "gitRepository": "Jeremiah-Sakuda/dira-nemetron",
+    "productionBranch": "main",
+    "productionAliasPublic": true,
+    "previewProtection": "prod_deployment_urls_and_all_previews",
+    "productionEnvironmentNames": [
+      "DIRA_ORCHESTRATOR_URL",
+      "DIRA_WEB_ORIGIN"
+    ]
+  },
+  "release": {
+    "vercelDeploymentId": "dpl_CMxcj9pLAH24uN9QoaW3k25StNfP",
+    "gitSha": "897738d48078760644c3535eabe54c54dcb2d21a",
+    "backendImageSourceCommit": "ead289363adfb9d45b65b655e4171191f144512b"
+  },
+  "costBoundary": "Frontend uses Vercel Hobby allowance. Existing Nebius backend and stopped validation VM disk still incur Cloud charges. No upgrade or funds added. Backend migration and December 15 funding remain unresolved.",
+  "upload": {
+    "files": 290,
+    "bytes": 2880138,
+    "excludedPrivatePathsVerified": true
+  },
+  "liveBrowserWorkflow": {
+    "disclosure": "Real Super and Ultra calls through Nebius Token Factory. All action surfaces simulated. Approval clicked through the signed demo session UI.",
+    "awaitingApprovalObserved": true,
+    "modelInterpretationObserved": true,
+    "ultraProposalObserved": true,
+    "resolved": true,
+    "verifiedSimulatedActions": 13,
+    "staleSlotRecovered": true,
+    "replanProvenanceRejectionObserved": true,
+    "globalSlackBeforeMinutes": 246,
+    "globalSlackAfterSourceMinutes": -216,
+    "globalSlackFinalMinutes": 78,
+    "initialFlightLines": 24,
+    "finalFlightLines": 81,
+    "applicationEgressBlocked": true,
+    "openShellValidated": false
+  },
+  "inferenceUsageAfterBrowserRun": {
+    "limits": {
+      "total": 100,
+      "daily": 20,
+      "hourly": 12,
+      "concurrent": 2
+    },
+    "calls": {
+      "total": 18,
+      "daily": 18,
+      "hourly": 3,
+      "concurrent": 0
+    },
+    "reportedTokens": 70711,
+    "estimatedCostUsd": 0.0920359,
+    "unreportedCalls": 0,
+    "disclosure": "Call limits are enforced locally. Cost is estimated from reported usage, not a provider invoice or a hard dollar cap."
+  }
+}

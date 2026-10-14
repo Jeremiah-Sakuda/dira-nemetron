@@ -7,8 +7,8 @@ Status: Calendar/Gmail APIs are enabled in `dira-prod`. The deployed OAuth clien
 Use Google Auth Platform → Clients → Web application. Keep the v2 client separate from legacy Dira clients.
 
 - Name: `Dira Nemotron judge demo`.
-- JavaScript origin: `https://213-239-172-39.nip.io` (replace consistently if an owned domain is selected).
-- Authorized redirect: `https://213-239-172-39.nip.io/api/auth/google/callback`.
+- JavaScript origin: `https://dira-nemetron.vercel.app`.
+- Authorized redirect: `https://dira-nemetron.vercel.app/api/auth/google/callback`.
 - Initial scopes: OpenID, email/profile, `calendar.settings.readonly`, `calendar.readonly`.
 - Incremental Calendar change scope: `calendar.events`.
 - Incremental mail scopes: `gmail.readonly`, then `gmail.compose`.

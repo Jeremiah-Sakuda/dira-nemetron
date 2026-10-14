@@ -2,11 +2,11 @@
 
 **Track:** Personal AI
 
-**Demo:** https://213-239-172-39.nip.io/try
+**Demo:** https://dira-nemetron.vercel.app/try
 
 **Source:** https://github.com/Jeremiah-Sakuda/dira-nemetron
 
-**Built with:** NVIDIA Nemotron Super and Ultra on Nebius Token Factory; Nebius AI Cloud CPU hosting; TypeScript, Next.js and Postgres.
+**Built with:** NVIDIA Nemotron Super and Ultra on Nebius Token Factory; Vercel web hosting and a Nebius AI Cloud backend; TypeScript, Next.js and Postgres.
 
 ## Inspiration
 
@@ -40,7 +40,7 @@ These are small synthetic evaluations and provider-token cost estimates, not a g
 - **Persistence and privacy:** Postgres account isolation with forced row-level security, encrypted Google tokens, signed sessions and private per-account Git memory.
 - **Actions:** narrow Calendar/Gmail adapters, stored stakeholders, template-derived messages, incremental OAuth scopes and independent verification.
 - **Product:** a source-change console, Today, Approvals, Activity, reviewed Graph, Rules, Settings and credential-free Evidence replay.
-- **Hosting:** a persistent Nebius CPU VM behind HTTPS, with durable inference quotas, restart policies, nightly backup and an isolated database restore check.
+- **Hosting:** the Next.js website on Vercel Hobby, connected to a persistent Nebius CPU backend behind HTTPS, with durable inference quotas, restart policies, nightly backup and an isolated database restore check.
 
 ## Challenges
 
@@ -50,7 +50,7 @@ Approvals also need to survive changing external state. A recorded approval is n
 
 ## Current deployment and next work
 
-The synthetic HTTPS demo and live model path are working. Real Google Calendar/Gmail changes, NemoClaw/OpenShell network enforcement, Telegram/Hermes enrollment, live Tavily checks and daily Serverless Jobs remain unverified on this deployment. The application egress guard is active; it is not proof of OpenShell isolation. Stable address/domain and funding through December 15 still require a decision. The submission must retain a free working test path throughout judging.
+The synthetic HTTPS demo and live model path are working. Real Google Calendar/Gmail changes, NemoClaw/OpenShell network enforcement, Telegram/Hermes enrollment, live Tavily checks and daily Serverless Jobs remain unverified on this deployment. The application egress guard is active; it is not proof of OpenShell isolation. The frontend has a stable Vercel address; backend migration or funding through December 15 remains necessary. The submission must retain a free working test path throughout judging.
 
 The immediate next step is controlled Google source-to-approval-to-read-back verification and a short sandbox validation on the separate temporary VM. Longer term: richer renegotiation workflows and a professional persona using the same commitment engine.
 

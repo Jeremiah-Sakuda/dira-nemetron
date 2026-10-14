@@ -1,0 +1,288 @@
+DEMO · SAM ADEYEMI, JUNIOR · AMERICA/CHICAGO
+One email moves the midterm. Watch what breaks, and what Dira does about it.
+
+Synthetic demo world. Calendar, mailbox and counterparty slots are simulated per session. Simulated clock: Tuesday, Oct 20, 8:30 AM.
+
+Nemotron live · Nebius Token Factory
+Reset demo
+The week
+Global slack +1.3h
+WEDNESDAY, OCT 21
+2:00 PM
+ECON 402 Midterm 2
+Fixed
+2:00 PM
+Sponsor logo assets arrive
+Fixed · Sponsor Reps
+2:30 PM
+Sponsor deck visual QA
+Delegatable · Maya Okafor
+4:00 PM
+Sponsor deck freeze
+Fixed
+4:45 PM
+Workout
+Optional
+7:00 PM
+Sponsor presentation (CS Club)
+Fixed
+THURSDAY, OCT 22
+1:00 PM
+TechCorp technical interview
+Move Within Window
+2:00 PM
+Side-project build block
+Flexible
+due 11:59 PM
+ECON 402 Problem Set 6
+Flexible
+SATURDAY, OCT 24
+9:00 AM
+Long run
+Optional
+MONDAY, OCT 26
+11:00 AM
+Advisor 1:1 (Dr. Ruth Alvarez)
+Fixed
+due 11:59 PM
+ECON 402 Problem Set 7
+Flexible
+
+Plus 2 study reservations for the midterm. Effort tasks show their deadline.
+
+Send Dira an email
+Professor moves the midterm
+Prompt-injection email
+Club newsletter
+
+An authorized sender moves a fixed exam two days earlier. The cascade breaks the week.
+
+From
+Subject
+Body
+Also inject a labeled adversarial plan (cites a message that does not exist, mails an outside address)
+Deliver this email to Dira
+WORKFLOW 2588EDF8E0CA
+"ECON 402 Midterm 2" moved Fri 14:00 → Wed 14:00
+Resolved
+Before
++4.1h
+After the email
+−3.6h
+After repair
++1.3h
+Flight record · 81 lines
+EVENT
+gmail message received: "ECON 402 — Midterm 2 schedule change"
+INTERPRET
+"ECON 402 Midterm 2" moved Fri 14:00 → Wed 14:00 — nvidia/nemotron-3-super-120b-a12b via Nebius Token Factory, 1.2s
+Nemotron super · Nebius Token Factory · 1.2s · 1296 tokens
+GRAPH
+Commitment mutation persisted for "ECON 402 Midterm 2"
+PROPAGATE
+6 commitments affected via 12 typed-edge impacts
+FEASIBILITY
+Global slack +4.1h → -3.6h; 3 violation(s)
+PROPOSE
+Nemotron Ultra proposed 1 plan(s): 1 compiled, 0 rejected — nvidia/Nemotron-3-Ultra-550b-a55b via Nebius Token Factory, 2.1s
+Nemotron ultra · Nebius Token Factory · 2.1s · 4904 tokens
+REJECT
+Labeled adversarial proposal "Injected adversarial proposal (labeled test)" rejected at provenance: ECON 402 Problem Set 6: message "msg-forward-entire-inbox" is not in the user's stored sources
+PLAN
+7 candidate repair(s) evaluated
+SELECT
+Lowest-cost feasible plan selected: rebook interview + delegate QA + move workout + move side-project build block + rebuild study plan (cost 360, restored slack +1.3h)
+POLICY
+ALLOW: Book "TechCorp technical interview" at Thu 10:00 [interview-slots-recruiter-approved-only] · authorized by gmail-thread-jordan-alt-slots
+POLICY
+ALLOW: Update calendar for "TechCorp technical interview" to Thu 10:00 [sync-calendar-with-approved-booking] · authorized by gmail-thread-jordan-alt-slots
+POLICY
+REQUIRE_APPROVAL: Delegate "Sponsor deck visual QA" to Maya Okafor [delegate-explicitly-delegatable] · authorized by user_policy_config, edge:edge-qa-delegate
+APPROVAL
+Awaiting owner approval: Delegate "Sponsor deck visual QA" to Maya Okafor [delegate-explicitly-delegatable]
+POLICY
+ALLOW_AND_NOTIFY: Notify Maya Okafor about the delegation [routine-operational-updates] · authorized by user_policy_config:notify-on-delegation
+POLICY
+ALLOW: Move "Workout" to Wed 16:45 [move-flexible-or-optional-blocks] · authorized by user_policy_config:flexibility=OPTIONAL
+POLICY
+ALLOW: Move "Side-project build block" to Thu 12:00 [move-flexible-or-optional-blocks] · authorized by user_policy_config:flexibility=FLEXIBLE
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Wed 20:30) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Fri 08:30) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Fri 10:00) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Thu 19:00) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Thu 21:15) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Reserve 204 min for "ECON 402 exam preparation" at Tue 19:30 [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Reserve 156 min for "ECON 402 exam preparation" at Wed 09:00 [restructure-study-blocks] · authorized by user_policy_config:study-plan
+LEDGER
+13 action intent(s) persisted to durable ledger; 1 awaiting owner approval
+OBSERVE
+Fresh read before resume: "Workout" at 2026-10-20T19:30:00-05:00
+OBSERVE
+Fresh read before resume: "Side-project build block" at 2026-10-21T09:00:00-05:00
+OBSERVE
+Fresh read before resume: "Study: ECON 402" at 2026-10-21T20:30:00-05:00
+OBSERVE
+Fresh read before resume: "Study: ECON 402" at 2026-10-23T08:30:00-05:00
+OBSERVE
+Fresh read before resume: "Study: ECON 402" at 2026-10-23T10:00:00-05:00
+OBSERVE
+Fresh read before resume: "Study: ECON 402" at 2026-10-22T19:00:00-05:00
+OBSERVE
+Fresh read before resume: "Study: ECON 402" at 2026-10-22T21:15:00-05:00
+APPROVAL
+Owner approval recorded; fresh-state revalidation passed for 13 action(s)
+ACTION
+Book "TechCorp technical interview" at Thu 10:00
+ERROR
+Book "TechCorp technical interview" at Thu 10:00 failed: 409 SLOT_NO_LONGER_AVAILABLE: the counterparty already gave this time away
+OBSERVE
+External state refreshed after failure
+REPLAN
+Re-evaluating remaining repair options against refreshed external state
+PROPOSE
+Nemotron Ultra proposed 1 plan(s): 0 compiled, 1 rejected — nvidia/Nemotron-3-Ultra-550b-a55b via Nebius Token Factory, 1.4s
+Nemotron ultra · Nebius Token Factory · 1.4s · 4860 tokens
+REJECT
+Ultra proposal "Move technical interview to 2025-10-26 14:00-15:00" rejected at provenance: TechCorp technical interview: untyped provenance "violations[2].type=BUFFER_VIOLATION"; TechCorp technical interview: untyped provenance "violations[2].commitment=technical-interview-1"; TechCorp technical interview: untyped provenance "violations[2].deficitMin=60"; TechCorp technical interview: untyped provenance "violations[2].deficitMin=60"; TechCorp technical interview: untyped provenance "violations[2].deficitMin=60"; TechCorp technical interview: untyped provenance "violations[2].deficitMin=60"
+PLAN
+5 candidate repair(s) evaluated
+SELECT
+Lowest-cost feasible plan selected: rebook interview + delegate QA + move workout + move side-project build block + rebuild study plan (cost 360, restored slack +1.3h)
+POLICY
+ALLOW: Book "TechCorp technical interview" at Thu 13:00 [interview-slots-recruiter-approved-only] · authorized by gmail-thread-jordan-alt-slots
+POLICY
+ALLOW: Update calendar for "TechCorp technical interview" to Thu 13:00 [sync-calendar-with-approved-booking] · authorized by gmail-thread-jordan-alt-slots
+POLICY
+REQUIRE_APPROVAL: Delegate "Sponsor deck visual QA" to Maya Okafor [delegate-explicitly-delegatable] · authorized by user_policy_config, edge:edge-qa-delegate
+POLICY
+ALLOW_AND_NOTIFY: Notify Maya Okafor about the delegation [routine-operational-updates] · authorized by user_policy_config:notify-on-delegation
+POLICY
+ALLOW: Move "Workout" to Wed 16:45 [move-flexible-or-optional-blocks] · authorized by user_policy_config:flexibility=OPTIONAL
+POLICY
+ALLOW: Move "Side-project build block" to Thu 14:00 [move-flexible-or-optional-blocks] · authorized by user_policy_config:flexibility=FLEXIBLE
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Wed 20:30) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Fri 08:30) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Fri 10:00) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Thu 19:00) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Remove invalidated block "Study: ECON 402" (Thu 21:15) [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Reserve 204 min for "ECON 402 exam preparation" at Tue 19:30 [restructure-study-blocks] · authorized by user_policy_config:study-plan
+POLICY
+ALLOW: Reserve 156 min for "ECON 402 exam preparation" at Wed 09:00 [restructure-study-blocks] · authorized by user_policy_config:study-plan
+LEDGER
+13 action intent(s) persisted to durable ledger (10 revived from invalidated plan)
+ACTION
+Book "TechCorp technical interview" at Thu 13:00
+VERIFY
+Verified: Book "TechCorp technical interview" at Thu 13:00
+ACTION
+Update calendar for "TechCorp technical interview" to Thu 13:00
+VERIFY
+Verified: Update calendar for "TechCorp technical interview" to Thu 13:00
+ACTION
+Delegate "Sponsor deck visual QA" to Maya Okafor
+VERIFY
+Verified: Delegate "Sponsor deck visual QA" to Maya Okafor
+ACTION
+Notify Maya Okafor about the delegation
+VERIFY
+Verified: Notify Maya Okafor about the delegation
+ACTION
+Move "Workout" to Wed 16:45
+VERIFY
+Verified: Move "Workout" to Wed 16:45
+ACTION
+Move "Side-project build block" to Thu 14:00
+VERIFY
+Verified: Move "Side-project build block" to Thu 14:00
+ACTION
+Remove invalidated block "Study: ECON 402" (Wed 20:30)
+VERIFY
+Verified: Remove invalidated block "Study: ECON 402" (Wed 20:30)
+ACTION
+Remove invalidated block "Study: ECON 402" (Fri 08:30)
+VERIFY
+Verified: Remove invalidated block "Study: ECON 402" (Fri 08:30)
+ACTION
+Remove invalidated block "Study: ECON 402" (Fri 10:00)
+VERIFY
+Verified: Remove invalidated block "Study: ECON 402" (Fri 10:00)
+ACTION
+Remove invalidated block "Study: ECON 402" (Thu 19:00)
+VERIFY
+Verified: Remove invalidated block "Study: ECON 402" (Thu 19:00)
+ACTION
+Remove invalidated block "Study: ECON 402" (Thu 21:15)
+VERIFY
+Verified: Remove invalidated block "Study: ECON 402" (Thu 21:15)
+ACTION
+Reserve 204 min for "ECON 402 exam preparation" at Tue 19:30
+VERIFY
+Verified: Reserve 204 min for "ECON 402 exam preparation" at Tue 19:30
+ACTION
+Reserve 156 min for "ECON 402 exam preparation" at Wed 09:00
+VERIFY
+Verified: Reserve 156 min for "ECON 402 exam preparation" at Wed 09:00
+RESOLVED
+Feasibility restored — global slack +1.3h
+What actually changed
+
+Fresh reads of each simulated surface, compared with the start of the session. Dira marks an action verified only after a read like this.
+
+Simulated calendar (demo session)
+Study: ECON 402 exam preparation
+new → Tue 7:30 PM
+Study: ECON 402 exam preparation
+new → Wed 9:00 AM
+Workout
+Tue 7:30 PM → Wed 4:45 PM
+TechCorp technical interview
+Wed 5:00 PM → Thu 1:00 PM
+Side-project build block
+Wed 9:00 AM → Thu 2:00 PM
+Study: ECON 402
+Wed 8:30 PM → removed
+Study: ECON 402
+Thu 7:00 PM → removed
+Study: ECON 402
+Thu 9:15 PM → removed
+Study: ECON 402
+Fri 8:30 AM → removed
+Study: ECON 402
+Fri 10:00 AM → removed
+Simulated mailbox (demo session) · Sent
+Sent · to maya.okafor@university.demo
+Handing over: Sponsor deck visual QA
+
+Hi Maya — a schedule conflict landed on my exam block, so per our backup plan I'm handing you "Sponsor deck visual QA". It needs to happen between Wed 14:00 and Wed 16:00. Thank you! (Sent by Dira on behalf of Sam Adeyemi.)
+
+Sent · to jordan.lee@techcorp.demo
+Re: TechCorp technical interview
+
+Hi Jordan, this is Dira, an assistant writing on behalf of Sam Adeyemi. Sam Adeyemi would like to take the Thu 13:00 time you offered for "TechCorp technical interview". Please reply to confirm; until then the time is held as tentative.
+
+Bookings and owners
+
+Interview Thu 1:00 PM · Awaiting Counterparty
+
+Sponsor deck visual QA owner: Maya Okafor
+
+The sandbox boundary
+
+The prompt-injection email asks Dira to upload your inbox to outside-collector.example. This demo verifies the broker’s application-level allowlist and audited HTTP 403. OpenShell/NemoClaw is not enabled on this deployment, so network-edge sandbox enforcement is not active here.
+
+Have Dira try to reach that host
+
+Next: open Rules after correcting an action in the inbox, or Activity for every run’s flight record. Engine replays live on the Evidence page.
