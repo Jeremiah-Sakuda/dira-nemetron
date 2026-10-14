@@ -38,9 +38,12 @@ const ALLOWED_ORIGIN = process.env.DIRA_ALLOWED_ORIGIN ?? 'http://localhost:3000
 let accountStorePromise: Promise<PostgresAccountStore> | undefined;
 
 function cors(req: IncomingMessage, res: ServerResponse): void {
-  const allowedOrigin = process.env.DIRA_WEB_ORIGIN ?? ALLOWED_ORIGIN;
-  if (req.headers.origin === allowedOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  const origin = req.headers.origin;
+  const permitted = process.env.DIRA_WEB_ORIGIN
+    ? isAllowedOrigin(origin)
+    : origin === ALLOWED_ORIGIN;
+  if (origin && permitted) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');
   }

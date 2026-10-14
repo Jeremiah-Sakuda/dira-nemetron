@@ -1,0 +1,23 @@
+# Vercel CLI does not use all .gitignore rules. Explicitly exclude private state.
+.git
+.vercel
+.claude
+.codex
+.agents
+.env
+.env.*
+**/.env
+**/.env.*
+infrastructure/nebius/dira.env
+.dira-runtime
+.dira-memory
+.dira-memory-export
+node_modules
+**/node_modules
+.next
+**/.next
+coverage
+*.tsbuildinfo
+**/*.tsbuildinfo
+**/._*
+docs/demo/**/*.mp4

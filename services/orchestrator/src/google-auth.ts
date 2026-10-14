@@ -252,7 +252,11 @@ export async function googleCalendarWriteEnabled(
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
-  return origin === requiredEnv('DIRA_WEB_ORIGIN');
+  const primary = requiredEnv('DIRA_WEB_ORIGIN');
+  const additional = (process.env.DIRA_ADDITIONAL_WEB_ORIGINS ?? '')
+    .split(',').map((value) => value.trim()).filter(Boolean);
+  // Exact origins only: preview hosts and subdomains are never implicitly trusted.
+  return [primary, ...additional].includes(origin);
 }
 
 function encryptCredential(value: unknown): Omit<EncryptedCredential, 'scopes' | 'expiresAt'> {
