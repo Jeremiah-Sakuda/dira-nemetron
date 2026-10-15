@@ -12,6 +12,8 @@ Migration is in progress. The Vercel frontend still uses the Nebius backend unti
 
 The deployment configuration is `DIRA_MEMORY_BACKEND=postgres`, `DIRA_MEMORY_ROOT=/tmp/dira-memory`, `DIRA_BACKGROUND_MODE=scheduled`, `DIRA_REQUIRE_SAFE_DB_ROLE=true`, `DIRA_DATABASE_POOL_SIZE=5`. Keep TLS verification enabled and preserve the existing session signing and token-encryption keys during migration.
 
+Use the restricted role with Neon's **direct** connection for this backend. Startup currently runs schema migrations under a session-level advisory lock; PgBouncer transaction pooling cannot preserve that lock across statements. With a maximum of one Cloud Run instance and small pools, direct connections are bounded. Do not substitute the pooled URL until startup migrations have a separate direct connection. See [Neon connection pooling](https://neon.com/docs/connect/connection-pooling).
+
 ## Cost boundary
 
 This removes a continuously running VM when the old resources are retired. Cloud Run, Artifact Registry, Secret Manager and Cloud Scheduler have free allowances shared by billing account; they are not hard spending caps. Neon Free has quotas and can pause when exhausted. Do not upgrade Neon or configure minimum instances without a funding decision.
@@ -35,4 +37,4 @@ Sources checked October 14, 2026: [hackathon rules](https://nebiusglobalaihackat
 
 ## Human prerequisites
 
-Neon provisioning currently requires Vercel two-factor login and explicit acceptance of Neon marketplace terms. Google OAuth needs an actual web OAuth client and the owner's consent. Neither is replaced by the authenticated Google Cloud CLI. Local OpenShell installation currently requires Apple's Command Line Tools update; the paid validation VM remains stopped.
+Neon was provisioned on October 15 after the owner accepted the marketplace terms. `dira-nemetron-db` is available on `free_v3` in `iad1`, with no connected Vercel projects. Vercel requires fresh owner verification to reveal its connection credentials; production restore and cutover remain pending. Google OAuth needs an actual web OAuth client and the owner's consent. Neither is replaced by the authenticated Google Cloud CLI. Local OpenShell installation currently requires Apple's Command Line Tools update; the paid validation VM remains stopped.
