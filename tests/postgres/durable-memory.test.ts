@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,7 +9,7 @@ import { PostgresAccountStore } from '../../services/orchestrator/src/postgres-s
 import { buildDemoWorld } from '../../services/orchestrator/src/demo-world.js';
 import { createDemoAccount, deleteAccountData } from '../../services/orchestrator/src/account-records.js';
 import { syncAccountMemory, exportAccountMemory } from '../../services/orchestrator/src/account-memory.js';
-import { configureDurableMemoryStore } from '../../services/orchestrator/src/durable-memory.js';
+import { configureDurableMemoryStore, withDurableMemory } from '../../services/orchestrator/src/durable-memory.js';
 import { runScheduledPass, scheduledRequestAuthorized } from '../../services/orchestrator/src/scheduled-pass.js';
 
 const url = process.env.DIRA_TEST_DATABASE_URL;
@@ -57,6 +58,25 @@ suite('serverless private memory and scheduler authentication', () => {
     expect(await readFile(join(directory, hash, 'graph.json'), 'utf8')).toBe(graph);
     expect(await readFile(join(directory, hash, 'skills/dira/rule-recovery/SKILL.md'), 'utf8')).toBe(skill);
     expect(row.rows[0].commit_sha).toMatch(/^[0-9a-f]{40}$/);
+  });
+  it('preserves imported history reachable only through a custom Git reference', async () => {
+    const id = `demo-${randomUUID()}`; ids.push(id);
+    await createDemoAccount(store, id, buildDemoWorld(id));
+    await syncAccountMemory(id, async () => ({ state: await store.ensureDomainState(id), profile: undefined }));
+    const path = join(directory, createHash('sha256').update(id).digest('hex'));
+    const git = (...args: string[]) => execFileSync('git', ['-C', path, ...args], { encoding: 'utf8' }).trim();
+    let importedCommit = '';
+    await withDurableMemory(id, path, async () => {
+      const tree = git('rev-parse', 'HEAD^{tree}');
+      // A separate root commit represents an imported repository's history.
+      // Its only reference is outside the heads/tags fetched by normal clone.
+      importedCommit = git('commit-tree', tree, '-m', 'Imported history proof');
+      git('update-ref', 'refs/imported/provenance', importedCommit);
+    });
+    await rm(path, { recursive: true, force: true });
+    await exportAccountMemory(id);
+    expect(git('rev-parse', 'refs/imported/provenance')).toBe(importedCommit);
+    expect(git('cat-file', '-t', importedCommit)).toBe('commit');
   });
   it('denies another tenant access to an encrypted memory bundle', async () => {
     const id = `demo-${randomUUID()}`; ids.push(id);

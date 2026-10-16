@@ -56,6 +56,11 @@ export async function withDurableMemory<T>(
           await writeFile(path, bundle, { mode: 0o600 });
           await mkdir(dirname(directory), { recursive: true, mode: 0o700 });
           await execFile('git', ['clone', '--quiet', '--no-hardlinks', path, directory]);
+          // Normal clone maps branch heads to origin/* and omits custom refs.
+          // Imported history can be reachable only through refs/imported/*;
+          // retain every stored ref before the next bundle is written.
+          await execFile('git', ['-C', directory, 'fetch', '--quiet', '--no-tags',
+            '--update-head-ok', path, '+refs/*:refs/*']);
           await chmod(directory, 0o700);
           const { stdout } = await execFile('git', ['-C', directory, 'rev-parse', 'HEAD']);
           if (stdout.trim() !== row.commit_sha) throw new Error('Stored memory commit does not match the restored repository.');
