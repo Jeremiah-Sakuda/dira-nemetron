@@ -16,7 +16,7 @@ A professor moves a midterm from Friday to Wednesday. The interview that afterno
 
 ## Try it
 
-**No sign-in:** open the hosted app, choose **Try the demo**, and send the sample professor email. In under three minutes you see:
+**No sign-in:** open the [hosted app](https://dira-nemetron.vercel.app/try), choose **Try the demo**, and send the sample professor email. In under three minutes you see:
 
 1. The cascade, with global slack dropping from +4.1h to −3.6h.
 2. Nemotron Ultra's structured repair proposal next to the deterministic candidates.
@@ -44,10 +44,10 @@ make eval-repair-fixture  # the repair-proposer gates on stored proposals (no in
 
 | Track ask | What Dira does |
 | --- | --- |
-| Always on | Five-minute Gmail and Calendar polling, thirty-minute deadline feeds, a 02:00 recompute and a 07:00 summary per account. Runs on an always-on Nebius VM; the daily pass can also run as a Nebius Serverless Job. |
-| Private | Postgres row-level security per account. Credentials stay in the broker, outside any model sandbox. Each account's Hermes runs in an OpenShell sandbox with default-deny egress, and the broker enforces its own allowlist with an audited 403. Draft-only by default. Calendar, Gmail and person fences. Export or delete everything. |
-| Persistent memory | Each account's graph, focus hours, policy and rules are committed to a private Git repository. You can download it as a bundle and restore it with validation. |
-| Reusable skills | When you correct Dira, it proposes a rule. Confirmed rules shape every later plan, and they are mirrored as read-only Hermes Skills (`skills/dira/<rule>/SKILL.md`). |
+| Always on | Authenticated fifteen-minute passes for configured, owner-opted-in connectors, with per-account recompute and morning reports. Cloud Run scales to zero between requests; durable jobs are idempotent. Actual Google enrollment remains pending. |
+| Private | Forced Postgres row-level security per account. Credentials stay in the broker, outside the model. The public broker enforces an audited egress allowlist; separate OpenShell enforcement was validated on an isolated Linux VM. Draft-only by default, with Calendar/Gmail/person fences. |
+| Persistent memory | Graph, focus hours, policy and rules are committed to private Git history and stored as encrypted per-account bundles in Postgres. Export/restore and recovery after instance replacement are verified. |
+| Reusable skills | Confirmed correction rules shape later plans and produce `skills/dira/<rule>/SKILL.md`. An isolated Skill fixture was readable but immutable; the revised automatic Hermes mirror still needs end-to-end operator validation before activation. |
 | Tools you choose | Each connector is its own consent: Calendar read, Calendar write, Gmail read, Gmail drafting. Deadline feeds you add. Official pages you name for Tavily checks. Telegram approvals you link. Hermes, through a token you create. |
 
 ## Nemotron on Nebius Token Factory
@@ -105,7 +105,7 @@ Action broker (holds OAuth tokens, egress allowlist) → Calendar · Gmail draft
         └─ fresh read-back → graph commit → memory repo (Git) → Hermes Skills mirror
 ```
 
-One Nebius VM runs Postgres, the orchestrator and broker, the web app, and Caddy at [the public demo](https://213-239-172-39.nip.io/try). NemoClaw/OpenShell validation is planned on a separate temporary VM; its network enforcement is not active on this judge VM. See [`infrastructure/README.md`](infrastructure/README.md) and [remaining launch work](docs/submission/remaining-launch-work.md).
+The [public demo](https://dira-nemetron.vercel.app/try) uses Vercel, Cloud Run, Neon Free and authenticated Cloud Scheduler. Nemotron runtime calls remain on Nebius Token Factory. Both Nebius VMs are stopped; their disks await permanent retirement. NemoClaw/OpenShell was validated separately and is not active around the Cloud Run broker. See the [measured migration review](docs/evidence/2026-10-16-migration-and-sandbox-review.md) and [remaining launch work](docs/submission/remaining-launch-work.md).
 
 ## Verification status
 
@@ -117,7 +117,7 @@ One Nebius VM runs Postgres, the orchestrator and broker, the web app, and Caddy
 | Live Nemotron | Super and Ultra verified on Token Factory: October 13 interpretation 8/8, repair 7/7, 11 Ultra calls without truncation. Ultra wins two cases; 3/11 plans pass every downstream gate. Nano's catalog access is verified; live graph drafting remains unverified. [Evidence review](docs/evidence/2026-10-13-bounded-model-review.md). |
 | Tavily official-source checks | Tested against a stubbed Tavily response. A live run needs `TAVILY_API_KEY`. |
 | Google Calendar and Gmail on a real account | Implemented behind narrow adapters with scope checks and read-back. Not yet exercised against live credentials in this repository. |
-| Deployment | Public HTTPS CPU VM with persistent Postgres and memory, durable inference quotas, configured nightly backup and a successful isolated database restore. Funding/stable address through December 15, Serverless Jobs, NemoClaw/Hermes and OpenShell remain open. |
+| Deployment | Vercel → Cloud Run → Neon with encrypted Git memory and delivered fifteen-minute background jobs. Twelve Neon checks passed; pending approval and private history survived revision replacement, and 13 synthetic actions were verified through the public app. Isolated OpenShell checks passed. Google provider verification, remaining disk retirement, owner Hermes activation and judging-period allowance coverage remain open. |
 
 ## What carried over from v1, and what is new
 

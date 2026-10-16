@@ -1,6 +1,6 @@
 # Serverless backend migration
 
-Migration is in progress. The Vercel frontend still uses the Nebius backend until recovery and cutover are verified.
+Production cutover completed October 16. The Vercel frontend uses Cloud Run and Neon; both Nebius VMs are stopped. Their disks remain billable pending permanent retirement. See the [verified recovery and sandbox review](../../docs/evidence/2026-10-16-migration-and-sandbox-review.md).
 
 ## Selected replacement
 
@@ -37,4 +37,4 @@ Sources checked October 14, 2026: [hackathon rules](https://nebiusglobalaihackat
 
 ## Human prerequisites
 
-Neon was provisioned on October 15 after the owner accepted the marketplace terms. `dira-nemetron-db` is available on `free_v3` in `iad1`, with no connected Vercel projects. Vercel requires fresh owner verification to reveal its connection credentials; production restore and cutover remain pending. Google OAuth needs an actual web OAuth client and the owner's consent. Neither is replaced by the authenticated Google Cloud CLI. Local OpenShell installation currently requires Apple's Command Line Tools update; the paid validation VM remains stopped.
+Neon is provisioned on `free_v3` in `iad1`, with no connected Vercel projects. The final production snapshot is restored and active on Cloud Run. The existing signing/encryption keys and inference reservations were preserved. Cloud Scheduler delivery, revision replacement, private Git recovery and the public approval/read-back path are verified. Google OAuth still needs an actual web client and owner consent. OpenShell was validated on the isolated Linux VM, which is now stopped; it is not active around the public Cloud Run broker.

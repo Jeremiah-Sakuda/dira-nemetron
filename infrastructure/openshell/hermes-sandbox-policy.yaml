@@ -1,36 +1,109 @@
-# OpenShell policy for one account's Hermes sandbox (created by NemoClaw).
-# Schema: https://docs.nvidia.com/openshell/how-it-works/policies/schema.md
-# Default-deny egress. Every endpoint is `enforcement: enforce`; OpenShell's
-# default is `audit`, which only logs. Denied requests are logged as
-# NET:OPEN DENIED events (`openshell logs <sandbox> --source sandbox`); MCP and
-# WebSocket rule denials return HTTP 403.
-#
-# Apply / update (network_policies hot-reload):
-#   openshell policy set dira-hermes-<account> --policy hermes-sandbox-policy.yaml --wait
-version: 1
-filesystem_policy:
-  include_workdir: true
-  read_only: [/usr, /lib, /etc, /sandbox/.hermes/skills/dira]
-  read_write: [/tmp, /sandbox/.hermes/sessions]
-network_policies:
-  dira_mcp:
-    # Dira's read-and-report tool server. Hermes holds only a placeholder;
-    # the bearer token lives in the OpenShell provider store.
-    endpoints:
-      - host: ${DIRA_API_DOMAIN}
-        port: 443
-        protocol: mcp
-        enforcement: enforce
-        access: read-write
-  telegram_chat:
-    # Hermes' own chat channel (not Dira's approval bot).
-    endpoints:
-      - host: api.telegram.org
-        port: 443
-        protocol: rest
-        enforcement: enforce
-        access: read-write
-# Inference does not need an entry: the sandbox calls inference.local and
-# OpenShell forwards to Nebius Token Factory with host-held credentials.
-# Not listed, therefore denied: every other host, including anything a
-# prompt-injected email asks the agent to reach.
+# Reference: measured NemoHermes 0.0.135 / OpenShell 0.0.116 image.
+# JSON is valid YAML. Do not blindly replace another runtime's generated policy.
+# setup-hermes.sh preserves generated filesystem/process rules, narrows network
+# access, then uses managed mcp add for credentials, pins and protocol rules.
+# Do not overlap REST and MCP entries on one host/port; the runtime rejects it.
+# An allowed executable ancestor authorizes child connections; host/method/path
+# and MCP tool restrictions still apply. Standalone unlisted curl was denied.
+# Keep immutable mirrored Skills under a read-only root such as /opt/hermes.
+# /sandbox remains writable runtime state. Never put provider keys there.
+{
+  "filesystem_policy": {
+    "include_workdir": true,
+    "read_only": [
+      "/usr",
+      "/lib",
+      "/opt/hermes",
+      "/proc",
+      "/dev/urandom",
+      "/app",
+      "/run/nemoclaw/managed-gateway-expected-exit",
+      "/etc",
+      "/var/log",
+      "/var/lib/dpkg"
+    ],
+    "read_write": [
+      "/sandbox",
+      "/tmp",
+      "/dev/null",
+      "/dev/pts",
+      "/sandbox/.hermes"
+    ]
+  },
+  "landlock": {
+    "compatibility": "best_effort"
+  },
+  "network_policies": {
+    "managed_inference": {
+      "binaries": [
+        {
+          "path": "/usr/local/bin/hermes"
+        },
+        {
+          "path": "/usr/bin/python3.13"
+        },
+        {
+          "path": "/opt/hermes/.venv/bin/python"
+        }
+      ],
+      "endpoints": [
+        {
+          "enforcement": "enforce",
+          "host": "inference.local",
+          "port": 443,
+          "protocol": "rest",
+          "rules": [
+            {
+              "allow": {
+                "method": "POST",
+                "path": "/v1/chat/completions"
+              }
+            },
+            {
+              "allow": {
+                "method": "POST",
+                "path": "/v1/messages"
+              }
+            },
+            {
+              "allow": {
+                "method": "POST",
+                "path": "/v1/responses"
+              }
+            },
+            {
+              "allow": {
+                "method": "POST",
+                "path": "/v1/completions"
+              }
+            },
+            {
+              "allow": {
+                "method": "POST",
+                "path": "/v1/embeddings"
+              }
+            },
+            {
+              "allow": {
+                "method": "GET",
+                "path": "/v1/models"
+              }
+            },
+            {
+              "allow": {
+                "method": "GET",
+                "path": "/v1/models/**"
+              }
+            }
+          ]
+        }
+      ],
+      "name": "managed_inference"
+    }
+  },
+  "process": {
+    "run_as_group": "sandbox",
+    "run_as_user": "sandbox"
+  },
+  "version": 1
+}

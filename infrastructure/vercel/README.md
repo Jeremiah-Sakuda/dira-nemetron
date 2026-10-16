@@ -2,13 +2,13 @@
 
 Production: https://dira-nemetron.vercel.app/try
 
-Vercel project `dira-nemetron` belongs to `jeremiah-sakudas-projects` on the Hobby plan. Its Git connection is **Jeremiah-Sakuda/dira-nemetron**, production branch `main`, root directory `apps/web`, Node 22. The legacy repository is never a deployment target.
+Vercel project `dira-nemetron` belongs to `jeremiah-sakudas-projects` on the Hobby plan. Its Git connection is **Jeremiah-Sakuda/dira-nemetron**, production branch `main`, root directory `apps/web`. The legacy repository is never a deployment target.
 
 ## Current architecture and cost
 
-Vercel runs the Next.js product, its server-side API bridge, and credential-free deterministic Evidence replay. The existing Nebius VM still runs the orchestrator, Postgres, private Git memory, background work, action broker and backups. Real Nemotron inference continues through Nebius Token Factory.
+Vercel runs the Next.js product, its server-side API bridge, and credential-free deterministic Evidence replay. Cloud Run hosts the orchestrator/broker; Neon Free holds operational state and encrypted private Git bundles; Cloud Scheduler invokes authenticated background passes every fifteen minutes. Real Nemotron inference continues through Nebius Token Factory.
 
-The Vercel frontend uses the free Hobby allowance. **This deployment does not remove the existing VM charges or establish funded availability through December 15.** Do not stop the VM until replacement persistence, memory, background jobs and broker execution have been migrated and verified. Cloud Run plus a free Postgres service is a possible next migration; it has not been deployed. Free-tier quotas and billing eligibility must be checked before promising zero cost.
+The frontend uses Hobby and Neon uses Free. Replacement persistence, memory recovery, background delivery and public approval/read-back were verified October 16. Both Nebius VMs are stopped; their disks remain billable pending retirement. Google Cloud allowances are shared by billing account, so this is not a hard zero-dollar guarantee. See [measured evidence](../../docs/evidence/2026-10-16-migration-and-sandbox-review.md).
 
 The official [hackathon FAQ](https://nebiusglobalaihackathon.devpost.com/details/faqs) permits hosting other app components elsewhere when the required NVIDIA model use is through Nebius Token Factory.
 
@@ -18,12 +18,12 @@ Production environment variables on Vercel:
 
 | Name | Value |
 | --- | --- |
-| `DIRA_ORCHESTRATOR_URL` | `https://api.213-239-172-39.nip.io` |
+| `DIRA_ORCHESTRATOR_URL` | `https://dira-nemetron-backend-683372642422.us-east1.run.app` |
 | `DIRA_WEB_ORIGIN` | `https://dira-nemetron.vercel.app` |
 
 No Nebius API key, database password, session signing key or Google client secret belongs on Vercel. The frontend forwards the browser's host-only signed cookie and original Origin to the backend; it does not manufacture approval or grant credentials to models.
 
-On the backend, `DIRA_WEB_ORIGIN` is the Vercel production origin. `DIRA_ADDITIONAL_WEB_ORIGINS` explicitly retains `https://213-239-172-39.nip.io`. No wildcard or preview origin is trusted. Caddy exposes the account API/auth routes for the bridge; the service still checks signed sessions, account boundaries, policy and approval. Unmatched routes stay closed.
+The backend trusts the exact Vercel production origin. The retired VM origin is removed; wildcards and preview origins remain untrusted. The service checks signed sessions, account boundaries, policy, authenticated approval and its separate scheduler credential.
 
 Configure a future Google web OAuth client with origin `https://dira-nemetron.vercel.app` and redirect `https://dira-nemetron.vercel.app/api/auth/google/callback`. OAuth remains unconfigured and actual Google changes remain unverified.
 
@@ -41,4 +41,4 @@ Inspect the upload manifest before deployment. `.vercelignore` explicitly exclud
 
 The production alias is public; generated deployment URLs and previews retain Vercel authentication. Previews have no backend environment configuration. Validate `/try`, account session creation/read-back and `/api/replay/stream?pace=0` on the public alias without a Vercel login.
 
-For a frontend regression, promote the previous working Vercel deployment. The original Nebius web URL remains available as a fallback. Keep both exact trusted origins until the migration is complete. VM private environment backup: `infrastructure/nebius/dira.env.pre-vercel-20261014`; do not publish it.
+For a frontend regression, promote a verified deployment built with the Cloud Run backend endpoint. Pre-migration deployments point to the stopped VM and are not valid rollbacks without rebuilding their environment. Private final database/memory archives are under ignored `.dira-runtime/backups/final-20261016`; signing and encryption keys remain in private configuration and Secret Manager. Do not publish these files.

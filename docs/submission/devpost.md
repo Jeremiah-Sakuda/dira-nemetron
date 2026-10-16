@@ -6,7 +6,7 @@
 
 **Source:** https://github.com/Jeremiah-Sakuda/dira-nemetron
 
-**Built with:** NVIDIA Nemotron Super and Ultra on Nebius Token Factory; Vercel web hosting and a Nebius AI Cloud backend; TypeScript, Next.js and Postgres.
+**Built with:** NVIDIA Nemotron Super and Ultra on Nebius Token Factory; Vercel, Cloud Run, Neon Postgres and Cloud Scheduler; separately validated NemoClaw/OpenShell on Nebius AI Cloud; TypeScript and Next.js.
 
 ## Inspiration
 
@@ -50,9 +50,9 @@ Approvals also need to survive changing external state. A recorded approval is n
 
 ## Current deployment and next work
 
-The synthetic HTTPS demo and live model path are working. Real Google Calendar/Gmail changes, NemoClaw/OpenShell network enforcement, Telegram/Hermes enrollment, live Tavily checks and daily Serverless Jobs remain unverified on this deployment. The application egress guard is active; it is not proof of OpenShell isolation. The frontend has a stable Vercel address; backend migration or funding through December 15 remains necessary. The submission must retain a free working test path throughout judging.
+The public app now uses Vercel, Cloud Run and Neon, with authenticated fifteen-minute background delivery. Recovery and public approval/read-back were verified after backend replacement. Separate Linux NemoClaw/OpenShell network, method/tool, credential and filesystem checks passed; that temporary VM is stopped, and OpenShell does not surround the public broker. Real Google changes, owner Telegram/Hermes enrollment and live Tavily checks remain unverified. Remaining VM disk retirement and shared free-allowance coverage through December 15 still need attention. The credential-free judge replay remains available.
 
-The immediate next step is controlled Google source-to-approval-to-read-back verification and a short sandbox validation on the separate temporary VM. Longer term: richer renegotiation workflows and a professional persona using the same commitment engine.
+The immediate next step is controlled Google source-to-approval-to-read-back verification, followed by owner-scoped activation of the validated Hermes bridge. Longer term: richer renegotiation workflows and a professional persona using the same commitment engine.
 
 ## Significantly updated from an earlier hackathon
 

@@ -1,6 +1,6 @@
 # NemoClaw/OpenShell validation handoff
 
-Status: the separate 4 vCPU / 16 GiB / 64 GiB Ubuntu 24.04 VM is stopped. Its SSH public key is attached. On October 15 the owner authorized this isolated VM for validation, capped at **$0.50** from the existing Cloud balance, followed by stopping it. Nebius CLI `0.12.291` is installed locally; owner sign-in and a timed API stop must be ready before starting. The judge VM runs application/broker egress protection, not OpenShell network enforcement. Installation, sandbox startup, inference routing and actual network checks remain pending.
+Status (October 16): NemoHermes 0.0.135 / OpenShell 0.0.116 was installed and validated on the separate Linux VM, then the VM was confirmed stopped. Runtime was under 29 minutes, approximately $0.07 at the quoted rate, below the owner's $0.50 cap (estimate, not invoice). Network/method/tool denials, host-held inference, read-only Skill protection, managed MCP credential resolution and restart were observed. See the [evidence review](../evidence/2026-10-16-migration-and-sandbox-review.md). Production now runs on Cloud Run with application/broker egress protection; it does not run inside OpenShell. Both stopped VM disks remain billable pending retirement.
 
 ## Bounded execution
 

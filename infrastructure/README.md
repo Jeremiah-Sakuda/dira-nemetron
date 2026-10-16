@@ -1,4 +1,10 @@
-# Deploying Dira v2 on Nebius
+# Dira v2 infrastructure
+
+Current production (October 16): Vercel Hobby frontend, Cloud Run orchestrator/broker, Neon Free Postgres with encrypted private Git bundles, and authenticated Cloud Scheduler every fifteen minutes. Nemotron runtime calls still use Nebius Token Factory. See [serverless deployment](serverless/README.md) and the [verified migration review](../docs/evidence/2026-10-16-migration-and-sandbox-review.md).
+
+Both Nebius VMs are stopped; their disks await permanent retirement. NemoClaw/OpenShell was validated on the isolated Linux VM, not installed around the production Cloud Run service. The VM recipes below remain available for manual deployment/recovery.
+
+## Original VM deployment
 
 Dira runs on one always-on Nebius CPU VM. The VM hosts four things:
 
@@ -25,7 +31,7 @@ Model calls go to Nemotron on Nebius Token Factory.
 | `nebius/deploy.sh` | Check out a pinned release tag on the VM and start the stack. |
 | `nebius/backup.sh` | Nightly `pg_dump` plus the memory repositories, kept for 14 days. |
 | `nebius/serverless-job.sh` | Runs the daily recompute and summary pass as a Nebius Serverless AI Job. |
-| `openshell/hermes-sandbox-policy.yaml` | Default-deny egress for each Hermes sandbox. Only Dira's MCP host and Telegram are allowed, all `enforce`. |
+| `openshell/hermes-sandbox-policy.yaml` | Measured runtime reference. Setup preserves runtime rules, narrows egress to managed inference, then adds credential-bound Dira MCP with managed tooling. |
 | `openshell/dira-broker-egress.txt` | The broker's allowlist, also enforced in-process with an audited HTTP 403. |
 | `nemoclaw/setup-hermes.sh` | One Hermes sandbox per account with Nebius inference, the Dira MCP server, and Telegram. |
 | `nemoclaw/sync-skills.sh` | Mirror confirmed rules (`skills/dira/*/SKILL.md`) into the sandbox, read-only. |

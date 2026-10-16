@@ -1,6 +1,6 @@
 # Google OAuth and actual provider verification
 
-Status: Calendar/Gmail APIs are enabled in `dira-prod`. The deployed OAuth client fields are empty. Google Cloud console login and creation/configuration of a web OAuth client are pending; no real Calendar or Gmail changes have been verified.
+Status (October 16): Calendar/Gmail APIs are enabled in `dira-prod`. Production uses Cloud Run and Neon; deployed OAuth client fields are still empty. Google Cloud client creation/consent and real Calendar/Gmail changes remain pending. The owner chose their personal account with synthetic test items. The in-app Google console stalled loading; a dedicated Chrome window was requested.
 
 ## Exact client configuration
 
@@ -13,7 +13,7 @@ Use Google Auth Platform → Clients → Web application. Keep the v2 client sep
 - Incremental Calendar change scope: `calendar.events`.
 - Incremental mail scopes: `gmail.readonly`, then `gmail.compose`.
 - Add only the chosen controlled test account while the OAuth app is in Testing.
-- Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in ignored `infrastructure/nebius/dira.env`, mode 0600. Never put these in chat, screenshots, Git, or the web container.
+- Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in ignored workspace `.env.google`, mode 0600. Merge them into the backend's Secret Manager configuration and deploy its pinned secret version. Never put these in chat, screenshots, Git, or Vercel frontend environment variables.
 
 The user completes login, credential creation and Google consent in the browser. Configuration values above are ready for review. The callback proxy rewrites the state-cookie path to `/api/auth/google`; PKCE and signed state stay enabled.
 

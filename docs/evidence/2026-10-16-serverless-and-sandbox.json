@@ -1,0 +1,173 @@
+{
+  "verifiedAtUtc": "2026-10-16T20:11:20.504433+00:00",
+  "deployment": {
+    "frontend": "https://dira-nemetron.vercel.app/try",
+    "backend": "https://dira-nemetron-backend-683372642422.us-east1.run.app",
+    "frontendDeployment": "dpl_Fd2TwpmZPe8oRhMNXvRMRGEBmGMQ",
+    "backendRevision": "dira-nemetron-backend-00008-dq9",
+    "backendImage": "sha256:eabfd81ddbb924c68ee61e928d2070b08fab121f47040ae1f96f6ccb0bf5e498",
+    "backendSource": "0c19197",
+    "storage": "Neon Free, iad1, restricted application role, certificate-verified direct connection",
+    "memory": "Encrypted per-account Git bundles in forced-RLS Postgres rows",
+    "background": "Cloud Scheduler, every fifteen minutes, authenticated scheduled-pass",
+    "retiredOriginRemoved": true,
+    "registryCleanup": "Obsolete October 14 staging image removed; current and one rollback image retained."
+  },
+  "sourceRecovery": {
+    "quiescedBeforeSnapshot": true,
+    "retainedAccounts": 0,
+    "ledgerRows": 0,
+    "oauthCredentials": 0,
+    "inferenceReservationsPreserved": 18,
+    "archivedGitReposVerified": 7,
+    "archiveAccountsWereExpiredSyntheticAccounts": true,
+    "sha256": {
+      "dira.dump": "af763133cc820302a4c81b5fc69f4fb259456b54829a4a91101c9d63d17e2c9a",
+      "memory.tgz": "7eb5a0dd696c04a72367caec09a953b435edfa566ec5ed99bc7c07d9e49ef081"
+    }
+  },
+  "verification": {
+    "recoveryIsolationSchedulerChecks": {
+      "passed": 7
+    },
+    "brokerApprovalReadBackChecks": {
+      "passed": 5,
+      "initialRun": "Two tests exceeded the local 30-second test timeout; all five passed with a 120-second per-test remote-database timeout.",
+      "durationSeconds": 215.43
+    },
+    "restrictedRole": {
+      "rolsuper": false,
+      "rolbypassrls": false
+    },
+    "revisionRecovery": {
+      "approvalPreserved": true,
+      "identicalActions": true,
+      "identicalPrivateGitBundle": true
+    },
+    "publicFlow": {
+      "modelMode": "live",
+      "approvalHeldBeforeExecution": true,
+      "verifiedActionsBeforeApproval": 0,
+      "approvalSource": "authenticated-web",
+      "finalStatus": "RESOLVED",
+      "verifiedActions": 13,
+      "replans": 1,
+      "failuresRecovered": 1,
+      "finalSlackMinutes": 78,
+      "egressGuardStatus": 403
+    },
+    "inferenceUsageAfterFlow": {
+      "limits": {
+        "total": 100,
+        "daily": 20,
+        "hourly": 12,
+        "concurrent": 2
+      },
+      "calls": {
+        "total": 21,
+        "daily": 3,
+        "hourly": 3,
+        "concurrent": 0
+      },
+      "reportedTokens": 82687,
+      "estimatedCostUsd": 0.1058551,
+      "unreportedCalls": 0,
+      "disclosure": "Call limits are enforced locally. Cost is estimated from reported usage, not a provider invoice or a hard dollar cap."
+    },
+    "scheduler": {
+      "state": "ENABLED",
+      "schedule": "*/15 * * * *",
+      "observedDeliveryHttpStatus": 200,
+      "deliveryObservedUtc": "2026-10-16T19:59:34.912270461Z"
+    },
+    "importedHistoryRegression": {
+      "reproducedBeforeFix": true,
+      "passesAfterFix": true,
+      "sourceCommit": "0c19197",
+      "description": "Custom refs/imported/* and their independent commit history survive durable restore.",
+      "nativePublicExportPreservedReference": true,
+      "nativeFixtureDeleted": true
+    },
+    "retiredOriginRejected": 403,
+    "credentialFreeReplay": {
+      "httpStatus": 200,
+      "doneEvent": true
+    },
+    "freshProductionBackupRestore": {
+      "postgresMajor": 18,
+      "inferenceReservations": 21,
+      "verifiedActions": 13,
+      "packedGitBundleByteIdentical": false,
+      "gitHistoryAndContentsIdentical": true,
+      "gitBundleSha256": "cbbd50cb828a0ce431b75af1771a17ff19d0e669df24233baa4c545c4dd4cb58",
+      "runtimeRoleBypass": false,
+      "backupSha256": "96a8f404173c5e2ffae5805e6c6d28bd8c309431ad32dbdb661a0008fc3176e3"
+    },
+    "typecheck": "passed"
+  },
+  "sandbox": {
+    "scope": "Separate isolated validation VM; OpenShell is not installed around the public Cloud Run broker.",
+    "nemohermesVersion": "0.0.135",
+    "sourceRevision": "7a099aeb4f6678d9b9ce6236535e7b41b03c81a2",
+    "openshellVersion": "0.0.116",
+    "imageId": "sha256:138b0a663a88764b79b7b62de1d97b7a1e8594190271422415e080f713b3d857",
+    "effectivePolicyHashAfterRestart": "6e8f2b49a8de5446dd517c20c5bd990a89603ff34bb8273793869d8d220b45c4",
+    "rawCliActiveVersion": 5,
+    "observedOcsfRequestPolicyVersion": 6,
+    "landlock": {
+      "abi": "V2",
+      "rulesApplied": 13,
+      "skipped": 2,
+      "readableSyntheticSkillMode": "0666",
+      "workloadWriteDenied": true
+    },
+    "network": {
+      "allowedGet": 200,
+      "deniedPost": 403,
+      "deniedPath": 403,
+      "outsideHostConnect": 403,
+      "directIp": "connection refused",
+      "metadataIp": "connection refused; no metadata body read",
+      "standaloneCurl": "CONNECT denied 403",
+      "curlChildOfAllowedPython": 200,
+      "ancestorBehavior": "Expected executable-ancestor authorization; destination and L7 rules still apply."
+    },
+    "inference": {
+      "route": "https://inference.local/v1/chat/completions",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "httpStatus": 200,
+      "promptTokens": 20,
+      "completionTokens": 50,
+      "finishReason": "stop",
+      "realProviderKeyFoundInScannedSandboxEnvironmentAndConfig": false,
+      "accounting": "Temporary sandbox calls are separate from the Dira application admission ledger."
+    },
+    "managedMcp": {
+      "registeredAfterRestart": true,
+      "credentialResolution": {
+        "ok": true,
+        "httpStatus": 200,
+        "controlHttpStatus": 401
+      },
+      "onlyResolverPlaceholderInNativeConfig": true,
+      "denyApproveTool": 403,
+      "denySendTool": 403,
+      "denyDirectApprovalRoute": 403,
+      "relayedNotesPending": 1,
+      "fixtureBrokerActions": 0,
+      "temporaryTokenRevoked": true,
+      "revokedTokenStatus": 401
+    },
+    "stopped": true,
+    "approvedCloudCapUsd": 0.5,
+    "estimatedRuntimeMinutesUpperBound": 28.4,
+    "estimatedCloudChargeUsd": 0.071,
+    "chargeIsEstimateNotInvoice": true
+  },
+  "remaining": {
+    "oldDemoVm": "STOPPED; disk still billable pending permanent-retirement approval",
+    "validationVm": "STOPPED; disk still billable pending permanent-retirement approval",
+    "google": "OAuth client and actual Calendar/Gmail provider verification pending",
+    "funding": "Vercel Hobby and Neon Free selected; Google Cloud free allowances are shared, not a hard zero-dollar cap."
+  }
+}
