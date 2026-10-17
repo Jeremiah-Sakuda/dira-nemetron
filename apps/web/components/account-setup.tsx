@@ -29,6 +29,7 @@ export function AccountSetup() {
   const [stateSummary, setStateSummary] = useState<AccountStateSummary | null>(null);
   const [calendarWriteEnabled, setCalendarWriteEnabled] = useState(false);
   const [gmailReadEnabled, setGmailReadEnabled] = useState(false);
+  const [gmailComposeEnabled, setGmailComposeEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
@@ -52,11 +53,12 @@ export function AccountSetup() {
         const result = await response.json() as {
           account?: Account;
           stateSummary?: AccountStateSummary;
-          permissions?: { calendarWrite?: boolean; gmailRead?: boolean };
+          permissions?: { calendarWrite?: boolean; gmailRead?: boolean; gmailCompose?: boolean };
         };
         setStateSummary(result.stateSummary ?? null);
         setCalendarWriteEnabled(result.permissions?.calendarWrite ?? false);
         setGmailReadEnabled(result.permissions?.gmailRead ?? false);
+        setGmailComposeEnabled(result.permissions?.gmailCompose ?? false);
         return result.account ?? null;
       })
       .then(setAccount)
@@ -91,12 +93,13 @@ export function AccountSetup() {
     const result = await response.json() as {
       account?: Account;
       stateSummary?: AccountStateSummary;
-      permissions?: { calendarWrite?: boolean; gmailRead?: boolean };
+      permissions?: { calendarWrite?: boolean; gmailRead?: boolean; gmailCompose?: boolean };
     };
     if (result.account) setAccount(result.account);
     setStateSummary(result.stateSummary ?? null);
     setCalendarWriteEnabled(result.permissions?.calendarWrite ?? false);
     setGmailReadEnabled(result.permissions?.gmailRead ?? false);
+    setGmailComposeEnabled(result.permissions?.gmailCompose ?? false);
     setScheduleRevision((revision) => revision + 1);
   }
 
@@ -166,6 +169,13 @@ export function AccountSetup() {
                 <a className="btn btn-secondary" href="/api/auth/google/gmail-read">
                   Connect Gmail (read-only)
                 </a>
+              )}
+              <p className="muted">Gmail drafting: {gmailComposeEnabled ? 'permission granted' : 'not enabled'}</p>
+              {!gmailComposeEnabled && (
+                <>
+                  <a className="btn btn-secondary" href="/api/auth/google/gmail-compose">Enable Gmail drafting</a>
+                  <p className="privacy-note">Google grants draft and send access. Dira’s Draft-only setting keeps messages in Drafts until you change that policy.</p>
+                </>
               )}
               {stateSummary && (
                 <p className="muted">Personal graph: {stateSummary.commitmentCount} commitments · {stateSummary.edgeCount} confirmed links</p>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatFocusTime as formatTime } from '../lib/focus-time';
 
 type AvailabilityProfile = { weekdays: number[]; startMinute: number; endMinute: number };
 type ScheduleAnalysis = {
@@ -159,11 +160,6 @@ export function ScheduleCheck() {
 function timeOptions(includeEndOfDay = false): number[] {
   const values = Array.from({ length: includeEndOfDay ? 49 : 48 }, (_, index) => index * 30);
   return includeEndOfDay ? values.filter((minute) => minute >= 60) : values;
-}
-
-function formatTime(minute: number): string {
-  if (minute === 1440) return '12:00 AM (next day)';
-  return new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(new Date(Date.UTC(2020, 0, 1, Math.floor(minute / 60), minute % 60)));
 }
 
 function formatSlack(minute: number): string {
