@@ -23,8 +23,8 @@
   "regressionChecksPassed": 8,
   "existingSessionChecksPassed": 2,
   "typecheck": "passed",
-  "ownerConsentVerified": false,
-  "actualProviderMutationVerified": false,
+  "ownerConsentVerified": true,
+  "actualProviderMutationVerified": true,
   "cancelledConsent": {
     "httpStatus": 302,
     "redirect": "/onboarding",
@@ -35,5 +35,27 @@
     "gmail-read": 401,
     "gmail-compose": 401
   },
-  "browserObserved": "Personal account chooser succeeded; Google unverified test-app warning reached. Owner warning/consent handoff pending."
+  "browserObserved": "Owner completed Google sign-in and separate Calendar-events consent; authenticated Setup shows permission granted.",
+  "calendarWriteConsentVerified": true,
+  "fixtureSetup": {
+    "syntheticEventsCreated": 2,
+    "independentGoogleReadBack": true,
+    "unrelatedUpcomingEvents": 0,
+    "operatorSetupNotBrokerExecution": true
+  },
+  "repairsFoundByLiveVerification": [
+    "Unsupported PostgreSQL JSON object counting in deadline-feed listing",
+    "Calendar-only overlaps lacked deterministic fallback relocation",
+    "Relative solver horizons were not aligned to whole minutes",
+    "Focus-hour labels were converted through the browser timezone"
+  ],
+  "regressionChecks": {
+    "deadlineFeedScratchDatabase": 3,
+    "plannerConstraintsReplay": 27,
+    "web": 13
+  },
+  "providerVerificationScope": "Calendar only; Gmail remains pending",
+  "latestBackendRevision": "dira-nemetron-backend-00012-h5k",
+  "latestFrontendDeployment": "dpl_BsYGdRGbRZQDU7Q1G3RwWdZMM5fA",
+  "calendarEvidence": "2026-10-16-google-calendar-live.json"
 }

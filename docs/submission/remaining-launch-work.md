@@ -9,23 +9,24 @@
 - [Measured migration and sandbox evidence](../evidence/2026-10-16-migration-and-sandbox-review.md), [machine-readable results](../evidence/2026-10-16-serverless-and-sandbox.json), and [selected enforcement logs](../evidence/2026-10-16-openshell-enforcement.txt).
 - Prior bounded model corpus: 8/8 interpretation cases and 7/7 repair scenarios with no truncated Ultra calls. Deterministic fallback remains essential for invalid proposals; do not claim universal model proposal correctness.
 - Inference admission remains 100 lifetime attempts, 20 rolling-day, 12 rolling-hour, two concurrent; failed/unknown calls retain quota. Public migration verification left 21 lifetime and three current rolling-day/hour calls. These limits are not provider dollar caps.
+- Actual Google Calendar: one synthetic source change completed review, approval, deterministic revalidation, broker execution and independent read-back with one verified action. The separate operator read confirmed the expected move; [live Calendar evidence](../evidence/2026-10-16-google-calendar-live.json). Gmail remains pending.
 - Credential-free replay remains available without inference or Google OAuth. A 2:29 English narrated draft is in `docs/demo/v2/dira-v2-walkthrough-draft.mp4`; public YouTube upload and Devpost submission remain pending.
 
 ## Required before claiming completion
 
 | Work | Concrete next action | Completion evidence |
 | --- | --- | --- |
-| Google OAuth | Separate client created and backend Secret Manager credentials deployed. Complete owner consent, then the controlled synthetic provider workflow | Actual synthetic Calendar/Gmail changes through authenticated approval, deterministic policy/broker checks and fresh independent provider reads |
+| Gmail integration | Calendar consent and actual source-change/approval/broker/read-back workflow passed. Complete Gmail read/compose consent and a synthetic draft workflow with Draft-only enabled | Actual Gmail draft through authenticated approval, policy/broker checks and fresh provider read-back; do not imply Calendar evidence verifies Gmail |
 | Operational funding | Keep Vercel Hobby, Neon Free, Cloud Run min zero/max one and fifteen-minute scheduler; review shared allowance use and Neon recovery retention | Stable free judge access through December 15; do not promise a provider-enforced zero-dollar cap |
 | Hermes deployment | The isolated checks are complete; the persistent Hermes chat service remains stopped to avoid VM costs. Validate the revised automatic Skills mirror before enabling it for an owner | An actual owner-scoped deployment with immutable mirrored Skills; distinguish it from the successful synthetic fixture checks |
 | Submission | Finish latest footage, public YouTube upload, required Devpost fields and final submission | Public video URL under three minutes and submission confirmation |
 
-The old VM's nightly backup timer stopped with that VM. Final recovery archives are local and private; ongoing Neon-managed recovery depends on its plan limits. No Google OAuth recovery or continuous seven-day-refresh-token solution is claimed yet.
+The old VM's nightly backup timer stopped with that VM. Final recovery archives are local and private; ongoing Neon-managed recovery depends on its plan limits. A fresh private backup recovered the encrypted Google credentials, verified Calendar ledger and matching Git memory in an isolated PostgreSQL instance; that instance was removed. This offline recovery does not solve Google Testing refresh-token expiry or provider revocation.
 
 ## Judging and cost boundaries
 
 Rules rechecked October 16: [official rules](https://nebiusglobalaihackathon.devpost.com/rules). Runtime Token Factory use satisfies the Nebius platform requirement with hosting elsewhere. Deadline: October 30, 10 AM Pacific. Judging: December 1–15; keep free working access through the end of judging.
 
-Stage One requires genuine Personal AI fit and meaningful required technology use. The four equally weighted criteria remain implementation, design, impact and idea. Recovery and sandbox evidence strengthen implementation; the coherent public approval journey supports design. Actual chosen-tool Google verification is still needed to strengthen the demonstrated impact. Private Git memory, reusable rules and constrained read/report tools remain the product's central idea.
+Stage One requires genuine Personal AI fit and meaningful required technology use. The four equally weighted criteria remain implementation, design, impact and idea. Recovery and sandbox evidence strengthen implementation; the coherent public approval journey supports design. Actual Calendar integration is verified; the chosen-tool Gmail path still needs verification. Private Git memory, reusable rules and constrained read/report tools remain the product's central idea.
 
 Token Factory credits are separate from Nebius Cloud funds. Both VM instances and disks are deleted, removing further compute/storage usage for those resources. Previously accrued charges may still be billed. Google Cloud free allowances are shared by billing account; no paid Neon upgrade, minimum Cloud Run instance, new funds or automatic top-up was enabled.

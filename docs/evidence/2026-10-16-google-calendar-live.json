@@ -1,0 +1,127 @@
+{
+  "verifiedAtUtc": "2026-10-17T02:31:51.099Z",
+  "scope": "Actual Google Calendar on the owner-selected non-main test calendar; all events and evidence content are synthetic.",
+  "backendRevision": "dira-nemetron-backend-00012-h5k",
+  "backendImage": "sha256:4925636778e6d06670b8822634724378386356f180ee23b8f853186fbeaaa86e",
+  "backendSource": "4ca6602",
+  "frontendDeployment": "dpl_BsYGdRGbRZQDU7Q1G3RwWdZMM5fA",
+  "frontendSource": "5cea2c8",
+  "fixtureSetup": {
+    "events": 2,
+    "operatorProvisioned": true,
+    "ownerAuthorizedCreateAndDelete": true,
+    "creationIndependentlyReadBack": true,
+    "operatorSetupIsNotBrokerExecution": true
+  },
+  "sourcePath": [
+    "Real provider event changed by the operator fixture harness",
+    "Deployed Calendar incremental sync",
+    "Authenticated source review",
+    "Deterministic overlap repair, feasibility validation and current policy",
+    "Durable AWAITING_APPROVAL hold",
+    "Authenticated web approval",
+    "Fresh Calendar reads and deterministic revalidation",
+    "Broker provider PATCH",
+    "App independent provider read-back",
+    "Separate operator provider GET verification"
+  ],
+  "beforeApproval": {
+    "pendingApprovals": 1,
+    "executingOrVerifiedActions": 0,
+    "providerEvents": [
+      {
+        "key": "fixed",
+        "eventHash": "9fff2ba44ecca4f8eaf3e989c3d5d7296cee088c8b1fa86f7108064d8dad5fa5",
+        "startIso": "2026-10-19T11:00:00-04:00",
+        "endIso": "2026-10-19T12:00:00-04:00",
+        "etag": "\"3584408464149342\""
+      },
+      {
+        "key": "flexible",
+        "eventHash": "0e74958cee2d3ff83f9d1c8fe6b002e364ef553b6c1b26c2cb5a7ae2db01011f",
+        "startIso": "2026-10-19T11:00:00-04:00",
+        "endIso": "2026-10-19T12:00:00-04:00",
+        "etag": "\"3584407246916510\""
+      }
+    ]
+  },
+  "result": {
+    "workflowHash": "4f1719b7028f8494d884f3c97520d9df9c5f0817c9513ed452fc18c3b3915b1f",
+    "actionHash": "382ce5bdaf6956fc765de6b5db11944cc7a8740157a4bff35a5f675cfb78d535",
+    "actionType": "MOVE_CALENDAR_EVENT",
+    "typedProvenance": [
+      "user_policy_config:flexibility=FLEXIBLE"
+    ],
+    "policyVerdict": "REQUIRE_APPROVAL",
+    "policyRule": "move-flexible-or-optional-blocks",
+    "status": "VERIFIED",
+    "history": [
+      "PLANNED",
+      "AWAITING_APPROVAL",
+      "AUTHORIZED",
+      "PENDING_EXECUTION",
+      "EXECUTING",
+      "EXECUTED_UNVERIFIED",
+      "VERIFIED"
+    ],
+    "approval": {
+      "source": "authenticated-web",
+      "decision": "APPROVED",
+      "decisionAtIso": "2026-10-17T02:31:21.955Z",
+      "requestedAtIso": "2026-10-17T02:30:45.291Z",
+      "revalidatedAtIso": "2026-10-17T02:31:21.851Z",
+      "revalidationEvidenceHash": "f08c77f0d3df09e84d2c3d9387f5b13e524351df5074a24a1cce39e696418671"
+    },
+    "approverAccountHash": "9c080af03c7427af0eabac3752db971361df00f208041b5d9fb23f01188c66b1",
+    "workflowStatus": "RESOLVED",
+    "freshProviderReadMatchesApprovedMove": true,
+    "fixedMeetingUnchangedByBroker": true,
+    "providerEvents": [
+      {
+        "key": "fixed",
+        "eventHash": "9fff2ba44ecca4f8eaf3e989c3d5d7296cee088c8b1fa86f7108064d8dad5fa5",
+        "startIso": "2026-10-19T11:00:00-04:00",
+        "endIso": "2026-10-19T12:00:00-04:00",
+        "etag": "\"3584408464149342\""
+      },
+      {
+        "key": "flexible",
+        "eventHash": "0e74958cee2d3ff83f9d1c8fe6b002e364ef553b6c1b26c2cb5a7ae2db01011f",
+        "startIso": "2026-10-19T12:00:00-04:00",
+        "endIso": "2026-10-19T13:00:00-04:00",
+        "etag": "\"3584408568756190\""
+      }
+    ]
+  },
+  "regressions": {
+    "deadlineFeedScratchDatabase": 3,
+    "plannerConstraintsAndReplay": 27,
+    "web": 13,
+    "rootTypecheck": "passed"
+  },
+  "limitations": {
+    "gmail": "Consent and actual Gmail workflow verification pending",
+    "fixtureCleanup": "Two marked synthetic events retained temporarily for the remaining integration checks",
+    "backgroundGoogleSync": "Disabled; no account enrolled",
+    "oauthApp": "External Testing; refresh-token expiry and branding still require a launch plan",
+    "sandbox": "OpenShell validated separately; public Cloud Run broker is outside OpenShell",
+    "recovery": "Offline recovery does not prevent Google token expiry/revocation. Google Testing refresh-token lifetime still needs a launch plan."
+  },
+  "recovery": {
+    "checkedAtUtc": "2026-10-17T02:35:00.745Z",
+    "postgresMajor": 18,
+    "encryptedOAuthCredentialRecovered": true,
+    "refreshTokenRecoveredWithoutProviderCall": true,
+    "verifiedActions": 1,
+    "resolvedWorkflows": 1,
+    "commitments": 2,
+    "gitFullIntegrityPassed": true,
+    "memoryMatchesDatabaseGraph": true,
+    "runtimeRoleBypass": false,
+    "bundleSha256": "7839898bc04e2473631aa735bf1c24bf44873defb84609d808ad7eec30785db8",
+    "backupSha256": "dc3b33443be61d8a8eef6085ecc330c5bbda6e3ddbb863d2d904709fe98931db",
+    "backupBytes": 123134,
+    "temporaryContainerRemoved": true,
+    "scope": "Calendar and OAuth backup state; no provider API called from the restored environment"
+  }
+}

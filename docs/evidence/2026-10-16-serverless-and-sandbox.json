@@ -3,10 +3,10 @@
   "deployment": {
     "frontend": "https://dira-nemetron.vercel.app/try",
     "backend": "https://dira-nemetron-backend-683372642422.us-east1.run.app",
-    "frontendDeployment": "dpl_ELY3qQXHnti92G79fpQHQQYAjMXs",
-    "backendRevision": "dira-nemetron-backend-00009-c6h",
-    "backendImage": "sha256:eabfd81ddbb924c68ee61e928d2070b08fab121f47040ae1f96f6ccb0bf5e498",
-    "backendSource": "0c19197",
+    "frontendDeployment": "dpl_BsYGdRGbRZQDU7Q1G3RwWdZMM5fA",
+    "backendRevision": "dira-nemetron-backend-00012-h5k",
+    "backendImage": "sha256:4925636778e6d06670b8822634724378386356f180ee23b8f853186fbeaaa86e",
+    "backendSource": "4ca6602",
     "storage": "Neon Free, iad1, restricted application role, certificate-verified direct connection",
     "memory": "Encrypted per-account Git bundles in forced-RLS Postgres rows",
     "background": "Cloud Scheduler, every fifteen minutes, authenticated scheduled-pass",
@@ -14,7 +14,7 @@
     "registryCleanup": "Obsolete October 14 staging image removed; current and one rollback image retained.",
     "backendConfigVersion": "4",
     "googleOAuthCredentialsConfigured": true,
-    "frontendSource": "a5309fa"
+    "frontendSource": "5cea2c8"
   },
   "sourceRecovery": {
     "quiescedBeforeSnapshot": true,
@@ -112,8 +112,16 @@
       "pkceMethod": "S256",
       "secureStateCookie": true,
       "callbackPathCorrect": true,
-      "ownerConsentVerified": false,
+      "ownerConsentVerified": true,
       "actualProviderMutationVerified": false
+    },
+    "googleCalendarLive": {
+      "workflowStatus": "RESOLVED",
+      "verifiedActions": 1,
+      "approvalSource": "authenticated-web",
+      "beforeApprovalExecutedActions": 0,
+      "independentOperatorReadBack": true,
+      "evidence": "2026-10-16-google-calendar-live.json"
     }
   },
   "sandbox": {
@@ -179,7 +187,7 @@
   "remaining": {
     "oldDemoVm": "DELETED; instance and managed 80 GiB boot disk return NotFound",
     "validationVm": "DELETED; instance and managed 64 GiB boot disk return NotFound",
-    "google": "Separate OAuth client created and backend credentials configured; owner consent and actual Calendar/Gmail provider verification pending",
+    "google": "Actual synthetic Calendar source-change/review/approval/broker/read-back path verified. Gmail consent and actual Gmail workflow verification pending.",
     "funding": "Vercel Hobby and Neon Free selected; Google Cloud free allowances are shared, not a hard zero-dollar cap."
   },
   "retirement": {
