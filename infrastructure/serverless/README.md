@@ -1,6 +1,6 @@
 # Serverless backend migration
 
-Production cutover completed October 16. The Vercel frontend uses Cloud Run and Neon; both Nebius VMs are stopped. Their disks remain billable pending permanent retirement. See the [verified recovery and sandbox review](../../docs/evidence/2026-10-16-migration-and-sandbox-review.md).
+Production cutover completed October 16. The Vercel frontend uses Cloud Run and Neon; both Nebius VMs and their managed boot disks are deleted after verified recovery. See the [verified recovery and sandbox review](../../docs/evidence/2026-10-16-migration-and-sandbox-review.md).
 
 ## Selected replacement
 
@@ -16,7 +16,7 @@ Use the restricted role with Neon's **direct** connection for this backend. Star
 
 ## Cost boundary
 
-This removes a continuously running VM when the old resources are retired. Cloud Run, Artifact Registry, Secret Manager and Cloud Scheduler have free allowances shared by billing account; they are not hard spending caps. Neon Free has quotas and can pause when exhausted. Do not upgrade Neon or configure minimum instances without a funding decision.
+The old VM instances and managed boot disks have been retired. Cloud Run, Artifact Registry, Secret Manager and Cloud Scheduler have free allowances shared by billing account; they are not hard spending caps. Neon Free has quotas and can pause when exhausted. Do not upgrade Neon or configure minimum instances without a funding decision.
 
 At 0.25 CU and five-minute database autosuspend, a fifteen-minute poll can consume approximately 62 compute-unit hours in a 31-day month before user traffic. Five-minute polling could prevent suspension and exceed the 100 CU-hour Free allowance. This is an estimate, not measured usage. Fifteen-minute polling also delays background detection compared with the VM's five-minute worker; manual sync remains immediate.
 
@@ -37,4 +37,4 @@ Sources checked October 14, 2026: [hackathon rules](https://nebiusglobalaihackat
 
 ## Human prerequisites
 
-Neon is provisioned on `free_v3` in `iad1`, with no connected Vercel projects. The final production snapshot is restored and active on Cloud Run. The existing signing/encryption keys and inference reservations were preserved. Cloud Scheduler delivery, revision replacement, private Git recovery and the public approval/read-back path are verified. Google OAuth still needs an actual web client and owner consent. OpenShell was validated on the isolated Linux VM, which is now stopped; it is not active around the public Cloud Run broker.
+Neon is provisioned on `free_v3` in `iad1`, with no connected Vercel projects. The final production snapshot is restored and active on Cloud Run. The existing signing/encryption keys and inference reservations were preserved. Cloud Scheduler delivery, revision replacement, private Git recovery and the public approval/read-back path are verified. Google OAuth still needs an actual web client and owner consent. OpenShell was validated on the isolated Linux VM, which was stopped and then deleted; it is not active around the public Cloud Run broker.

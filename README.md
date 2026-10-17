@@ -105,7 +105,7 @@ Action broker (holds OAuth tokens, egress allowlist) → Calendar · Gmail draft
         └─ fresh read-back → graph commit → memory repo (Git) → Hermes Skills mirror
 ```
 
-The [public demo](https://dira-nemetron.vercel.app/try) uses Vercel, Cloud Run, Neon Free and authenticated Cloud Scheduler. Nemotron runtime calls remain on Nebius Token Factory. Both Nebius VMs are stopped; their disks await permanent retirement. NemoClaw/OpenShell was validated separately and is not active around the Cloud Run broker. See the [measured migration review](docs/evidence/2026-10-16-migration-and-sandbox-review.md) and [remaining launch work](docs/submission/remaining-launch-work.md).
+The [public demo](https://dira-nemetron.vercel.app/try) uses Vercel, Cloud Run, Neon Free and authenticated Cloud Scheduler. Nemotron runtime calls remain on Nebius Token Factory. Both Nebius VMs and their managed boot disks have been deleted after verified recovery. NemoClaw/OpenShell was validated separately and is not active around the Cloud Run broker. See the [measured migration review](docs/evidence/2026-10-16-migration-and-sandbox-review.md) and [remaining launch work](docs/submission/remaining-launch-work.md).
 
 ## Verification status
 
@@ -117,7 +117,7 @@ The [public demo](https://dira-nemetron.vercel.app/try) uses Vercel, Cloud Run, 
 | Live Nemotron | Super and Ultra verified on Token Factory: October 13 interpretation 8/8, repair 7/7, 11 Ultra calls without truncation. Ultra wins two cases; 3/11 plans pass every downstream gate. Nano's catalog access is verified; live graph drafting remains unverified. [Evidence review](docs/evidence/2026-10-13-bounded-model-review.md). |
 | Tavily official-source checks | Tested against a stubbed Tavily response. A live run needs `TAVILY_API_KEY`. |
 | Google Calendar and Gmail on a real account | Implemented behind narrow adapters with scope checks and read-back. Not yet exercised against live credentials in this repository. |
-| Deployment | Vercel → Cloud Run → Neon with encrypted Git memory and delivered fifteen-minute background jobs. Twelve Neon checks passed; pending approval and private history survived revision replacement, and 13 synthetic actions were verified through the public app. Isolated OpenShell checks passed. Google provider verification, remaining disk retirement, owner Hermes activation and judging-period allowance coverage remain open. |
+| Deployment | Vercel → Cloud Run → Neon with encrypted Git memory and delivered fifteen-minute background jobs. Twelve Neon checks passed; pending approval and private history survived revision replacement, and 13 synthetic actions were verified through the public app. Isolated OpenShell checks passed. Google provider verification, owner Hermes activation and judging-period allowance coverage remain open. |
 
 ## What carried over from v1, and what is new
 

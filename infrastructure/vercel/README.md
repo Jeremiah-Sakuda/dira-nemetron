@@ -8,7 +8,7 @@ Vercel project `dira-nemetron` belongs to `jeremiah-sakudas-projects` on the Hob
 
 Vercel runs the Next.js product, its server-side API bridge, and credential-free deterministic Evidence replay. Cloud Run hosts the orchestrator/broker; Neon Free holds operational state and encrypted private Git bundles; Cloud Scheduler invokes authenticated background passes every fifteen minutes. Real Nemotron inference continues through Nebius Token Factory.
 
-The frontend uses Hobby and Neon uses Free. Replacement persistence, memory recovery, background delivery and public approval/read-back were verified October 16. Both Nebius VMs are stopped; their disks remain billable pending retirement. Google Cloud allowances are shared by billing account, so this is not a hard zero-dollar guarantee. See [measured evidence](../../docs/evidence/2026-10-16-migration-and-sandbox-review.md).
+The frontend uses Hobby and Neon uses Free. Replacement persistence, memory recovery, background delivery and public approval/read-back were verified October 16. Both Nebius VMs and their managed boot disks are deleted after verified recovery. Google Cloud allowances are shared by billing account, so this is not a hard zero-dollar guarantee. See [measured evidence](../../docs/evidence/2026-10-16-migration-and-sandbox-review.md).
 
 The official [hackathon FAQ](https://nebiusglobalaihackathon.devpost.com/details/faqs) permits hosting other app components elsewhere when the required NVIDIA model use is through Nebius Token Factory.
 
@@ -41,4 +41,4 @@ Inspect the upload manifest before deployment. `.vercelignore` explicitly exclud
 
 The production alias is public; generated deployment URLs and previews retain Vercel authentication. Previews have no backend environment configuration. Validate `/try`, account session creation/read-back and `/api/replay/stream?pace=0` on the public alias without a Vercel login.
 
-For a frontend regression, promote a verified deployment built with the Cloud Run backend endpoint. Pre-migration deployments point to the stopped VM and are not valid rollbacks without rebuilding their environment. Private final database/memory archives are under ignored `.dira-runtime/backups/final-20261016`; signing and encryption keys remain in private configuration and Secret Manager. Do not publish these files.
+For a frontend regression, promote a verified deployment built with the Cloud Run backend endpoint. Pre-migration deployments point to the deleted VM and are not valid rollbacks without rebuilding their environment. Private final database/memory archives are under ignored `.dira-runtime/backups/final-20261016`; signing and encryption keys remain in private configuration and Secret Manager. Do not publish these files.

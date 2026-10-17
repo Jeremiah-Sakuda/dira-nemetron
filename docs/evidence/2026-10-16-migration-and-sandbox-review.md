@@ -1,6 +1,6 @@
 # Migration and sandbox verification — October 16, 2026
 
-**The public Vercel app now uses Cloud Run and Neon. Both Nebius VMs are stopped. Their disks remain billable until permanent retirement. Google OAuth and actual Calendar/Gmail changes are not yet verified.**
+**The public Vercel app now uses Cloud Run and Neon. Both Nebius VMs and their managed boot disks are deleted after verified recovery. Google OAuth and actual Calendar/Gmail changes are not yet verified.**
 
 ## Production recovery and cutover
 
@@ -52,6 +52,6 @@ See the [selected enforcement events](2026-10-16-openshell-enforcement.txt). Dir
 
 The validation VM ran for less than 29 minutes. At the previously quoted approximately $0.15/hour, that is about **$0.07**, before taxes or billing adjustments, below the approved $0.50 cap. This is an estimate, not an invoice. An automatic API stop was armed; manual stop completed before its deadline. Both VMs are confirmed stopped, and the stop watchdog exited.
 
-The remaining 80 GiB and 64 GiB disks need permanent-retirement approval to eliminate their storage charges. Vercel Hobby and Neon Free are selected; Google Cloud allowances are shared by billing account and do not establish a hard zero-dollar guarantee. The old VM's nightly backup job is no longer running; final archives are local, and ongoing Neon recovery coverage is subject to its plan limits.
+After explicit owner approval, deleted both stopped VMs and their managed 80 GiB and 64 GiB boot disks. Fresh Nebius API reads return `NotFound` for all four exact resource IDs, recorded in the evidence JSON. Final database/memory backups remain privately retained off-VM. After deletion, `/try`, `/evidence`, credential-free replay completion, fresh authenticated demo state and private-memory export all passed; the new synthetic fixture was deleted afterward without model calls. An earlier demo session returned 401, so it was not treated as fresh persistence evidence. These resources no longer accrue VM compute or disk storage usage; previously accrued charges may still appear on the bill. Vercel Hobby and Neon Free are selected; Google Cloud allowances are shared by billing account and do not establish a hard zero-dollar guarantee. The old VM's nightly backup job is no longer running; final archives are local, and ongoing Neon recovery coverage is subject to its plan limits.
 
 Google still needs a web OAuth client, owner consent, synthetic source changes, authenticated approval, and independent Calendar/Gmail read-back. No Google completion claim is made. The official [rules](https://nebiusglobalaihackathon.devpost.com/rules), rechecked October 16, allow runtime Token Factory use with hosting elsewhere. Submission remains due October 30 at 10 AM Pacific, with free judge access through December 15.

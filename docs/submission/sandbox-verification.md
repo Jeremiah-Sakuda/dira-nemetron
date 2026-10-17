@@ -1,6 +1,6 @@
 # NemoClaw/OpenShell validation handoff
 
-Status (October 16): NemoHermes 0.0.135 / OpenShell 0.0.116 was installed and validated on the separate Linux VM, then the VM was confirmed stopped. Runtime was under 29 minutes, approximately $0.07 at the quoted rate, below the owner's $0.50 cap (estimate, not invoice). Network/method/tool denials, host-held inference, read-only Skill protection, managed MCP credential resolution and restart were observed. See the [evidence review](../evidence/2026-10-16-migration-and-sandbox-review.md). Production now runs on Cloud Run with application/broker egress protection; it does not run inside OpenShell. Both stopped VM disks remain billable pending retirement.
+Status (October 16): NemoHermes 0.0.135 / OpenShell 0.0.116 was installed and validated on the separate Linux VM, then the VM was confirmed stopped. Runtime was under 29 minutes, approximately $0.07 at the quoted rate, below the owner's $0.50 cap (estimate, not invoice). Network/method/tool denials, host-held inference, read-only Skill protection, managed MCP credential resolution and restart were observed. See the [evidence review](../evidence/2026-10-16-migration-and-sandbox-review.md). Production now runs on Cloud Run with application/broker egress protection; it does not run inside OpenShell. Both VM instances and their boot disks were subsequently deleted with owner approval; API reads verify all four resources are absent.
 
 ## Bounded execution
 

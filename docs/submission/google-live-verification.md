@@ -1,12 +1,13 @@
 # Google OAuth and actual provider verification
 
-Status (October 16): Calendar/Gmail APIs are enabled in `dira-prod`. Production uses Cloud Run and Neon; deployed OAuth client fields are still empty. Google Cloud client creation/consent and real Calendar/Gmail changes remain pending. The owner chose their personal account with synthetic test items. The in-app Google console stalled loading; a dedicated Chrome window was requested.
+Status (October 16): Calendar/Gmail APIs are enabled in `dira-prod`. Production uses Cloud Run and Neon; deployed OAuth client fields are still empty. Google Cloud client creation/consent and real Calendar/Gmail changes remain pending. The owner chose their personal account with synthetic test items. The in-app Google console stalled loading. Chrome now shows the separate client form with the exact production URLs prepared; the owner must finish credential creation and save the values before deployment.
 
 ## Exact client configuration
 
 Use Google Auth Platform → Clients → Web application. Keep the v2 client separate from legacy Dira clients.
 
 - Name: `Dira Nemotron judge demo`.
+- Designate this dedicated client for an AI-powered agent. Dira uses it for owner enrollment into automated workflows; do not reuse the legacy standard web client. Google documents separate clients for standard interactive features and agent workflows in [OAuth client guidance](https://support.google.com/cloud/answer/15549257#agentic-client).
 - JavaScript origin: `https://dira-nemetron.vercel.app`.
 - Authorized redirect: `https://dira-nemetron.vercel.app/api/auth/google/callback`.
 - Initial scopes: OpenID, email/profile, `calendar.settings.readonly`, `calendar.readonly`.

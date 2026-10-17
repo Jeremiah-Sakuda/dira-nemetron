@@ -162,12 +162,67 @@
     "approvedCloudCapUsd": 0.5,
     "estimatedRuntimeMinutesUpperBound": 28.4,
     "estimatedCloudChargeUsd": 0.071,
-    "chargeIsEstimateNotInvoice": true
+    "chargeIsEstimateNotInvoice": true,
+    "deletedAfterValidation": true
   },
   "remaining": {
-    "oldDemoVm": "STOPPED; disk still billable pending permanent-retirement approval",
-    "validationVm": "STOPPED; disk still billable pending permanent-retirement approval",
+    "oldDemoVm": "DELETED; instance and managed 80 GiB boot disk return NotFound",
+    "validationVm": "DELETED; instance and managed 64 GiB boot disk return NotFound",
     "google": "OAuth client and actual Calendar/Gmail provider verification pending",
     "funding": "Vercel Hobby and Neon Free selected; Google Cloud free allowances are shared, not a hard zero-dollar cap."
+  },
+  "retirement": {
+    "verifiedAtUtc": "2026-10-17T01:54:56.203803+00:00",
+    "userApprovedPermanentDeletion": true,
+    "resources": [
+      {
+        "type": "instance",
+        "id": "computeinstance-e04m6y0gs05ba0n222",
+        "exitCode": 13,
+        "notFound": true
+      },
+      {
+        "type": "disk",
+        "id": "computedisk-e04znwgg9p63gj668w",
+        "exitCode": 13,
+        "notFound": true
+      },
+      {
+        "type": "instance",
+        "id": "computeinstance-e04j2sgestm7arn9ya",
+        "exitCode": 13,
+        "notFound": true
+      },
+      {
+        "type": "disk",
+        "id": "computedisk-e04m4fk61d9w7ync1d",
+        "exitCode": 13,
+        "notFound": true
+      }
+    ],
+    "managedBootDiskGiB": [
+      80,
+      64
+    ],
+    "backupsRetainedOutsideGit": true,
+    "publicVerification": {
+      "checkedAtUtc": "2026-10-17T01:56:28.858Z",
+      "priorSyntheticSession": {
+        "httpStatus": 401,
+        "reason": "unauthenticated; earlier demo session no longer usable"
+      },
+      "/try": 200,
+      "/evidence": 200,
+      "replay": {
+        "httpStatus": 200,
+        "doneEvent": true
+      },
+      "demoSignInStatus": 200,
+      "authenticatedStateStatus": 200,
+      "privateMemoryExportStatus": 200,
+      "privateMemoryBytes": 3928,
+      "modelCallsMade": 0,
+      "syntheticFixtureDeleted": true
+    }
   }
 }
