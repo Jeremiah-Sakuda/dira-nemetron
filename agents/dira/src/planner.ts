@@ -4,6 +4,7 @@ import {
   eventInterval,
   minutesToIso,
   overlaps,
+  isoToMinutes,
   type Commitment,
   type DomainState,
   type Interval,
@@ -103,6 +104,13 @@ export function generateCandidatePlans(input: PlannerInput): CandidatePlan[] {
 
   const plans: CandidatePlan[] = [];
 
+  // Calendar-only accounts can have overlaps without any deadline-capacity
+  // path. Repair those directly instead of relying on capacity donors.
+  const overlapActions = buildOverlapMoves(state, nowMin);
+  if (overlapActions.length) {
+    plans.push({ ...assemblePlan(state, 'plan-overlap-blocks', overlapActions, [], nowMin, iso), label: 'resolve overlapping flexible blocks' });
+  }
+
   // Donor subsets ordered by total reclaimed minutes (least disruption first).
   const subsets = donorSubsets(donors);
   for (const [subsetIdx, subset] of subsets.entries()) {
@@ -163,6 +171,44 @@ export function generateCandidatePlans(input: PlannerInput): CandidatePlan[] {
   }
 
   return plans;
+}
+
+function buildOverlapMoves(state: DomainState, nowMin: number): PlannedAction[] {
+  let sim = state;
+  const actions: PlannedAction[] = [];
+  const scheduled = (value: DomainState) => Object.values(value.commitments).filter(c =>
+    c.owner === value.userId && c.status !== 'DROPPED' && c.status !== 'COMPLETE'
+    && c.startMin !== undefined && (c.durationMin ?? 0) > 0 && !c.reservesEffortFor
+    && (c.kind === 'event' || c.kind === 'block'));
+  for (const block of scheduled(state)) {
+    if (block.kind !== 'block' || !['FLEXIBLE', 'OPTIONAL'].includes(block.flexibility)) continue;
+    const conflicts = scheduled(sim).filter(other => other.id !== block.id && overlaps(eventInterval(block), eventInterval(other)));
+    if (!conflicts.length) continue;
+    const notBefore = Math.max(nowMin, block.startMin! + block.durationMin!, ...conflicts.map(c => c.startMin! + c.durationMin!));
+    const horizonMs = Date.parse(state.horizonStartIso);
+    // Anchor the grid to absolute instants, so a later approval revalidation
+    // proposes the same ISO intent after the relative horizon is rebased.
+    const firstMs = Math.ceil((horizonMs + notBefore * 60_000 - 30_000) / 900_000) * 900_000;
+    const busy = scheduled(sim).map(eventInterval);
+    for (let ms = firstMs; ms + block.durationMin! * 60_000 <= horizonMs + state.horizonEndMin * 60_000; ms += 900_000) {
+      const startIso = new Date(ms).toISOString();
+      const start = isoToMinutes(startIso, state.horizonStartIso);
+      const interval = { start, end: start + block.durationMin! };
+      if (start < notBefore || !state.availability.some(w => interval.start >= w.start && interval.end <= w.end)
+        || [...busy, ...(state.avoidWindows ?? [])].some(w => overlaps(w, interval))) continue;
+      const action: PlannedAction = {
+        type: 'MOVE_CALENDAR_EVENT', target: block.id,
+        desired_state: {
+          start_min: start, duration_min: block.durationMin!, start_iso: startIso,
+          end_iso: new Date(ms + block.durationMin! * 60_000).toISOString(),
+        },
+        provenance: [`user_policy_config:flexibility=${block.flexibility}`],
+        external_system: 'calendar', summary: `Move "${block.title}" to ${when(state, start)}`,
+      };
+      actions.push(action); sim = applyAction(sim, action); break;
+    }
+  }
+  return actions;
 }
 
 function firstSlotKey(slotOptions: Record<string, LiveSlot[]>): string {

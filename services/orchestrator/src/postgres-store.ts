@@ -1530,7 +1530,7 @@ export function createEmptyDomainState(accountId: string, timezone: string, now 
   return {
     userId: accountId,
     timezone,
-    horizonStartIso: now.toISOString(),
+    horizonStartIso: new Date(Math.floor(now.getTime() / 60_000) * 60_000).toISOString(),
     horizonEndMin: 90 * 24 * 60,
     commitments: {},
     edges: [],

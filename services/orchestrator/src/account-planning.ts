@@ -57,7 +57,9 @@ export function availabilityIntervals(
 /** Re-anchor the relative solver horizon without changing any absolute date. */
 export function rebaseDomainState(state: DomainState, now = new Date()): DomainState {
   const next = structuredClone(state);
-  const nowIso = now.toISOString();
+  // Integer-minute solver offsets need a whole-minute origin. Otherwise
+  // successive rebases can change the ISO intent of an approved plan.
+  const nowIso = new Date(Math.floor(now.getTime() / 60_000) * 60_000).toISOString();
   const elapsedMin = isoToMinutes(nowIso, state.horizonStartIso);
   for (const commitment of Object.values(next.commitments)) {
     if (commitment.startMin !== undefined) commitment.startMin -= elapsedMin;
