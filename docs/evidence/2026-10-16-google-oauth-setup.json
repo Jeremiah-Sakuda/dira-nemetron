@@ -47,15 +47,19 @@
     "Unsupported PostgreSQL JSON object counting in deadline-feed listing",
     "Calendar-only overlaps lacked deterministic fallback relocation",
     "Relative solver horizons were not aligned to whole minutes",
-    "Focus-hour labels were converted through the browser timezone"
+    "Focus-hour labels were converted through the browser timezone",
+    "Gmail replaces draft RFC Message-ID; provider receipt and targeted recovery read-back required"
   ],
   "regressionChecks": {
     "deadlineFeedScratchDatabase": 3,
     "plannerConstraintsReplay": 27,
     "web": 13
   },
-  "providerVerificationScope": "Calendar only; Gmail remains pending",
-  "latestBackendRevision": "dira-nemetron-backend-00012-h5k",
-  "latestFrontendDeployment": "dpl_BsYGdRGbRZQDU7Q1G3RwWdZMM5fA",
-  "calendarEvidence": "2026-10-16-google-calendar-live.json"
+  "providerVerificationScope": "Actual Calendar source-change repair and Gmail outbound draft-only broker execution; Gmail plans are explicitly operator-provisioned synthetic fixtures",
+  "latestBackendRevision": "dira-nemetron-backend-00013-j4w",
+  "latestFrontendDeployment": "dpl_dapViiBiKYZakHGrJmXvcfabnp86",
+  "calendarEvidence": "2026-10-16-google-calendar-live.json",
+  "gmailReadConsentVerified": true,
+  "gmailComposeConsentVerified": true,
+  "gmailEvidence": "2026-10-16-google-gmail-live.json"
 }

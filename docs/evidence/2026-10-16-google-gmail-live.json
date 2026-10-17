@@ -1,0 +1,188 @@
+{
+  "verifiedAtUtc": "2026-10-17T02:55:14.588Z",
+  "scope": "Actual Gmail draft-only broker execution; operator-provisioned synthetic plan and self-addressed synthetic contact, not Gmail inbox interpretation or model-generated planning.",
+  "backendRevision": "dira-nemetron-backend-00013-j4w",
+  "backendImage": "sha256:3a2164f439046baafcaafd0ceaf8ae4191771ddfd164b0a1b7df7c09219e00d2",
+  "backendSource": "1e58853",
+  "frontendDeployment": "dpl_dapViiBiKYZakHGrJmXvcfabnp86",
+  "frontendSource": "86674f6",
+  "consent": {
+    "gmailRead": true,
+    "gmailCompose": true,
+    "completedByOwner": true
+  },
+  "safety": {
+    "draftOnly": true,
+    "gmailAutoSync": false,
+    "calendarAutoSync": false,
+    "recipient": "authenticated owner address only; no public address recorded",
+    "body": "deterministic template over stored synthetic commitment facts with Dira disclosure",
+    "policy": "REQUIRE_APPROVAL under confirmed ASK_FIRST SEND_NOTIFICATION rule",
+    "approvalSource": "authenticated-web",
+    "ownerSelfExclusion": "Normal stakeholder resolution excludes self. The operator fixture explicitly adds a synthetic contact at the authenticated owner address; production guards remain unchanged."
+  },
+  "firstRun": {
+    "result": "REPLAN_REQUIRED after actual draft creation",
+    "reason": "Google replaced RFC Message-ID; the original verifier searched only that identifier.",
+    "safeStop": true,
+    "retainedForAudit": true
+  },
+  "repair": {
+    "providerReceiptFreshGet": true,
+    "preservedIdempotencyHeaderForNewDrafts": true,
+    "targetedRecoverySearch": true,
+    "exactRecipientAndBodyVerification": true,
+    "rejectsCcBcc": true,
+    "incompleteRecoverySearchFailsClosed": true
+  },
+  "checks": [
+    {
+      "kind": "recover-existing-without-duplication",
+      "workflowHash": "0e737e7dfa7c6cb34528267789305b1e4898bfdad98d3e5e92340ae1e4b6bffd",
+      "actionHash": "ea5033ea6300fc61f5493c8adda3b8ffdd169612ab0bac4ace253fd0a5450ebc",
+      "beforeApproval": {
+        "at": "2026-10-17T02:52:07.643Z",
+        "draftCount": 1,
+        "policyVerdict": "REQUIRE_APPROVAL",
+        "policyRule": "user-rule:rule-585b5d21-a2bc",
+        "acceptable": true
+      },
+      "afterApproval": {
+        "at": "2026-10-17T02:53:38.367Z",
+        "messageHash": "d5edd8598c2f9239ae5927b4976c0a3ea6e792f424d71451962471f2b7efb7df",
+        "draftCount": 1,
+        "draftLabel": true,
+        "sentLabel": false,
+        "recipientSelfOnly": true,
+        "sameProviderDraftAsOriginal": true,
+        "providerReceiptMatches": true,
+        "messageIdRewritten": true,
+        "bodyMatches": true,
+        "disclosurePresent": true,
+        "policyVerdict": "REQUIRE_APPROVAL",
+        "approvalSource": "authenticated-web",
+        "revalidationEvidencePresent": false,
+        "history": [
+          "PLANNED",
+          "AWAITING_APPROVAL",
+          "AUTHORIZED",
+          "PENDING_EXECUTION",
+          "EXECUTING",
+          "EXECUTED_UNVERIFIED",
+          "VERIFIED"
+        ]
+      },
+      "workflowStatus": "RESOLVED",
+      "attempts": 1,
+      "providerReceiptMode": "already-satisfied",
+      "freshRevalidation": {
+        "recordedIn": "durable workflow flight record",
+        "atIso": "2026-10-17T02:53:31.720Z",
+        "entryHash": "5c1d195324a7c3a89fdee4b0c1cdcba9340fed7145cf380385762c9b043d6317",
+        "approvalObjectHashFieldPresent": false
+      },
+      "verification": {
+        "verifiedAtIso": "2026-10-17T02:53:33.821Z",
+        "observed": {
+          "messageVerified": true
+        }
+      }
+    },
+    {
+      "kind": "fresh-create",
+      "workflowHash": "df31ac11df835f9e1354aa49da3b86f6556df79b446487c076562cc712cabd9a",
+      "actionHash": "5462155e949d17a38ea612a1d8d013ae464920b0a50d044b5afe7ec9cf4e6b33",
+      "beforeApproval": {
+        "at": "2026-10-17T02:53:25.430Z",
+        "draftCount": 0,
+        "policyVerdict": "REQUIRE_APPROVAL",
+        "policyRule": "user-rule:rule-585b5d21-a2bc",
+        "acceptable": true
+      },
+      "afterApproval": {
+        "at": "2026-10-17T02:53:54.603Z",
+        "messageHash": "b4ec5593e0e2e57973a5957a121f8cabecd152d02dbd441054a183f1a2553988",
+        "draftCount": 1,
+        "draftLabel": true,
+        "sentLabel": false,
+        "recipientSelfOnly": true,
+        "sameProviderDraftAsOriginal": false,
+        "providerReceiptMatches": true,
+        "messageIdRewritten": true,
+        "bodyMatches": true,
+        "disclosurePresent": true,
+        "policyVerdict": "REQUIRE_APPROVAL",
+        "approvalSource": "authenticated-web",
+        "revalidationEvidencePresent": false,
+        "history": [
+          "PLANNED",
+          "AWAITING_APPROVAL",
+          "AUTHORIZED",
+          "PENDING_EXECUTION",
+          "EXECUTING",
+          "EXECUTED_UNVERIFIED",
+          "VERIFIED"
+        ]
+      },
+      "workflowStatus": "RESOLVED",
+      "attempts": 1,
+      "providerReceiptMode": "draft",
+      "freshRevalidation": {
+        "recordedIn": "durable workflow flight record",
+        "atIso": "2026-10-17T02:53:44.872Z",
+        "entryHash": "aed367d3eaf8004b409f400fb6a37ce754763bd46fbc655bc2f0fd21bd0c121c",
+        "approvalObjectHashFieldPresent": false
+      },
+      "verification": {
+        "verifiedAtIso": "2026-10-17T02:53:47.054Z",
+        "observed": {
+          "mode": "draft",
+          "messageVerified": true
+        }
+      }
+    }
+  ],
+  "regressions": {
+    "focusedChecks": 17,
+    "rootTypecheck": "passed",
+    "webChecks": 13,
+    "webTypecheck": "passed",
+    "productionWebBuild": "passed"
+  },
+  "cleanup": {
+    "calendar": [
+      {
+        "key": "fixed",
+        "eventHash": "9fff2ba44ecca4f8eaf3e989c3d5d7296cee088c8b1fa86f7108064d8dad5fa5",
+        "deleted": true,
+        "independentReadStatus": 200,
+        "independentlyObservedState": "cancelled"
+      },
+      {
+        "key": "flexible",
+        "eventHash": "0e74958cee2d3ff83f9d1c8fe6b002e364ef553b6c1b26c2cb5a7ae2db01011f",
+        "deleted": true,
+        "independentReadStatus": 200,
+        "independentlyObservedState": "cancelled"
+      }
+    ],
+    "gmail": "Two synthetic drafts retained for owner inspection; no message sent.",
+    "fixtureCommitmentsDropped": 2,
+    "syntheticContactRemoved": true
+  },
+  "limitations": {
+    "gmailInboxIntake": "Not exercised; no bulk inbox sync/model intake performed.",
+    "actualSend": "Not exercised; Draft-only remains enabled.",
+    "googleOAuthTesting": "Refresh-token expiry and consent branding still require a launch plan.",
+    "recoverySearch": "Targeted Gmail search depends on provider indexing. This evidence establishes measured recovery without duplication, not universal exactly-once delivery.",
+    "sandbox": "OpenShell validated separately; public Cloud Run broker remains outside that sandbox."
+  },
+  "privateBackupAfterGmail": {
+    "saved": true,
+    "bytes": 128690,
+    "sha256": "41a05a7eb223039ac6b26d89384f8f7dff81562159212abb0499ce22bde89f87",
+    "includes": "Encrypted Gmail consent, verified ledger, confirmed rule and synchronized private Git memory after fixture cleanup",
+    "restoreStatus": "Fresh snapshot saved; the preceding Calendar/OAuth snapshot was independently restored, documented in Calendar evidence."
+  },
+  "artifactStorageMeasuredBytes": 387310427
+}

@@ -100,8 +100,8 @@
     "rootTypecheck": "passed"
   },
   "limitations": {
-    "gmail": "Consent and actual Gmail workflow verification pending",
-    "fixtureCleanup": "Two marked synthetic events retained temporarily for the remaining integration checks",
+    "gmail": "Actual outbound draft path now verified separately; see 2026-10-16-google-gmail-live.json",
+    "fixtureCleanup": "Two marked Calendar fixtures deleted and independently confirmed cancelled; fixture graph commitments marked DROPPED",
     "backgroundGoogleSync": "Disabled; no account enrolled",
     "oauthApp": "External Testing; refresh-token expiry and branding still require a launch plan",
     "sandbox": "OpenShell validated separately; public Cloud Run broker is outside OpenShell",
