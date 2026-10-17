@@ -15,7 +15,7 @@
 
 | Work | Concrete next action | Completion evidence |
 | --- | --- | --- |
-| Google OAuth | Create the separate web client in `dira-prod`; save credentials in ignored `.env.google`; deploy via backend Secret Manager; obtain the owner's consent | Actual synthetic Calendar/Gmail changes through authenticated approval, deterministic policy/broker checks and fresh independent provider reads |
+| Google OAuth | Separate client created and backend Secret Manager credentials deployed. Complete owner consent, then the controlled synthetic provider workflow | Actual synthetic Calendar/Gmail changes through authenticated approval, deterministic policy/broker checks and fresh independent provider reads |
 | Operational funding | Keep Vercel Hobby, Neon Free, Cloud Run min zero/max one and fifteen-minute scheduler; review shared allowance use and Neon recovery retention | Stable free judge access through December 15; do not promise a provider-enforced zero-dollar cap |
 | Hermes deployment | The isolated checks are complete; the persistent Hermes chat service remains stopped to avoid VM costs. Validate the revised automatic Skills mirror before enabling it for an owner | An actual owner-scoped deployment with immutable mirrored Skills; distinguish it from the successful synthetic fixture checks |
 | Submission | Finish latest footage, public YouTube upload, required Devpost fields and final submission | Public video URL under three minutes and submission confirmation |

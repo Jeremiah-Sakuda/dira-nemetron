@@ -1,0 +1,39 @@
+{
+  "checkedAtUtc": "2026-10-17T02:13:02.313Z",
+  "backendRevision": "dira-nemetron-backend-00009-c6h",
+  "secretVersion": "4",
+  "frontendDeployment": "dpl_ELY3qQXHnti92G79fpQHQQYAjMXs",
+  "frontendSource": "a5309fa",
+  "httpStatus": 302,
+  "destination": "https://accounts.google.com",
+  "clientMatchesSavedValue": true,
+  "redirectUri": "https://dira-nemetron.vercel.app/api/auth/google/callback",
+  "scopes": [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/calendar.settings.readonly",
+    "https://www.googleapis.com/auth/calendar.readonly"
+  ],
+  "pkceMethod": "S256",
+  "statePresent": true,
+  "cookiePathCorrect": true,
+  "cookieHttpOnly": true,
+  "cookieSecure": true,
+  "regressionChecksPassed": 8,
+  "existingSessionChecksPassed": 2,
+  "typecheck": "passed",
+  "ownerConsentVerified": false,
+  "actualProviderMutationVerified": false,
+  "cancelledConsent": {
+    "httpStatus": 302,
+    "redirect": "/onboarding",
+    "stateCleared": true
+  },
+  "unauthenticatedPermissionStarts": {
+    "calendar-write": 401,
+    "gmail-read": 401,
+    "gmail-compose": 401
+  },
+  "browserObserved": "Personal account chooser succeeded; Google unverified test-app warning reached. Owner warning/consent handoff pending."
+}

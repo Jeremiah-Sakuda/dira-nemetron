@@ -3,15 +3,18 @@
   "deployment": {
     "frontend": "https://dira-nemetron.vercel.app/try",
     "backend": "https://dira-nemetron-backend-683372642422.us-east1.run.app",
-    "frontendDeployment": "dpl_Fd2TwpmZPe8oRhMNXvRMRGEBmGMQ",
-    "backendRevision": "dira-nemetron-backend-00008-dq9",
+    "frontendDeployment": "dpl_ELY3qQXHnti92G79fpQHQQYAjMXs",
+    "backendRevision": "dira-nemetron-backend-00009-c6h",
     "backendImage": "sha256:eabfd81ddbb924c68ee61e928d2070b08fab121f47040ae1f96f6ccb0bf5e498",
     "backendSource": "0c19197",
     "storage": "Neon Free, iad1, restricted application role, certificate-verified direct connection",
     "memory": "Encrypted per-account Git bundles in forced-RLS Postgres rows",
     "background": "Cloud Scheduler, every fifteen minutes, authenticated scheduled-pass",
     "retiredOriginRemoved": true,
-    "registryCleanup": "Obsolete October 14 staging image removed; current and one rollback image retained."
+    "registryCleanup": "Obsolete October 14 staging image removed; current and one rollback image retained.",
+    "backendConfigVersion": "4",
+    "googleOAuthCredentialsConfigured": true,
+    "frontendSource": "a5309fa"
   },
   "sourceRecovery": {
     "quiescedBeforeSnapshot": true,
@@ -103,7 +106,15 @@
       "runtimeRoleBypass": false,
       "backupSha256": "96a8f404173c5e2ffae5805e6c6d28bd8c309431ad32dbdb661a0008fc3176e3"
     },
-    "typecheck": "passed"
+    "typecheck": "passed",
+    "googleOAuthStart": {
+      "httpStatus": 302,
+      "pkceMethod": "S256",
+      "secureStateCookie": true,
+      "callbackPathCorrect": true,
+      "ownerConsentVerified": false,
+      "actualProviderMutationVerified": false
+    }
   },
   "sandbox": {
     "scope": "Separate isolated validation VM; OpenShell is not installed around the public Cloud Run broker.",
@@ -168,7 +179,7 @@
   "remaining": {
     "oldDemoVm": "DELETED; instance and managed 80 GiB boot disk return NotFound",
     "validationVm": "DELETED; instance and managed 64 GiB boot disk return NotFound",
-    "google": "OAuth client and actual Calendar/Gmail provider verification pending",
+    "google": "Separate OAuth client created and backend credentials configured; owner consent and actual Calendar/Gmail provider verification pending",
     "funding": "Vercel Hobby and Neon Free selected; Google Cloud free allowances are shared, not a hard zero-dollar cap."
   },
   "retirement": {

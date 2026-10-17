@@ -1,6 +1,10 @@
 # Google OAuth and actual provider verification
 
-Status (October 16): Calendar/Gmail APIs are enabled in `dira-prod`. Production uses Cloud Run and Neon; deployed OAuth client fields are still empty. Google Cloud client creation/consent and real Calendar/Gmail changes remain pending. The owner chose their personal account with synthetic test items. The in-app Google console stalled loading. Chrome now shows the separate client form with the exact production URLs prepared; the owner must finish credential creation and save the values before deployment.
+Status (October 16): Calendar/Gmail APIs are enabled in `dira-prod`. The owner created the separate v2 OAuth client and saved its credentials privately. Backend Secret Manager version 4 is deployed on revision `dira-nemetron-backend-00009-c6h`; database, encryption, signing, inference and scheduler configuration were preserved. The selected personal account is already a test user. Owner consent and real synthetic Calendar/Gmail changes remain pending. Automatic Calendar/Gmail syncing is off.
+
+Public verification exposed immutable redirect headers in the frontend OAuth routes: adding cookies to native `Response.redirect()` threw an exception. Commit `a5309fa` constructs mutable redirect responses for sign-in, incremental permissions and callback success/error paths. Eight OAuth regression checks reproduced the bug and passed after the fix; two existing session checks and root TypeScript checking also passed. The production frontend deployment `dpl_ELY3qQXHnti92G79fpQHQQYAjMXs` is ready. Public checks verify the saved client and exact callback, S256 PKCE, secure HttpOnly state cookie, cancellation state clearing, and 401 rejection of unauthenticated incremental permission starts. Chrome reached the personal account chooser and Google's unverified test-app warning; the owner must complete warning/consent. See [non-secret setup evidence](../evidence/2026-10-16-google-oauth-setup.json).
+
+The shared Google Auth Platform branding currently links to legacy `dira-prod.vercel.app` privacy/terms pages. Review v2 branding and policy links before public OAuth launch; the separate client does not by itself create a separate consent brand.
 
 ## Exact client configuration
 
