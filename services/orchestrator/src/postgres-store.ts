@@ -253,7 +253,7 @@ export class PostgresAccountStore {
         last_checked_at: Date | null; last_error: string | null; event_count: number;
       }>(
         `SELECT feed_id, label, domain, enabled, auto_sync, last_checked_at, last_error,
-                jsonb_object_length(snapshot) AS event_count
+                (SELECT count(*)::int FROM jsonb_object_keys(snapshot)) AS event_count
          FROM dira_ical_feeds WHERE account_id = $1 ORDER BY created_at`,
         [accountId],
       );
