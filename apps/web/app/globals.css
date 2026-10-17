@@ -542,8 +542,71 @@ table.data td:first-child {
 }
 
 .onboarding-wrap {
-  max-width: 720px;
-  margin: 48px auto;
+  max-width: 1040px;
+  margin: 28px auto;
+}
+
+.setup-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 28px; }
+.setup-header h1 { font-size: clamp(28px, 4vw, 38px); line-height: 1.15; letter-spacing: -.035em; margin-bottom: 10px; }
+.setup-header p { color: var(--text-secondary); max-width: 60ch; }
+.setup-header .section-label { margin-bottom: 10px; }
+.setup-header > .btn { flex-shrink: 0; }
+.setup-account { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 20px 24px; }
+.setup-account-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.setup-account-identity p { color: var(--text-secondary); overflow-wrap: anywhere; font-size: 13px; margin-top: 3px; }
+.setup-avatar { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 12px; flex-shrink: 0; background: var(--surface-2); }
+.setup-account-facts { display: flex; flex-wrap: wrap; gap: 6px 16px; flex: 1; color: var(--text-secondary); font-size: 12px; }
+.setup-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 28px 0 24px; }
+.setup-tabs button { border: 0; border-bottom: 2px solid transparent; background: none; color: var(--text-secondary); padding: 13px 18px; font: inherit; font-size: 14px; min-height: 48px; cursor: pointer; }
+.setup-tabs button[aria-selected='true'] { color: var(--text-primary); border-bottom-color: var(--accent); }
+.setup-tabs button:hover { background: var(--surface-1); color: var(--text-primary); }
+.setup-tabs button:focus-visible, .setup-backups summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.setup-section[hidden] { display: none; }
+.setup-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.setup-tool { display: flex; flex-direction: column; min-width: 0; padding: 24px; }
+.setup-tool-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+.setup-tool h2 { font-size: 18px; font-weight: 600; }
+.setup-connection-state { font-size: 11px; letter-spacing: .03em; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); }
+.setup-tool > p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; max-width: 48ch; }
+.setup-tool dl { display: grid; gap: 10px; margin: 24px 0; font-size: 13px; }
+.setup-tool dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; }
+.setup-tool dt { color: var(--text-muted); }
+.setup-tool dd { margin: 0; }
+.setup-tool-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
+.setup-tool small { display: block; margin-top: 14px; color: var(--text-muted); line-height: 1.6; }
+.setup-privacy-line { color: var(--text-muted); font-size: 13px; margin: 18px 0 26px; }
+.setup-privacy-line a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+.setup-secondary, .setup-backups { margin-top: 18px; }
+.setup-section > .graph-review, .setup-section > .schedule-check, .setup-secondary > .deadline-feeds { margin-top: 0; padding-top: 0; border-top: 0; }
+.setup-section fieldset { min-inline-size: 0; }
+.setup-section .graph-review-heading { display: grid; gap: 18px; }
+.setup-section .graph-review-actions { justify-content: flex-start; }
+.setup-section .deadline-feed-form { grid-template-columns: minmax(0, 1fr) minmax(120px, .6fr) minmax(0, 1.4fr) auto; }
+.setup-backups summary { cursor: pointer; font-weight: 600; min-height: 26px; }
+.setup-backups summary span { color: var(--text-muted); font-size: 13px; font-weight: 400; margin-left: 12px; }
+.setup-backups > p { color: var(--text-secondary); font-size: 14px; margin: 18px 0; }
+.setup-backups .setup-tool-actions { margin-top: 18px; }
+.setup-footer { font-size: 12px; color: var(--text-muted); margin-top: 24px; max-width: 80ch; line-height: 1.7; }
+.setup-signin { max-width: 600px; padding: 32px; display: grid; gap: 18px; }
+.setup-signin h2 { font-size: 22px; }
+.setup-signin p { color: var(--text-secondary); }
+.nav { flex-wrap: wrap; row-gap: 6px; }
+.nav a { min-height: 36px; display: inline-flex; align-items: center; }
+@media (max-width: 760px) {
+  .setup-header { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .setup-tools { grid-template-columns: 1fr; }
+  .setup-account-facts { flex-basis: 100%; order: 3; }
+  .setup-account > .btn { margin-left: auto; }
+  .setup-section .deadline-feed-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .setup-backups summary span { display: block; margin: 6px 0 0; }
+}
+@media (max-width: 540px) {
+  .setup-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .setup-tabs button { padding: 12px 6px; font-size: 12px; }
+  .setup-account, .setup-tool { padding: 18px; }
+  .setup-account-identity { width: 100%; }
+  .setup-account > .btn { margin-left: 0; }
+  .setup-section .deadline-feed-form { grid-template-columns: minmax(0, 1fr); }
 }
 
 .onboarding-card {
@@ -1910,3 +1973,5 @@ table.data td:first-child {
 .source-form select, .source-form input { background: var(--surface-0); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px; font: inherit; font-size: 14px; min-height: 42px; }
 .account-graph .panel { margin-bottom: 16px; }
 @media (max-width: 860px) { .graph-columns { grid-template-columns: minmax(0, 1fr); } }
+
+.setup-feed-disclosure > .deadline-feeds { margin-top: 20px; padding: 0; border: 0; background: transparent; }

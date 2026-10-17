@@ -25,6 +25,7 @@ interface CalendarEvent {
 }
 
 export function AccountSetup() {
+  const [section, setSection] = useState<'connections' | 'focus' | 'review'>('connections');
   const [account, setAccount] = useState<Account | null>(null);
   const [stateSummary, setStateSummary] = useState<AccountStateSummary | null>(null);
   const [calendarWriteEnabled, setCalendarWriteEnabled] = useState(false);
@@ -135,110 +136,110 @@ export function AccountSetup() {
   }
 
   return (
-    <main className="onboarding-wrap">
-      <section className="panel onboarding-card" aria-labelledby="onboarding-title">
-        <div className="section-label">Personal setup</div>
-        <h1 id="onboarding-title" className="hero-title onboarding-title">
-          Give Dira a clearer picture of your week.
-        </h1>
-        <p className="onboarding-copy">
-          Connect your Google account to read your calendar and discover your local timezone.
-          Dira uses those commitments to find conflicts and propose a repair. This connection
-          is read-only; calendar changes will require a separate permission step.
-        </p>
+    <main className="onboarding-wrap workspace-setup">
+      <header className="setup-header">
+        <div>
+          <div className="section-label">Your workspace</div>
+          <h1>Connected. On your terms.</h1>
+          <p>Choose your tools, make space for focused work, and review what Dira learns.</p>
+        </div>
+        {account && <a className="btn btn-secondary" href="/today">Go to Today <span aria-hidden="true">↗</span></a>}
+      </header>
 
-        {loading ? (
-          <p role="status" className="muted">Checking your account…</p>
-        ) : account ? (
-          <div className="account-connected">
-            <div className="connected-indicator" aria-hidden="true" />
-            <div>
-              <strong>Google account connected</strong>
-              <p>{account.email}</p>
-              <p className="muted">Calendar timezone: {account.timezone}</p>
-              <p className="muted">
-                Calendar changes: {calendarWriteEnabled ? 'permission granted' : 'read-only'}
-              </p>
-              {!calendarWriteEnabled && (
-                <a className="btn btn-secondary" href="/api/auth/google/calendar-write">
-                  Enable Calendar changes
-                </a>
-              )}
-              <p className="muted">Gmail: {gmailReadEnabled ? 'read permission granted; automatic processing stays off until enabled in Policies' : 'not connected'}</p>
-              {!gmailReadEnabled && (
-                <a className="btn btn-secondary" href="/api/auth/google/gmail-read">
-                  Connect Gmail (read-only)
-                </a>
-              )}
-              <p className="muted">Gmail drafting: {gmailComposeEnabled ? 'permission granted' : 'not enabled'}</p>
-              {!gmailComposeEnabled && (
-                <>
-                  <a className="btn btn-secondary" href="/api/auth/google/gmail-compose">Enable Gmail drafting</a>
-                  <p className="privacy-note">Google grants draft and send access. Dira’s Draft-only setting keeps messages in Drafts until you change that policy.</p>
-                </>
-              )}
-              {stateSummary && (
-                <p className="muted">Personal graph: {stateSummary.commitmentCount} commitments · {stateSummary.edgeCount} confirmed links</p>
-              )}
-              <a className="btn btn-secondary" href="/api/memory/export">Download private memory backup</a>
-              <input
-                ref={memoryFileInput}
-                type="file"
-                accept=".bundle,application/octet-stream"
-                hidden
-                onChange={(event) => void importMemory(event.currentTarget.files?.[0])}
-              />
-              <button type="button" className="btn btn-secondary" disabled={memoryImporting}
-                onClick={() => memoryFileInput.current?.click()}>
-                {memoryImporting ? 'Restoring backup…' : 'Restore memory backup'}
-              </button>
-              {memoryNotice && <p className="muted" role="status">{memoryNotice}</p>}
-              {stateSummary?.commitmentCount === 0 && (
-                <p className="muted">Calendar events stay outside your graph until you review and confirm them.</p>
-              )}
-            </div>
-            <button type="button" className="btn btn-secondary" onClick={signOut}>Sign out</button>
-            <button type="button" className="btn" onClick={loadCalendar} disabled={calendarLoading}>
-              {calendarLoading ? 'Loading calendar…' : 'Check calendar connection'}
-            </button>
-          </div>
-        ) : (
-          <a className="btn google-connect" href="/api/auth/google/start">
+      {loading ? <section className="panel"><p role="status" className="muted">Checking your account…</p></section>
+        : !account ? (
+          <section className="panel setup-signin">
             <GoogleMark />
-            Continue with Google
-          </a>
-        )}
-        {events && (
-          <section className="calendar-preview" aria-live="polite" aria-label="Upcoming calendar events">
-            <h2>Upcoming events</h2>
-            {events.length === 0 ? <p className="muted">No upcoming events found.</p> : (
-              <ul>
-                {events.slice(0, 8).map((event) => (
-                  <li key={event.id}>
-                    <strong>{event.title}</strong>
-                    <time dateTime={event.startIso}>{formatCalendarDate(event.startIso, account?.timezone ?? 'UTC')}</time>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <h2>Start with your Google account</h2>
+            <p>Connect Calendar with read-only access. You choose separately whether Dira can make Calendar changes or create Gmail drafts.</p>
+            <a className="btn google-connect" href="/api/auth/google/start">Continue with Google</a>
           </section>
+        ) : (
+          <>
+            <section className="panel setup-account" aria-label="Connected account">
+              <div className="setup-account-identity">
+                <span className="setup-avatar" aria-hidden="true"><GoogleMark /></span>
+                <div><strong>Google account connected</strong><p>{account.email}</p></div>
+              </div>
+              <div className="setup-account-facts">
+                <span>{account.timezone.replaceAll('_', ' ')}</span>
+                <span>{stateSummary?.commitmentCount ?? 0} commitments</span>
+                <span>{stateSummary?.edgeCount ?? 0} confirmed links</span>
+              </div>
+              <button type="button" className="btn btn-secondary" onClick={signOut}>Sign out</button>
+            </section>
+
+            <div className="setup-tabs" role="tablist" aria-label="Workspace setup">
+              {([
+                ['connections', 'Connections'], ['focus', 'Focus hours'], ['review', 'Review commitments'],
+              ] as const).map(([id, title], index, tabs) => (
+                <button key={id} type="button" role="tab" id={`setup-tab-${id}`}
+                  aria-controls={`setup-panel-${id}`} aria-selected={section === id} tabIndex={section === id ? 0 : -1}
+                  onClick={() => setSection(id)} onKeyDown={(event) => {
+                    let next = index;
+                    if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+                    else if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+                    else if (event.key === 'Home') next = 0;
+                    else if (event.key === 'End') next = tabs.length - 1;
+                    else return;
+                    event.preventDefault(); setSection(tabs[next]![0]);
+                    document.getElementById(`setup-tab-${tabs[next]![0]}`)?.focus();
+                  }}>
+                  {title}
+                </button>
+              ))}
+            </div>
+
+            <section className="setup-section" role="tabpanel" id="setup-panel-connections" aria-labelledby="setup-tab-connections" hidden={section !== 'connections'}>
+              <div className="setup-tools">
+                <article className="panel setup-tool">
+                  <div className="setup-tool-heading"><h2>Google Calendar</h2><span className="setup-connection-state">Connected</span></div>
+                  <p>Read your schedule. Turn source changes into commitments you can review.</p>
+                  <dl><div><dt>Read access</dt><dd>Permission granted</dd></div><div><dt>Calendar changes</dt><dd>{calendarWriteEnabled ? 'Permission granted' : 'Not enabled'}</dd></div></dl>
+                  <div className="setup-tool-actions">
+                    {!calendarWriteEnabled && <a className="btn" href="/api/auth/google/calendar-write">Enable Calendar changes</a>}
+                    <button type="button" className="btn btn-secondary" onClick={loadCalendar} disabled={calendarLoading}>{calendarLoading ? 'Checking…' : 'Check connection'}</button>
+                  </div>
+                </article>
+                <article className="panel setup-tool">
+                  <div className="setup-tool-heading"><h2>Gmail</h2><span className="setup-connection-state">{gmailReadEnabled ? 'Connected' : 'Not connected'}</span></div>
+                  <p>Discover commitments in messages and prepare updates for the people involved.</p>
+                  <dl><div><dt>Read access</dt><dd>{gmailReadEnabled ? 'Permission granted' : 'Not enabled'}</dd></div><div><dt>Drafting</dt><dd>{gmailComposeEnabled ? 'Permission granted' : 'Not enabled'}</dd></div></dl>
+                  <div className="setup-tool-actions">
+                    {!gmailReadEnabled && <a className="btn btn-secondary" href="/api/auth/google/gmail-read">Connect read-only</a>}
+                    {!gmailComposeEnabled && <a className="btn btn-secondary" href="/api/auth/google/gmail-compose">Enable Gmail drafting</a>}
+                    {gmailComposeEnabled && <a className="btn btn-secondary" href="/policies">Manage message policy</a>}
+                  </div>
+                  {!gmailComposeEnabled && <small>Google grants draft and send access. Dira’s Draft-only setting keeps messages in Drafts until you change that policy.</small>}
+                </article>
+              </div>
+              <p className="setup-privacy-line">Connecting a tool does not enable background processing. <a href="/policies">Choose automatic checks in Settings ↗</a></p>
+              {events && <section className="panel calendar-preview" aria-live="polite" aria-label="Upcoming calendar events">
+                <h2>Connection checked</h2>
+                {events.length === 0 ? <p className="muted">No upcoming events found.</p> : <ul>{events.slice(0, 8).map(event => <li key={event.id}><strong>{event.title}</strong><time dateTime={event.startIso}>{formatCalendarDate(event.startIso, account.timezone)}</time></li>)}</ul>}
+              </section>}
+              <details className="panel setup-backups setup-feed-disclosure"><summary>Deadline feeds <span>Optional course and task calendars</span></summary><DeadlineFeeds onProposalsChanged={() => setGraphRevision(revision => revision + 1)} /></details>
+              <details className="panel setup-backups">
+                <summary>Private memory &amp; backups <span>Export or restore your workspace</span></summary>
+                <p>Your confirmed graph, focus hours and rules travel with your private memory backup.</p>
+                <div className="setup-tool-actions">
+                  <a className="btn btn-secondary" href="/api/memory/export">Download backup</a>
+                  <input ref={memoryFileInput} type="file" accept=".bundle,application/octet-stream" hidden onChange={event => void importMemory(event.currentTarget.files?.[0])} />
+                  <button type="button" className="btn btn-secondary" disabled={memoryImporting} onClick={() => memoryFileInput.current?.click()}>{memoryImporting ? 'Restoring…' : 'Restore backup'}</button>
+                </div>
+                {memoryNotice && <p role="status">{memoryNotice}</p>}
+              </details>
+            </section>
+            <section className="panel setup-section" role="tabpanel" id="setup-panel-focus" aria-labelledby="setup-tab-focus" hidden={section !== 'focus'}>
+              <ScheduleCheck key={scheduleRevision} /><MorningSummary />
+            </section>
+            <section className="panel setup-section" role="tabpanel" id="setup-panel-review" aria-labelledby="setup-tab-review" hidden={section !== 'review'}>
+              <GraphReview timezone={account.timezone} commitmentCount={stateSummary?.commitmentCount ?? 0} edgeCount={stateSummary?.edgeCount ?? 0} revision={graphRevision} onConfirmed={refreshAccount} />
+            </section>
+          </>
         )}
-        {account && <MorningSummary />}
-        {account && <DeadlineFeeds onProposalsChanged={() => setGraphRevision((revision) => revision + 1)} />}
-        {account && <GraphReview
-          timezone={account.timezone}
-          commitmentCount={stateSummary?.commitmentCount ?? 0}
-          edgeCount={stateSummary?.edgeCount ?? 0}
-          revision={graphRevision}
-          onConfirmed={refreshAccount}
-        />}
-        {account && <ScheduleCheck key={scheduleRevision} />}
-        {error && <p className="form-error" role="alert">{error}</p>}
-        <p className="privacy-note">
-          Dira stores Google credentials encrypted. Calendar write permission is optional and requested only
-          when you choose to enable Calendar changes. Signing out ends this device session.
-        </p>
-      </section>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <p className="setup-footer">Credentials are encrypted. Your policy decides what can run. Every external change is read back before Dira marks it verified.</p>
     </main>
   );
 }
