@@ -62,9 +62,11 @@ export class GoogleUserMailTool implements GmailTool {
     const api = await this.client();
     const draftOnly = await this.guard.draftOnly();
     const messageId = deterministicMessageId(threadId, recipient, body);
-    const existing = await this.findByMessageId(api, messageId, draftOnly);
+    const subject = options.subject ?? 'Update from Dira';
+    const expected = { to: recipient, body, subject };
+    const existing = await this.findExisting(api, messageId, draftOnly, expected);
     if (existing) return { messageId: existing, mode: draftOnly ? 'draft' : 'sent' };
-    const raw = await this.raw(recipient, body, options.subject ?? 'Update from Dira', messageId);
+    const raw = await this.raw(recipient, body, subject, messageId);
     const gmailThreadId = /^[0-9a-f]{16}$/.test(threadId) ? threadId : undefined;
     try {
       if (draftOnly) {
@@ -88,19 +90,69 @@ export class GoogleUserMailTool implements GmailTool {
     if (!options.to || !options.body) return false;
     const api = await this.client();
     const draftOnly = await this.guard.draftOnly();
-    const id = await this.findByMessageId(api, deterministicMessageId(threadId, options.to.trim().toLowerCase(), options.body), draftOnly);
+    const key = deterministicMessageId(threadId, options.to.trim().toLowerCase(), options.body);
+    const id = options.messageId ?? await this.findExisting(api, key, draftOnly, options);
     if (!id) return false;
     try {
       const message = await api.users.messages.get({ userId: 'me', id, format: 'full' });
-      const labels = message.data.labelIds ?? [];
-      if (!labels.includes(draftOnly ? 'DRAFT' : 'SENT')) return false;
-      const headers = message.data.payload?.headers ?? [];
-      const toHeader = headers.find((header) => header.name?.toLowerCase() === 'to')?.value ?? '';
-      if (!toHeader.toLowerCase().includes(options.to.trim().toLowerCase())) return false;
-      return decodeBody(message.data.payload).includes(bodyContains);
+      return await this.matches(message.data, key, draftOnly, options, Boolean(options.messageId))
+        && decodeBody(message.data.payload).includes(bodyContains);
     } catch (error) {
       throw asToolError(error, 'messages.get');
     }
+  }
+
+  /** Gmail rewrites RFC Message-ID on drafts. Search only the expected recipient
+   * and subject, then inspect our preserved header and full content. This also
+   * recovers after a create response was lost; never resend on an incomplete scan. */
+  private async findExisting(
+    api: ReturnType<typeof google.gmail>, key: string, draftOnly: boolean,
+    expected: OutboundVerifyOptions,
+  ): Promise<string | undefined> {
+    const exact = await this.findByMessageId(api, key, draftOnly);
+    if (exact) {
+      const read = await api.users.messages.get({ userId: 'me', id: exact, format: 'full' });
+      if (await this.matches(read.data, key, draftOnly, expected)) return exact;
+    }
+    if (!expected.to || !expected.body || !expected.subject) return undefined;
+    const quote = (s: string) => '"' + s.replace(/["\\\r\n]/g, ' ') + '"';
+    try {
+      const listed = await api.users.messages.list({ userId: 'me', maxResults: 100,
+        q: `${draftOnly ? 'in:drafts' : 'in:sent'} to:${quote(expected.to)} subject:${quote(expected.subject)}`,
+      });
+      for (const candidate of listed.data.messages ?? []) {
+        if (!candidate.id) continue;
+        const read = await api.users.messages.get({ userId: 'me', id: candidate.id, format: 'full' });
+        if (await this.matches(read.data, key, draftOnly, expected)) return candidate.id;
+      }
+      if (listed.data.nextPageToken) throw new ToolError('Gmail recovery search exceeded its bound; refusing to create another message', 'RECOVERY_SEARCH_INCOMPLETE', false);
+      return undefined;
+    } catch (error) { throw asToolError(error, 'targeted recovery read'); }
+  }
+
+  private async matches(
+    message: { labelIds?: string[] | null; payload?: MailPart | null }, key: string,
+    draftOnly: boolean, expected: OutboundVerifyOptions, durableReceipt = false,
+  ): Promise<boolean> {
+    if (!expected.to || !expected.body) return false;
+    const labels = message.labelIds ?? [];
+    if (!labels.includes(draftOnly ? 'DRAFT' : 'SENT') || (draftOnly && labels.includes('SENT'))) return false;
+    const headers = message.payload?.headers ?? [];
+    const values = (name: string) => headers.filter(h => h.name?.toLowerCase() === name).map(h => h.value ?? '');
+    // One exact address; reject extra recipients, cc and bcc.
+    const to = values('to');
+    if (to.length !== 1 || to[0]!.trim().toLowerCase() !== expected.to.trim().toLowerCase()
+      || values('cc').some(Boolean) || values('bcc').some(Boolean)) return false;
+    if (expected.subject && values('subject')[0] !== expected.subject) return false;
+    const disclosed = withDisclosure(expected.body, await this.guard.ownerName());
+    if (decodeBody(message.payload).replace(/\r\n/g, '\n').trim() !== disclosed.replace(/\r\n/g, '\n').trim()) return false;
+    const storedKey = values('x-dira-idempotency-key')[0];
+    if (storedKey) return storedKey === key;
+    if (values('message-id')[0] === `<${key}>`) return true;
+    // Compatibility for already-created drafts from the old adapter. Only a
+    // durable receipt or exact full content plus our disclosure marker qualifies.
+    return values('x-dira-sent-on-behalf')[0] === 'true'
+      && (durableReceipt || Boolean(expected.subject));
   }
 
   private async findByMessageId(api: ReturnType<typeof google.gmail>, messageId: string, draftOnly: boolean): Promise<string | undefined> {
@@ -125,6 +177,7 @@ export class GoogleUserMailTool implements GmailTool {
       `To: ${to}`,
       `Subject: ${encodeHeader(subject)}`,
       `Message-ID: <${messageId}>`,
+      `X-Dira-Idempotency-Key: ${messageId}`,
       'MIME-Version: 1.0',
       'Content-Type: text/plain; charset="UTF-8"',
       'Content-Transfer-Encoding: 8bit',
@@ -153,9 +206,9 @@ function encodeHeader(value: string): string {
   return /^[\x20-\x7e]*$/.test(clean) ? clean : `=?UTF-8?B?${Buffer.from(clean, 'utf8').toString('base64')}?=`;
 }
 
-interface Part { mimeType?: string | null; body?: { data?: string | null } | null; parts?: Part[] | null }
+interface MailPart { mimeType?: string | null; body?: { data?: string | null } | null; parts?: MailPart[] | null; headers?: { name?: string | null; value?: string | null }[] | null }
 
-function decodeBody(part: Part | undefined | null): string {
+function decodeBody(part: MailPart | undefined | null): string {
   if (!part) return '';
   if (part.body?.data) return Buffer.from(part.body.data, 'base64url').toString('utf8');
   return (part.parts ?? []).map(decodeBody).join('\n');

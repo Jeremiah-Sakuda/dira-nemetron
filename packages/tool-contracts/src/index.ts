@@ -50,6 +50,9 @@ export interface OutboundVerifyOptions {
   /** Exact recipient and body let adapters derive a deterministic message identity. */
   to?: string;
   body?: string;
+  subject?: string;
+  /** Durable provider receipt: a fresh GET still checks every expected field. */
+  messageId?: string;
 }
 
 export interface GmailTool {

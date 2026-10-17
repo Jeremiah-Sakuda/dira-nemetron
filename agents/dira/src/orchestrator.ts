@@ -373,7 +373,7 @@ export class DiraOrchestrator {
 
     for (const record of this.ledger.byWorkflow(this.run.id)) {
       if (record.status === 'EXECUTING') {
-        const observed = await this.verifyExternal(record.action);
+        const observed = await this.verifyExternal(record.action, record.externalResponse);
         if (observed.ok) {
           await this.ledger.transition(record.actionId, 'EXECUTED_UNVERIFIED', {}, 'reconciled after restart');
           await this.ledger.transition(record.actionId, 'VERIFIED', {
@@ -414,7 +414,7 @@ export class DiraOrchestrator {
       });
 
       // Outbox step 2: does the desired external state already exist?
-      const pre = await this.verifyExternal(record.action);
+      const pre = await this.verifyExternal(record.action, record.externalResponse);
       if (pre.ok) {
         await this.ledger.transition(record.actionId, 'EXECUTED_UNVERIFIED', {
           externalResponse: { alreadySatisfied: true },
@@ -464,7 +464,7 @@ export class DiraOrchestrator {
 
   /** Independent verification; on success commit to the internal world model. */
   private async verifyAndCommit(record: ActionRecord): Promise<boolean> {
-    const observed = await this.verifyExternal(record.action);
+    const observed = await this.verifyExternal(record.action, record.externalResponse);
     if (observed.ok) {
       const entry = this.recorder.record('VERIFY', `Verified: ${record.action.summary}`, {
         observed: observed.observed,
@@ -952,6 +952,7 @@ export class DiraOrchestrator {
 
   private async verifyExternal(
     action: PlannedAction,
+    receipt?: unknown,
   ): Promise<{ ok: boolean; observed: unknown }> {
     const d = action.desired_state as Record<string, string | number | undefined>;
     switch (action.type) {
@@ -984,12 +985,18 @@ export class DiraOrchestrator {
         return { ok: assignment?.owner === d.new_owner, observed: assignment };
       }
       case 'SEND_NOTIFICATION': {
+        const response = receipt as { messageId?: unknown; mode?: unknown } | undefined;
         const ok = await this.tools.gmail.verifyReply(
           String(d.thread_id),
           String(d.body_contains ?? ''),
-          { to: String(d.to), body: String(d.body) },
+          { to: String(d.to), body: String(d.body),
+            ...(typeof d.subject === 'string' ? { subject: d.subject } : {}),
+            ...(typeof response?.messageId === 'string' ? { messageId: response.messageId } : {}),
+          },
         );
-        return { ok, observed: { sent: ok } };
+        return { ok, observed: { messageVerified: ok,
+          ...(response?.mode === 'draft' || response?.mode === 'sent' ? { mode: response.mode } : {}),
+        } };
       }
       default:
         return { ok: false, observed: null };
