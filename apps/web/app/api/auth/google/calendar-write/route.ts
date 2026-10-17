@@ -19,7 +19,8 @@ export async function GET(request: Request): Promise<Response> {
         { status: upstream.status === 401 ? 401 : 502 },
       );
     }
-    const response = Response.redirect(location, 302);
+    // Native Response.redirect() has immutable headers, so construct a mutable response for cookies.
+    const response = new Response(null, { status: 302, headers: { location } });
     response.headers.append('set-cookie', cookie.replace('Path=/auth/google', 'Path=/api/auth/google'));
     response.headers.set('cache-control', 'private, no-store');
     return response;

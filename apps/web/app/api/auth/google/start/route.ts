@@ -15,7 +15,8 @@ export async function GET(): Promise<Response> {
     if (upstream.status !== 302 || !location || !cookie) {
       return Response.json({ error: 'Google sign-in could not be started' }, { status: 502 });
     }
-    const response = Response.redirect(location, 302);
+    // Native Response.redirect() has immutable headers, so construct a mutable response for cookies.
+    const response = new Response(null, { status: 302, headers: { location } });
     response.headers.append('set-cookie', cookie.replace('Path=/auth/google', 'Path=/api/auth/google'));
     response.headers.set('cache-control', 'private, no-store');
     return response;

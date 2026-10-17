@@ -8,11 +8,11 @@ export async function GET(request: Request): Promise<Response> {
   const googleError = incoming.searchParams.get('error');
   const origin = appOrigin(incoming.origin);
   if (googleError || !code || !state) {
-    const response = Response.redirect(new URL('/onboarding?auth_error=google', origin), 302);
+    const response = new Response(null, { status: 302, headers: { location: new URL('/onboarding?auth_error=google', origin).toString() } });
     response.headers.append('set-cookie', clearStateCookie());
     return response;
   }
-  if (!base) return Response.redirect(new URL('/onboarding?auth_error=unavailable', origin), 302);
+  if (!base) return new Response(null, { status: 302, headers: { location: new URL('/onboarding?auth_error=unavailable', origin).toString() } });
 
   try {
     const upstream = await fetch(`${base}/auth/google/complete`, {
@@ -28,13 +28,13 @@ export async function GET(request: Request): Promise<Response> {
     if (!upstream.ok) throw new Error('Google sign-in did not complete');
     const result = await upstream.json() as { sessionCookie: string; clearStateCookie: string };
     if (!result.sessionCookie || !result.clearStateCookie) throw new Error('Invalid sign-in response');
-    const response = Response.redirect(new URL('/onboarding?signed_in=1', origin), 302);
+    const response = new Response(null, { status: 302, headers: { location: new URL('/onboarding?signed_in=1', origin).toString() } });
     response.headers.append('set-cookie', result.sessionCookie);
     response.headers.append('set-cookie', result.clearStateCookie.replace('Path=/auth/google', 'Path=/api/auth/google'));
     response.headers.set('cache-control', 'private, no-store');
     return response;
   } catch {
-    const response = Response.redirect(new URL('/onboarding?auth_error=unavailable', origin), 302);
+    const response = new Response(null, { status: 302, headers: { location: new URL('/onboarding?auth_error=unavailable', origin).toString() } });
     response.headers.append('set-cookie', clearStateCookie());
     return response;
   }
