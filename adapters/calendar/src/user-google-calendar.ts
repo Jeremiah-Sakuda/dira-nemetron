@@ -230,7 +230,7 @@ export class GoogleUserCalendarTool implements CalendarTool {
   }
 }
 
-function googleEventIdFor(value: string): string {
+export function googleEventIdFor(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 40);
 }
 

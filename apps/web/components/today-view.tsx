@@ -11,6 +11,8 @@ interface WorkflowSummary { id: string; status: string; mutationSummary?: string
 
 export function TodayView() {
   const session = useSession();
+  const [monitoring,setMonitoring] = useState<{simulated?:boolean;sources:{name:string;status:string;lastSuccessfulSyncAtIso:string|null}[];dailySummaryEnrolled?:boolean;latestSummary?:string|null;disclosure:string} | null>(null);
+  const [monitoringError,setMonitoringError] = useState('');
   const [pending, setPending] = useState<number | null>(null);
   const [runs, setRuns] = useState<WorkflowSummary[]>([]);
   const [error, setError] = useState('');
@@ -20,6 +22,8 @@ export function TodayView() {
   useEffect(() => {
     if (session.status !== 'signed-in') return;
     let cancelled = false;
+    setMonitoring(null); setMonitoringError('');
+    void fetch('/api/account-monitoring',{cache:'no-store'}).then(async response=>{if(!response.ok)throw Error('Monitoring status unavailable');const value=await response.json();if(!cancelled)setMonitoring(value);}).catch(()=>{if(!cancelled)setMonitoringError('Monitoring status unavailable. Check source settings before assuming a source is being watched.');});
     setLoaded(false); setError(''); setPending(null);
     void (async () => {
       const [approvals, workflows] = await Promise.all([fetch('/api/approvals', { cache: 'no-store' }), fetch('/api/workflows', { cache: 'no-store' })]);
@@ -65,6 +69,14 @@ export function TodayView() {
           {session.kind === 'demo' && <Link className="btn btn-secondary" href="/try">Send the demo another email</Link>}
         </section>
       </div>
+      <section className="panel" aria-labelledby="monitoring-title"><div className="section-label">Source health</div><h2 id="monitoring-title">What Dira is watching</h2>
+        {monitoringError ? <p className="form-error" role="alert">{monitoringError}</p> : !monitoring ? <p role="status">Checking source settings…</p> : <>
+          {monitoring.sources.map(source=><article key={source.name}><h3>{source.name} · {source.status}</h3><p className="muted">Last complete sync: {source.lastSuccessfulSyncAtIso ? new Date(source.lastSuccessfulSyncAtIso).toLocaleString() : 'not recorded'}</p></article>)}
+          {!monitoring.simulated && <p>Daily summaries: {monitoring.dailySummaryEnrolled ? 'enrolled' : 'not enrolled'} · last report {monitoring.latestSummary ? new Date(monitoring.latestSummary).toLocaleString() : 'not recorded'}</p>}
+          <p className="footnote">{monitoring.disclosure}</p>
+        </>}
+        <Link className="btn btn-secondary" href="/onboarding?section=connections">Review source permissions</Link>
+      </section>
       <RelayedNotes />
       {session.kind !== 'demo' && <section className="panel"><MorningSummary /></section>}
     </main>

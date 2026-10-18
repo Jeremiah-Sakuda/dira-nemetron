@@ -130,7 +130,7 @@ export async function runSourceCheck(
       to: 'owner',
       subject: (result.title ?? check.domain).slice(0, 200),
       body: content,
-      receivedAtIso: new Date().toISOString(),
+      receivedAtIso: (options.now ?? (()=>new Date()))().toISOString(),
     };
     const outcome = await handleAccountEmail(store, accountId, event, options);
     considered.push({

@@ -152,11 +152,11 @@ export function AccountSetup() {
 
       {loading ? <section className="panel"><p role="status" className="muted">Checking your account…</p></section>
         : !account ? (
-          <section className="panel setup-signin">
+          <section className="panel setup-signin"><p className="muted">Google connections are currently restricted to the owner pilot. Everyone can use the <a href="/try">synthetic demo without sign-in</a>.</p>
             <GoogleMark />
             <h2>Start with your Google account</h2>
             <p>Connect Calendar with read-only access. You choose separately whether Dira can make Calendar changes or create Gmail drafts.</p>
-            <a className="btn google-connect" href="/api/auth/google/start">Continue with Google</a>
+            <a className="btn google-connect" href="/api/auth/google/start">Owner pilot · Continue with Google</a>
           </section>
         ) : (
           <>

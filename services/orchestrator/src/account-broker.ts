@@ -2,8 +2,9 @@ import { ActionLedger, type ActionRecord } from '@dira/action-ledger';
 import { isoToMinutes, type Commitment, type DomainState } from '@dira/commitment-model';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { evaluateAction } from '@dira/policy-engine';
-import { applyAction } from '@dira/constraint-engine';
-import { assertReviewedCalendarOccupancy } from './calendar-occupancy.js';
+import { assertReviewedCalendarOccupancy, type CalendarCreatedIntent } from './calendar-occupancy.js';
+import { calendarProviderId, calendarReceipt } from './calendar-receipt.js';
+import { assertRemainingCalendarPlanFresh, createdCalendarIntent } from './calendar-resume.js';
 import { ToolError, type CalendarEvent } from '@dira/tool-contracts';
 import { calendarIsoToMinutes, revalidateAccountApproval } from './account-approval.js';
 import {
@@ -98,7 +99,7 @@ export async function resumeApprovedAccountWorkflow(
         let recovered = ledger.get(record.actionId)!;
         if (recovered.status === 'EXECUTING') {
           recovered = await ledger.transition(recovered.actionId, 'EXECUTED_UNVERIFIED', {
-            externalResponse: fresh.observed,
+            externalResponse: record.action.type === 'CREATE_CALENDAR_EVENT' ? calendarReceipt(fresh.observed as CalendarEvent, record.idempotencyKey) : fresh.observed,
           }, 'recovered uncertain Calendar write by fresh read');
         }
         await ledger.transition(recovered.actionId, 'VERIFIED', {
@@ -164,12 +165,12 @@ export async function resumeApprovedAccountWorkflow(
             if (!record || record.actionId !== initial.actionId) throw new Error('another action is already being executed for this workflow');
           } else if (record.status === 'EXECUTING') {
             record = await ledger.transition(record.actionId, 'EXECUTED_UNVERIFIED', {
-              externalResponse: preflight.observed,
+              externalResponse: record.action.type === 'CREATE_CALENDAR_EVENT' ? calendarReceipt(preflight.observed!, record.idempotencyKey) : preflight.observed,
             }, 'recovered external write by fresh Calendar read');
           }
           if (record.status === 'EXECUTING') {
             record = await ledger.transition(record.actionId, 'EXECUTED_UNVERIFIED', {
-              externalResponse: preflight.observed,
+              externalResponse: record.action.type === 'CREATE_CALENDAR_EVENT' ? calendarReceipt(preflight.observed!, record.idempotencyKey) : preflight.observed,
             }, 'recovered idempotent Calendar result');
           }
         } else {
@@ -191,10 +192,10 @@ export async function resumeApprovedAccountWorkflow(
           if (!record || record.actionId !== initial.actionId || record.status !== 'EXECUTING') {
             throw new Error('another action is already being executed for this workflow');
           }
-          const observedState = ledger.byWorkflow(workflowId).filter(r => r.status === 'VERIFIED')
-            .reduce((state, completed) => applyAction(state, completed.action), snapshot.state);
+          const currentRecords = ledger.byWorkflow(workflowId);
+          const observedState = assertRemainingCalendarPlanFresh(snapshot.state, snapshot.profile, currentRecords, snapshot.policy);
           const response = await executeCalendarAction(calendar, observedState, record,
-            records.filter(r => r.action.type === 'CREATE_CALENDAR_EVENT').map(r => r.idempotencyKey));
+            currentRecords.filter(r => r.action.type === 'CREATE_CALENDAR_EVENT' && (r.status === 'VERIFIED' || r.actionId === record!.actionId)).map(createdCalendarIntent));
           record = await ledger.transition(record.actionId, 'EXECUTED_UNVERIFIED', { externalResponse: response }, 'Calendar API returned; independent verification follows');
         }
 
@@ -204,6 +205,7 @@ export async function resumeApprovedAccountWorkflow(
           throw new Error(`Calendar did not match approved action “${record.action.summary}”.`);
         }
         await ledger.transition(record.actionId, 'VERIFIED', {
+          ...(record.action.type === 'CREATE_CALENDAR_EVENT' ? {externalResponse:calendarReceipt(verified.observed as CalendarEvent, record.idempotencyKey)} : {}),
           verification: { verifiedAtIso: new Date().toISOString(), observed: verified.observed },
         }, 'fresh Calendar read matches the approved intent');
       } catch (error) {
@@ -272,9 +274,7 @@ function graphReflectsVerifiedActions(state: DomainState, records: ActionRecord[
     const desired = action.desired_state as Record<string, unknown>;
     if (action.type === 'DELETE_CALENDAR_EVENT') return state.commitments[action.target]?.status === 'DROPPED';
     if (action.type === 'CREATE_CALENDAR_EVENT') {
-      const response = record.externalResponse as { id?: unknown; metadata?: { googleEventId?: unknown } } | undefined;
-      const googleEventId = typeof response?.id === 'string' ? response.id
-        : typeof response?.metadata?.googleEventId === 'string' ? response.metadata.googleEventId : undefined;
+      const googleEventId = calendarProviderId(record.externalResponse);
       if (!googleEventId) return false;
       const commitment = state.commitments[`cal-${googleEventId}`];
       return commitmentMatchesDesired(commitment, desired, state.horizonStartIso);
@@ -339,13 +339,14 @@ async function inspectCalendarAction(
   return { alreadyApplied: false, observed: current };
 }
 
-async function executeCalendarAction(calendar: GoogleUserCalendarTool, state: DomainState, record: ActionRecord, allowedCreatedIds: string[]): Promise<unknown> {
-  await assertReviewedCalendarOccupancy(calendar, state, allowedCreatedIds);
+async function executeCalendarAction(calendar: GoogleUserCalendarTool, state: DomainState, record: ActionRecord, createdIntents: CalendarCreatedIntent[]): Promise<unknown> {
+  await assertReviewedCalendarOccupancy(calendar, state, createdIntents);
   const action = record.action;
   const desired = action.desired_state as Record<string, unknown>;
   if (action.type === 'CREATE_CALENDAR_EVENT') {
     const event = calendarEventFromAction(action, record.idempotencyKey);
-    return calendar.createEvent(event);
+    const receipt = await calendar.createEvent(event);
+    return {kind:'google-calendar',googleEventId:receipt.id,logicalId:record.idempotencyKey};
   }
   const commitment = state.commitments[action.target];
   if (!commitment?.externalId) throw new Error(`Calendar source id is missing for ${action.target}`);

@@ -6,11 +6,11 @@ export default function HomePage() {
     <main className="landing">
       <section className="landing-hero" aria-labelledby="hero-title">
         <div className="section-label">Personal AI · persistent memory · yours</div>
-        <h1 id="hero-title" className="landing-title">When one thing moves, Dira fixes everything it breaks.</h1>
+        <h1 id="hero-title" className="landing-title">When one thing moves, protect the promises connected to it.</h1>
         <p className="landing-lede">
           A professor moves your midterm two days earlier. Suddenly your interview is too close, your study time is gone,
-          and a teammate is waiting on work you can&rsquo;t do. Dira notices, finds every promise the change breaks, and
-          repairs your week within limits you set. It prepares updates for the people affected, with drafts only by default.
+          and a teammate is waiting on work you can&rsquo;t do. Dira checks the commitments and dependencies you have reviewed, then
+          proposes a feasible repair within limits you set. It prepares updates for the people affected, with drafts only by default.
         </p>
         <StartButtons />
         <p className="landing-note">The demo is a synthetic student week with a simulated calendar and mailbox. It needs no account and cannot contact real people.</p>

@@ -7,6 +7,7 @@ import type { WorkflowRun, WorkflowStore } from '@dira/agent';
 import type { CalendarCommitmentDraft, GraphEdgeDataEditsInput, GraphEdgeDraft, GraphProposalEditsInput } from '@dira/agent';
 import type { AvailabilityProfile } from './account-planning.js';
 import { AccountPolicySettingsSchema, DEFAULT_ACCOUNT_POLICY, type AccountPolicySettings } from './account-policy.js';
+import { calendarProviderId } from './calendar-receipt.js';
 import { availabilityIntervals, rebaseDomainState } from './account-planning.js';
 
 export interface DiraAccount {
@@ -128,7 +129,7 @@ export class PostgresAccountStore {
   }
 
   async initialize(): Promise<void> {
-    const migrations: string[] = [];
+    const migrations: {name:string;sql:string}[] = [];
     for (const name of [
       '001_account_state.sql', '002_google_credentials.sql',
       '003_graph_proposals.sql', '004_graph_edge_proposals.sql',
@@ -138,7 +139,7 @@ export class PostgresAccountStore {
       '013_account_daily_reports.sql', '014_event_repair_and_demo.sql', '015_correction_rule_candidates.sql', '016_hermes_and_telegram.sql',
       '017_inference_usage.sql', '018_durable_memory.sql',
     ]) {
-      migrations.push(await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8'));
+      migrations.push({name,sql:await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8')});
     }
     // Serialize schema changes across processes (web-facing service, daily
     // job, tests) so concurrent startups never race on CREATE statements.
@@ -153,7 +154,24 @@ export class PostgresAccountStore {
         }
       }
       await client.query("SELECT pg_advisory_lock(hashtext('dira-schema-migrations'))");
-      for (const migration of migrations) await client.query(migration);
+      await client.query(`CREATE TABLE IF NOT EXISTS dira_schema_migrations (
+        name text PRIMARY KEY, sha256 text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now()
+      )`);
+      const applied = await client.query<{name:string;sha256:string}>('SELECT name,sha256 FROM dira_schema_migrations');
+      const known = new Map(applied.rows.map(row=>[row.name,row.sha256]));
+      for (const migration of migrations) {
+        const hash = createHash('sha256').update(migration.sql).digest('hex');
+        if (known.has(migration.name)) {
+          if (known.get(migration.name) !== hash) throw new Error(`Applied migration ${migration.name} changed; add a new migration instead`);
+          continue;
+        }
+        await client.query('BEGIN');
+        try {
+          await client.query(migration.sql);
+          await client.query('INSERT INTO dira_schema_migrations(name,sha256) VALUES ($1,$2)',[migration.name,hash]);
+          await client.query('COMMIT');
+        } catch(error) { await client.query('ROLLBACK'); throw error; }
+      }
     } finally {
       await client.query("SELECT pg_advisory_unlock(hashtext('dira-schema-migrations'))").catch(() => undefined);
       client.release();
@@ -898,11 +916,7 @@ export class PostgresAccountStore {
           const title = typeof desired.title === 'string' ? desired.title : action.summary;
           const relatedId = typeof desired.reserves_effort_for === 'string' ? desired.reserves_effort_for : undefined;
           const related = relatedId ? state.commitments[relatedId] : undefined;
-          const externalResponse = record.externalResponse as { id?: unknown; metadata?: { googleEventId?: unknown } } | undefined;
-          const googleEventId = typeof externalResponse?.id === 'string'
-            ? externalResponse.id
-            : typeof externalResponse?.metadata?.googleEventId === 'string'
-              ? externalResponse.metadata.googleEventId : undefined;
+          const googleEventId = calendarProviderId(record.externalResponse);
           if (!googleEventId) throw new Error(`verified Calendar event id is missing for ${record.actionId}`);
           const graphId = `cal-${googleEventId}`;
           const existing = state.commitments[graphId];

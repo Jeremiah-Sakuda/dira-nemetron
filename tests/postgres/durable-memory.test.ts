@@ -10,6 +10,8 @@ import { buildDemoWorld } from '../../services/orchestrator/src/demo-world.js';
 import { createDemoAccount, deleteAccountData } from '../../services/orchestrator/src/account-records.js';
 import { syncAccountMemory, exportAccountMemory } from '../../services/orchestrator/src/account-memory.js';
 import { configureDurableMemoryStore, withDurableMemory } from '../../services/orchestrator/src/durable-memory.js';
+import { evaluateAction } from '@dira/policy-engine';
+import { AccountPolicySettingsSchema } from '../../services/orchestrator/src/account-policy.js';
 import { runScheduledPass, scheduledRequestAuthorized } from '../../services/orchestrator/src/scheduled-pass.js';
 
 const url = process.env.DIRA_TEST_DATABASE_URL;
@@ -58,6 +60,15 @@ suite('serverless private memory and scheduler authentication', () => {
     expect(await readFile(join(directory, hash, 'graph.json'), 'utf8')).toBe(graph);
     expect(await readFile(join(directory, hash, 'skills/dira/rule-recovery/SKILL.md'), 'utf8')).toBe(skill);
     expect(row.rows[0].commit_sha).toMatch(/^[0-9a-f]{40}$/);
+    const recoveredPolicy=AccountPolicySettingsSchema.parse(JSON.parse(await readFile(join(directory,hash,'policy.json'),'utf8')));
+    const recoveredState=await store.ensureDomainState(id);
+    const move={type:'MOVE_CALENDAR_EVENT' as const,target:'tuesday-workout',desired_state:{start_min:1500},provenance:['user_policy_config:flexibility=OPTIONAL'],external_system:'calendar' as const,summary:'Later synthetic change'};
+    const withoutRule=evaluateAction(recoveredState,move,[],[]);
+    const withRecoveredRule=evaluateAction(recoveredState,move,[],recoveredPolicy.correctionRules);
+    expect(withoutRule.verdict).toBe('ALLOW');
+    expect(withRecoveredRule.verdict).toBe('REQUIRE_APPROVAL');
+    expect(withRecoveredRule.rule).toBe('user-rule:rule-recovery');
+
   });
   it('preserves imported history reachable only through a custom Git reference', async () => {
     const id = `demo-${randomUUID()}`; ids.push(id);

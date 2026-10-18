@@ -1,5 +1,5 @@
 import { commitmentStakeholders, minutesToIso, minutesToLabel, type DomainState } from '@dira/commitment-model';
-import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
+import { GoogleUserCalendarTool, googleEventIdFor } from '@dira/adapter-calendar/user-google';
 import { GoogleUserMailTool, deterministicMessageId, withDisclosure, type OutboundMailGuard } from '@dira/adapter-gmail/user-google-mail';
 import {
   ToolError,
@@ -129,7 +129,7 @@ class GoogleIdCalendarTool implements CalendarTool {
     return value.startsWith('google:') || value.startsWith('cal-') ? value : `google:${value}`;
   }
   getEvents() { return this.inner.getEvents(); }
-  async createEvent(event: CalendarEvent) { await assertReviewedCalendarOccupancy(this.inner, this.state(), [event.id]); return this.inner.createEvent(event); }
+  async createEvent(event: CalendarEvent) { await assertReviewedCalendarOccupancy(this.inner, this.state(), [{logicalId:event.id,googleEventId:googleEventIdFor(event.id),title:event.title,startIso:event.startIso,endIso:event.endIso}]); return this.inner.createEvent(event); }
   async moveEvent(id: string, startIso: string, endIso: string) { await assertReviewedCalendarOccupancy(this.inner, this.state()); return this.inner.moveEvent(this.id(id), startIso, endIso); }
   async deleteEvent(id: string) { await assertReviewedCalendarOccupancy(this.inner, this.state()); return this.inner.deleteEvent(this.id(id)); }
   async verifyEvent(query: { id?: string; title?: string; startIso?: string }) {

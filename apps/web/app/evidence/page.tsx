@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CurrentEvidence } from '../../components/current-evidence';
 import { SlackChart } from '../../components/slack-chart';
 import { StatusPill, Tile } from '../../components/status';
 import { fmtSlack, getGoldenRunData } from '../../lib/replay-data';
@@ -20,7 +21,7 @@ export default async function EvidencePage() {
     <main>
       <section className="evidence-intro" aria-labelledby="evidence-title">
         <div className="section-label">Engine evidence · deterministic, credential-free</div>
-        <h1 id="evidence-title" className="page-title">The repair engine, proven without any account</h1>
+        <h1 id="evidence-title" className="page-title">Repairs you can inspect, without an account</h1>
         <p className="page-sub">
           The live product is the Try and Today pages. This page keeps the reproducible engine proofs that carried over from
           Dira v1: the 48-Hour Shock replay, its ledger, the variation matrix, and the reliability runs. They use stored
@@ -34,6 +35,7 @@ export default async function EvidencePage() {
           <Link className="btn btn-secondary" href="/evidence/graph">Reference graph</Link>
         </div>
       </section>
+      <CurrentEvidence />
       <section className="problem-hero" aria-labelledby="problem-title">
         <div className="panel problem-copy">
           <div className="section-label">When plans collide</div>

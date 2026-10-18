@@ -26,6 +26,7 @@ import { buildDemoWorld, buildDemoWorldAt, DEMO_DISCLOSURE, DEMO_SESSION_TTL_SEC
 import { withEgressContext, egressAllowlist } from './egress-guard.js';
 import { createSessionCookie, getSessionAccountId, isAllowedOrigin } from './google-auth.js';
 import type { PostgresAccountStore } from './postgres-store.js';
+import { accountMonitoring } from './account-monitoring.js';
 import { inferenceUsageSummary } from './inference-budget.js';
 
 export interface AccountRouteContext {
@@ -76,7 +77,7 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
     && !url.pathname.startsWith('/api/rules') && !url.pathname.startsWith('/api/telegram')
     && !url.pathname.startsWith('/api/hermes') && !url.pathname.startsWith('/api/notes')
     && !url.pathname.startsWith('/api/source-checks') && url.pathname !== '/api/account-graph'
-    && url.pathname !== '/api/egress' && url.pathname !== '/api/account') {
+    && url.pathname !== '/api/account-monitoring' && url.pathname !== '/api/egress' && url.pathname !== '/api/account') {
     return false;
   }
   const accountId = getSessionAccountId(req);
@@ -86,6 +87,11 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
   if (!kind) { json(req, res, 401, { error: 'account_not_found' }); return true; }
   const mutating = req.method !== 'GET';
   if (mutating && !isAllowedOrigin(req.headers.origin)) { json(req, res, 403, { error: 'origin_not_allowed' }); return true; }
+
+  if (req.method === 'GET' && url.pathname === '/api/account-monitoring') {
+    json(req,res,200,kind === 'demo' ? {simulated:true,sources:[],disclosure:'Synthetic demo: changes are delivered manually. No real source is monitored.'} : await accountMonitoring(store,accountId));
+    return true;
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/demo/state') {
     if (kind !== 'demo') { json(req, res, 404, { error: 'not a demo session' }); return true; }
@@ -130,7 +136,8 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
     if (!state) { json(req, res, 404, { error: 'demo state missing' }); return true; }
     const world = buildDemoWorldAt(accountId, state.horizonStartIso);
     const preset = parsed.data.presetId ? world.presets.find((item) => item.id === parsed.data.presetId) : undefined;
-    const custom = !preset || parsed.data.body !== undefined && parsed.data.body !== preset.email.body
+    const custom = !preset || parsed.data.subject !== undefined && parsed.data.subject !== preset.email.subject
+      || parsed.data.body !== undefined && parsed.data.body !== preset.email.body
       || parsed.data.from !== undefined && parsed.data.from !== preset.email.from;
     if (custom && !liveModelConfigured()) {
       json(req, res, 409, { error: 'Live Nemotron interpretation is not configured on this deployment, so only the unedited sample emails can run. They use stored interpretations and are labeled as fixtures.' });

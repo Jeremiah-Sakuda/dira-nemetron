@@ -32,7 +32,7 @@ export function StartButtons() {
       )}
       {session.kind === 'demo' && <a className="btn btn-secondary btn-large" href="/try">Back to your demo</a>}
       {session.status !== 'signed-in' || session.kind === 'demo' ? (
-        <a className="btn btn-secondary btn-large" href="/api/auth/google/start">Sign in with Google</a>
+        <a className="btn btn-secondary btn-large" href="/api/auth/google/start">Owner pilot · Google sign-in</a>
       ) : null}
       {error && <p className="form-error" role="alert">{error}</p>}
     </div>

@@ -67,7 +67,7 @@ suite('official-source checks with Tavily', () => {
         { url: 'https://econ402.university.demo/exams', title: 'ECON 402 exams', content: `Updated schedule. ${quote}.` },
         { url: 'https://elsewhere.example/econ402', title: 'Mirror', content: quote },
       ]),
-      model: pageModel(wednesday, quote),
+      model: pageModel(wednesday, quote), now:()=>new Date(world.clockIso),
     });
     expect(result.considered.map((item) => item.status)).toEqual(['AWAITING_APPROVAL', 'SKIPPED']);
     expect(result.considered[1]!.reason).toContain('not on the official domain');
@@ -78,7 +78,7 @@ suite('official-source checks with Tavily', () => {
     const before = (await store.loadDomainState(accountId))!.commitments['econ402-midterm-2']!.startMin;
     const result = await runSourceCheck(store, accountId, 'econ402-midterm-2', {
       fetchImpl: tavily([{ url: 'https://econ402.university.demo/news', title: 'News', content: 'Course news and office hours.' }]),
-      model: pageModel(minutesToIso(1440 + 9 * 60, world.horizonStartIso, 'America/Chicago'), 'Midterm moved to Wednesday 9 AM'),
+      model: pageModel(minutesToIso(1440 + 9 * 60, world.horizonStartIso, 'America/Chicago'), 'Midterm moved to Wednesday 9 AM'), now:()=>new Date(world.clockIso),
     });
     expect(result.considered[0]!.status).toBe('WAITING_REVIEW');
     expect((await store.loadDomainState(accountId))!.commitments['econ402-midterm-2']!.startMin).toBe(before);

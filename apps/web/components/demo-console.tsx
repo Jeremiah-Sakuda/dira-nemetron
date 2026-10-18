@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlightTimeline, type FlightLine } from './flight-timeline';
 import { PlanInbox } from './plan-inbox';
 import { formatDay, formatSlack, formatWhen, label, readJson } from '../lib/format';
@@ -41,6 +41,9 @@ export function DemoConsole() {
   const [state, setState] = useState<DemoState | null>(null);
   const [baseline, setBaseline] = useState<Surfaces | null>(null);
   const [surfaces, setSurfaces] = useState<Surfaces | null>(null);
+  const [surfaceError,setSurfaceError] = useState('');
+  const [surfaceCheckedAt,setSurfaceCheckedAt] = useState<string | null>(null);
+  const resultRef=useRef<HTMLElement>(null);
   const [presetId, setPresetId] = useState('professor-move');
   const [draft, setDraft] = useState<{ from: string; subject: string; body: string } | null>(null);
   const [probe, setProbe] = useState(true);
@@ -60,12 +63,15 @@ export function DemoConsole() {
     const body = await readJson<DemoState>(response);
     if (!response.ok) throw new Error(body.error ?? 'The demo could not be loaded.');
     setState(body);
+    setSurfaces(null); setSurfaceCheckedAt(null); setSurfaceError('');
+    try {
     const surfaceResponse = await fetch('/api/surfaces', { cache: 'no-store' });
     const surfaceBody = await readJson<Surfaces>(surfaceResponse);
     if (surfaceResponse.ok) {
-      setSurfaces(surfaceBody);
+      setSurfaceCheckedAt(new Date().toISOString()); setSurfaces(surfaceBody);
       setBaseline((current) => current ?? surfaceBody);
-    }
+    } else throw new Error('Independent surface reads are unavailable. No fresh external result is displayed.');
+    } catch { setSurfaces(null); setSurfaceError('Independent surface reads are unavailable. Retry before relying on an external result.'); }
     setPhase('ready');
   }, []);
 
@@ -115,8 +121,11 @@ export function DemoConsole() {
       setRun(body.run);
       setFlight(body.flight);
       await refresh();
+      resultRef.current?.focus();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
+      setState(current => current ? {...current,inferenceUsage:undefined} : current);
+      await refresh().catch(() => {});
     } finally { setBusy(''); }
   }
 
@@ -139,6 +148,8 @@ export function DemoConsole() {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally { setBusy(''); }
   }
+
+  async function recheck() { setBusy('check'); try { await refresh(); } catch(cause) {setError(String(cause));} finally {setBusy('');} }
 
   const days = useMemo(() => groupByDay(state), [state]);
 
@@ -182,9 +193,10 @@ export function DemoConsole() {
           </button>
         </div>
       </header>
-      {state.modelMode === 'live' && !state.inferenceUsage?.availability?.available && <section className="panel" aria-label="Inference availability"><p>{state.inferenceUsage?.availability?.reason ?? 'Availability has not been confirmed. No model call will be attempted until the check succeeds.'}</p>{state.inferenceUsage?.availability?.resetsAtIso && <p>Retry after {new Date(state.inferenceUsage.availability.resetsAtIso).toLocaleString()}.</p>}<Link className="btn btn-secondary" href="/evidence">Run the credential-free replay</Link></section>}
+      {state.modelMode === 'live' && !state.inferenceUsage?.availability?.available && <section className="panel" aria-label="Inference availability"><p>{state.inferenceUsage?.availability?.reason ?? 'Availability has not been confirmed. No model call will be attempted until the check succeeds.'}</p>{state.inferenceUsage?.availability?.resetsAtIso && <p>Retry after {new Date(state.inferenceUsage.availability.resetsAtIso).toLocaleString()}.</p>}<button className="btn btn-secondary" onClick={() => void recheck()} disabled={busy !== ''}>Check availability</button> <Link className="btn btn-secondary" href="/evidence">Run the credential-free replay</Link></section>}
       {error && <p className="form-error" role="alert">{error}</p>}
 
+      <nav className="hero-actions" aria-label="Demo steps"><a className="btn btn-secondary" href="#trigger-title">1 · Send an email</a>{run && <><a className="btn btn-secondary" href="#run-title">2 · Review the result</a><a className="btn btn-secondary" href="#verify-title">3 · Verify changes</a></>}</nav>
       <div className="demo-grid">
         <section className="panel demo-week" aria-labelledby="week-title">
           <div className="demo-week-heading">
@@ -216,7 +228,7 @@ export function DemoConsole() {
         </section>
 
         <section className="panel demo-trigger" aria-labelledby="trigger-title">
-          <h2 id="trigger-title">Send Dira an email</h2>
+          <h2 id="trigger-title" tabIndex={-1}>Send Dira an email</h2>
           <div className="preset-tabs" role="tablist" aria-label="Sample emails">
             {state.presets.map((item) => (
               <button key={item.id} type="button" role="tab" aria-selected={presetId === item.id}
@@ -249,7 +261,7 @@ export function DemoConsole() {
       </div>
 
       {run && (
-        <section className="panel demo-run" aria-live="polite" aria-labelledby="run-title">
+        <section ref={resultRef} tabIndex={-1} className="panel demo-run" aria-live="polite" aria-labelledby="run-title">
           <div className="run-summary">
             <div>
               <div className="section-label">Workflow {run.id.slice(-12)}</div>
@@ -268,21 +280,22 @@ export function DemoConsole() {
           {run.status === 'AWAITING_APPROVAL' && (
             <div className="demo-approval">
               <h3>Policy paused one action for you</h3>
-              <p className="muted">The demo policy requires approval before Dira hands work to someone else. This is the same inbox signed-in users see at <Link href="/approvals">Approvals</Link>; on a phone the same decision arrives as a Telegram button.</p>
+              <p className="muted">The demo policy requires approval before Dira hands work to someone else. This is the same inbox signed-in users see at <Link href="/approvals">Approvals</Link>; Telegram can deliver approval buttons after the owner separately links an account.</p>
               <PlanInbox compact workflowId={run.id} onChanged={reloadRun} />
             </div>
           )}
-          <details className="flight-details" open>
+          <details className="flight-details">
             <summary>Flight record · {flight.length} lines</summary>
             <FlightTimeline lines={flight} />
           </details>
         </section>
       )}
 
+      {surfaceError && <section className="panel" role="alert"><h2 id="verify-title">Verification unavailable</h2><p>{surfaceError}</p><button className="btn" onClick={() => void recheck()} disabled={busy !== ''}>Retry verification</button></section>}
       {surfaces && (changed.length > 0 || outbound.length > 0 || surfaces.bookings.length > 0) && (
         <section className="panel demo-verify" aria-labelledby="verify-title">
           <h2 id="verify-title">What actually changed</h2>
-          <p className="muted">Fresh reads of each simulated surface, compared with the start of the session. Dira marks an action verified only after a read like this.</p>
+          <p className="muted">Independent simulated-surface reads checked {surfaceCheckedAt ? new Date(surfaceCheckedAt).toLocaleTimeString() : 'at an unknown time'}, compared with the start of the session. Dira marks an action verified only after a read like this.</p>
           <div className="verify-grid">
             <div>
               <h3>{state.labels.calendar}</h3>

@@ -43,3 +43,7 @@ make eval-repair-fixture
 - [Gmail draft-only](../evidence/2026-10-16-google-gmail-live.json): explicitly operator-provisioned synthetic plans, one fresh draft and one recovery without duplication. No email sent.
 - Current owner enrollment is a restricted pilot; no Google sign-in is required for judges. Local Hermes setup is distinct from public Cloud Run execution.
 - Live inference has shared lifetime and rolling allowances. A paused state links directly to the credential-free replay; total exhaustion needs an operator decision and is never presented as a timed reset.
+
+## Operating the free path
+
+See [judge availability and operating plan](judge-availability.md). Hosting allowance and actual model availability are separate. Existing deployment is observed today; uninterrupted access through December 15 is a future operational obligation, not a measured result.
