@@ -17,6 +17,7 @@ import {
   type ToolSet,
 } from '@dira/tool-contracts';
 import type { PostgresAccountStore } from './postgres-store.js';
+import { assertReviewedCalendarOccupancy } from './calendar-occupancy.js';
 
 /**
  * Per-account execution tools for the event-driven repair engine.
@@ -86,7 +87,7 @@ export function buildAccountToolSet(context: AccountToolContext): ToolSet {
       context.google!.accessToken,
       async () => (await context.google!.scopes()).includes('https://www.googleapis.com/auth/calendar.events'),
       context.google!.calendarFenced,
-    ));
+    ), context.state);
   return {
     calendar,
     gmail,
@@ -123,14 +124,14 @@ function mailGuard(context: AccountToolContext): OutboundMailGuard {
 
 /** Google ids are stored bare on commitments; the user adapter addresses them as google:<id>. */
 class GoogleIdCalendarTool implements CalendarTool {
-  constructor(private readonly inner: GoogleUserCalendarTool) {}
+  constructor(private readonly inner: GoogleUserCalendarTool, private readonly state: () => DomainState) {}
   private id(value: string): string {
     return value.startsWith('google:') || value.startsWith('cal-') ? value : `google:${value}`;
   }
   getEvents() { return this.inner.getEvents(); }
-  async createEvent(event: CalendarEvent) { return this.inner.createEvent(event); }
-  moveEvent(id: string, startIso: string, endIso: string) { return this.inner.moveEvent(this.id(id), startIso, endIso); }
-  deleteEvent(id: string) { return this.inner.deleteEvent(this.id(id)); }
+  async createEvent(event: CalendarEvent) { await assertReviewedCalendarOccupancy(this.inner, this.state(), [event.id]); return this.inner.createEvent(event); }
+  async moveEvent(id: string, startIso: string, endIso: string) { await assertReviewedCalendarOccupancy(this.inner, this.state()); return this.inner.moveEvent(this.id(id), startIso, endIso); }
+  async deleteEvent(id: string) { await assertReviewedCalendarOccupancy(this.inner, this.state()); return this.inner.deleteEvent(this.id(id)); }
   async verifyEvent(query: { id?: string; title?: string; startIso?: string }) {
     const event = await this.inner.verifyEvent({ ...query, ...(query.id ? { id: this.id(query.id) } : {}) });
     if (!event) return null;

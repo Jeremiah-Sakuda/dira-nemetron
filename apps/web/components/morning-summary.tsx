@@ -51,7 +51,7 @@ export function MorningSummary() {
                   {plan.actions.map((action, index) => <p key={`${action.type}-${index}`}>{action.summary} <span className="muted">· {label(action.policyVerdict)}</span></p>)}
                 </article>)}
               </div>}
-              {summary.plans.length > 0 && <a className="btn btn-secondary" href="#schedule-check">Open current repair options</a>}
+              {summary.plans.length > 0 && <a className="btn btn-secondary" href="/onboarding?section=focus#schedule-check">Open current repair options</a>}
               <p className="footnote">These are deterministic suggestions. A summary never executes actions or grants approval.</p>
             </>}
     </section>

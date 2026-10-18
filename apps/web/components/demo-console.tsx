@@ -6,6 +6,7 @@ import { FlightTimeline, type FlightLine } from './flight-timeline';
 import { PlanInbox } from './plan-inbox';
 import { formatDay, formatSlack, formatWhen, label, readJson } from '../lib/format';
 import { loadSession, startDemo } from '../lib/use-session';
+import { demoEmailEdited } from '../lib/demo-input';
 
 interface Preset { id: string; label: string; description: string; from: string; subject: string; body: string }
 interface DemoCommitment {
@@ -16,6 +17,7 @@ interface DemoState {
   disclosure: string;
   labels: { calendar: string; mail: string; delegation: string; booking: string; simulated: boolean };
   modelMode: 'live' | 'fixture';
+  inferenceUsage?: { availability?: { available: boolean; reason?: string; resetsAtIso?: string | null } };
   clockIso: string;
   timezone: string;
   presets: Preset[];
@@ -71,7 +73,7 @@ export function DemoConsole() {
 
   const preset = state?.presets.find((item) => item.id === presetId);
   const email = draft ?? (preset ? { from: preset.from, subject: preset.subject, body: preset.body } : null);
-  const edited = Boolean(draft && preset && (draft.body !== preset.body || draft.from !== preset.from));
+  const edited = demoEmailEdited(draft, preset);
 
   async function begin() {
     setBusy('start'); setError('');
@@ -140,7 +142,7 @@ export function DemoConsole() {
 
   const days = useMemo(() => groupByDay(state), [state]);
 
-  if (phase === 'loading') return <main><p className="muted" role="status">Loading the demo…</p></main>;
+  if (phase === 'loading') return <main><p className="muted" role="status">Loading the demo…</p>{error && <section className="panel"><p className="form-error" role="alert">{error}</p><button className="btn" onClick={() => {setError('');void refresh().catch(cause => setError(String(cause)));}}>Retry loading</button> <Link href="/evidence">Open the credential-free replay</Link></section>}</main>;
   if (phase === 'needs-session') {
     return (
       <main className="demo-start">
@@ -172,14 +174,15 @@ export function DemoConsole() {
           <p className="page-sub">{state.disclosure} Simulated clock: {formatDay(state.clockIso, state.timezone)}, {formatWhen(state.clockIso, state.timezone).split(' ').slice(1).join(' ')}.</p>
         </div>
         <div className="demo-header-actions">
-          <span className={`status-pill${state.modelMode === 'live' ? ' pill-good' : ''}`}>
-            {state.modelMode === 'live' ? 'Nemotron live · Nebius Token Factory' : 'Stored interpretations · no inference'}
+          <span className={`status-pill${state.modelMode === 'live' && state.inferenceUsage?.availability?.available ? ' pill-good' : ''}`}>
+            {state.modelMode === 'live' ? state.inferenceUsage?.availability?.available ? 'Nemotron available · Nebius Token Factory' : 'Live inference paused or awaiting availability check' : 'Stored interpretations · no inference'}
           </span>
           <button className="btn btn-secondary" type="button" onClick={() => void reset()} disabled={busy === 'reset'}>
             {busy === 'reset' ? 'Resetting…' : 'Reset demo'}
           </button>
         </div>
       </header>
+      {state.modelMode === 'live' && !state.inferenceUsage?.availability?.available && <section className="panel" aria-label="Inference availability"><p>{state.inferenceUsage?.availability?.reason ?? 'Availability has not been confirmed. No model call will be attempted until the check succeeds.'}</p>{state.inferenceUsage?.availability?.resetsAtIso && <p>Retry after {new Date(state.inferenceUsage.availability.resetsAtIso).toLocaleString()}.</p>}<Link className="btn btn-secondary" href="/evidence">Run the credential-free replay</Link></section>}
       {error && <p className="form-error" role="alert">{error}</p>}
 
       <div className="demo-grid">
@@ -239,7 +242,7 @@ export function DemoConsole() {
             <input type="checkbox" checked={probe} onChange={(event) => setProbe(event.target.checked)} />
             Also inject a labeled adversarial plan (cites a message that does not exist, mails an outside address)
           </label>
-          <button className="btn" type="button" onClick={() => void send()} disabled={busy === 'send' || !email}>
+          <button className="btn" type="button" onClick={() => void send()} disabled={busy === 'send' || !email || (state.modelMode === 'live' && !state.inferenceUsage?.availability?.available)}>
             {busy === 'send' ? 'Dira is working…' : 'Deliver this email to Dira'}
           </button>
         </section>

@@ -27,9 +27,9 @@ A professor moves a midterm from Friday to Wednesday. The interview that afterno
 
 You can also correct a step ("not at that time") and watch the confirmed rule shape the replan. Then send the prompt-injection email and see that nothing changes and nothing is sent.
 
-The demo is a synthetic student with a simulated calendar, mailbox and counterparty, isolated per session by row-level security and deleted after four hours. It cannot contact anyone real. Without a Nebius key it runs on stored interpretations and says so on screen. With a key, Super and Ultra run live.
+The demo is a synthetic student with a simulated calendar, mailbox and counterparty, isolated per session by row-level security and deleted after four hours. It cannot contact anyone real. Without a Nebius key it runs on stored interpretations and says so on screen. With a key and available durable call allowance, Super and Ultra run live. The demo displays paused quota windows; credential-free Evidence remains available without model credits.
 
-**Your own account:** the implemented flow grants Calendar, Gmail and drafting one scope at a time, then asks you to confirm the proposed graph, source authority and effort estimates. Google sign-in on the hosted deployment still needs its OAuth client configured and real provider actions verified. Follow [the controlled Google verification guide](docs/submission/google-live-verification.md).
+**Your own account:** the implemented flow grants Calendar, Gmail and drafting one scope at a time, then asks you to confirm the proposed graph, source authority and effort estimates. Owner Google sign-in, an actual Calendar source-change repair and Gmail draft-only creation/recovery have passed approval and independent provider read-back. The pilot is owner-only; Google token continuity, inbox interpretation and actual sending remain separate open work. Follow [the controlled Google verification guide](docs/submission/google-live-verification.md).
 
 **From a terminal:**
 
@@ -116,8 +116,8 @@ The [public demo](https://dira-nemetron.vercel.app/try) uses Vercel, Cloud Run, 
 | Demo persona, account repair engine, RLS, Hermes MCP, Telegram nonces | Postgres integration tests under a non-superuser role (`make test-postgres`), and clicked through end to end in the browser. |
 | Live Nemotron | Super and Ultra verified on Token Factory: October 13 interpretation 8/8, repair 7/7, 11 Ultra calls without truncation. Ultra wins two cases; 3/11 plans pass every downstream gate. Nano's catalog access is verified; live graph drafting remains unverified. [Evidence review](docs/evidence/2026-10-13-bounded-model-review.md). |
 | Tavily official-source checks | Tested against a stubbed Tavily response. A live run needs `TAVILY_API_KEY`. |
-| Google Calendar and Gmail on a real account | Implemented behind narrow adapters with scope checks and read-back. Not yet exercised against live credentials in this repository. |
-| Deployment | Vercel → Cloud Run → Neon with encrypted Git memory and delivered fifteen-minute background jobs. Twelve Neon checks passed; pending approval and private history survived revision replacement, and 13 synthetic actions were verified through the public app. Isolated OpenShell checks passed. Gmail provider verification, owner Hermes activation and judging-period allowance coverage remain open. |
+| Google Calendar and Gmail on a real account | Actual synthetic Calendar source-change repair and Gmail draft-only creation/recovery verified, with authenticated approval and separate provider read-back. No actual sending or Gmail inbox interpretation claimed. [Calendar](docs/evidence/2026-10-16-google-calendar-live.json), [Gmail](docs/evidence/2026-10-16-google-gmail-live.json). |
+| Deployment | Vercel → Cloud Run → Neon with encrypted Git memory and delivered fifteen-minute background jobs. Twelve Neon checks passed; pending approval and private history survived revision replacement, and 13 synthetic actions were verified through the public app. Isolated OpenShell checks passed. Owner Hermes activation, Google continuity and judging-period allowance coverage remain open. |
 
 ## What carried over from v1, and what is new
 

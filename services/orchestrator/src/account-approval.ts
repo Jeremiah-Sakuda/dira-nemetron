@@ -4,6 +4,7 @@ import { isoToMinutes, localDateTimeToIso, type Commitment } from '@dira/commitm
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { PostgresWorkflowStore, type ApprovalRevalidationEvidence, type PostgresAccountStore } from './postgres-store.js';
 import { availabilityIntervals, prepareAccountSchedule, rebaseDomainState, stableActionIntentKey } from './account-planning.js';
+import { assertReviewedCalendarOccupancy } from './calendar-occupancy.js';
 
 export type ApprovalRevalidation =
   | { ok: true; evidence: ApprovalRevalidationEvidence; checkedCalendarEvents: number; planLabel: string }
@@ -67,6 +68,12 @@ export async function revalidateAccountApproval(
     async () => (await store.getAccountPolicySettings(accountId)).fencedCalendarIds.includes('primary'),
   );
   const freshReads: { id: string; startIso: string; endIso: string }[] = [];
+  try {
+    await assertReviewedCalendarOccupancy(calendar, oldState,
+      workflowRecords.filter(r => r.action.type === 'CREATE_CALENDAR_EVENT').map(r => r.idempotencyKey));
+  } catch (error) {
+    return { ok: false, retryable: true, reason: error instanceof Error ? error.message : 'Complete Calendar occupancy could not be read.' };
+  }
 
   for (const commitment of Object.values(oldState.commitments)) {
     if (!isUpcomingCalendarCommitment(commitment, oldNowMin)) continue;

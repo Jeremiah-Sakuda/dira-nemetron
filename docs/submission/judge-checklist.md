@@ -1,6 +1,6 @@
 # Judge checklist
 
-**Stage One fit.** Personal AI with a persistent commitment graph, private account memory, confirmed rules and reviewed tools. The public synthetic path runs Super and Ultra on Nebius Token Factory and records the model, tier and latency. Live Nano drafting and real-account integrations remain unverified. See [current readiness](remaining-launch-work.md).
+**Stage One fit.** Personal AI with a persistent commitment graph, private account memory, confirmed rules and reviewed tools. The public synthetic path runs Super and Ultra on Nebius Token Factory and records the model, tier and latency. Actual synthetic Calendar repair and Gmail draft-only execution are independently verified in the October 16 evidence. Gmail inbox interpretation, sending and continuous owner enrollment remain outside those checks. See [current readiness](remaining-launch-work.md).
 
 ## Three minutes, no sign-in
 
@@ -24,8 +24,8 @@ Public demo: https://dira-nemetron.vercel.app/try. Credential-free replay: https
 ## Labels you will see
 
 - "Stored interpretations · no inference" means the deployment has no Nebius key and the sample emails use stored interpretations.
-- "Nemotron live · Nebius Token Factory" means the provider is configured for real Super/Ultra calls. Calls pause safely when the durable quota is exhausted; stored Evidence replay remains free.
-- Demo surfaces are labeled as simulated. Real-account Google adapters are implemented; deployed OAuth and actual provider changes still need verification.
+- "Nemotron available · Nebius Token Factory" means the provider is configured for real Super/Ultra calls. Calls pause safely when the durable quota is exhausted; stored Evidence replay remains free.
+- Demo surfaces are labeled as simulated. Actual Calendar and Gmail draft-only provider checks are documented separately from this simulated demo; they are not implied by the simulated surfaces.
 - The application egress test does not establish OpenShell enforcement. Separate Linux OpenShell checks are documented in the October 16 evidence review; OpenShell is not active around the public Cloud Run broker.
 
 ## Credential-free engine proofs
@@ -36,3 +36,10 @@ make replay-20x
 make test
 make eval-repair-fixture
 ```
+
+## Real provider proof and operating boundary
+
+- [Calendar source-to-read-back](../evidence/2026-10-16-google-calendar-live.json): one actual approved Calendar move, with independent operator verification.
+- [Gmail draft-only](../evidence/2026-10-16-google-gmail-live.json): explicitly operator-provisioned synthetic plans, one fresh draft and one recovery without duplication. No email sent.
+- Current owner enrollment is a restricted pilot; no Google sign-in is required for judges. Local Hermes setup is distinct from public Cloud Run execution.
+- Live inference has shared lifetime and rolling allowances. A paused state links directly to the credential-free replay; total exhaustion needs an operator decision and is never presented as a timed reset.

@@ -40,7 +40,7 @@ These are small synthetic evaluations and provider-token cost estimates, not a g
 - **Persistence and privacy:** Postgres account isolation with forced row-level security, encrypted Google tokens, signed sessions and private per-account Git memory.
 - **Actions:** narrow Calendar/Gmail adapters, stored stakeholders, template-derived messages, incremental OAuth scopes and independent verification.
 - **Product:** a source-change console, Today, Approvals, Activity, reviewed Graph, Rules, Settings and credential-free Evidence replay.
-- **Hosting:** the Next.js website on Vercel Hobby, connected to a persistent Nebius CPU backend behind HTTPS, with durable inference quotas, restart policies, nightly backup and an isolated database restore check.
+- **Hosting:** the Next.js website on Vercel Hobby, Cloud Run with minimum zero instances, Neon Free with encrypted durable Git bundles, and authenticated fifteen-minute Cloud Scheduler. Both Nebius VMs and disks are deleted. Private recovery snapshots were restored and checked; the retired VM nightly backup timer is no longer running.
 
 ## Challenges
 
@@ -52,7 +52,7 @@ Approvals also need to survive changing external state. A recorded approval is n
 
 The public app now uses Vercel, Cloud Run and Neon, with authenticated fifteen-minute background delivery. Recovery and public approval/read-back were verified after backend replacement. Separate Linux NemoClaw/OpenShell network, method/tool, credential and filesystem checks passed; that temporary VM was stopped and deleted, and OpenShell does not surround the public broker. An actual synthetic Google Calendar source change completed authenticated review/approval, deterministic revalidation, broker execution and independent read-back with one verified action. Gmail draft-only execution also passed authenticated approval, broker creation and independent read-back using an explicitly operator-provisioned synthetic plan addressed only to the owner; recovery reused an existing draft without duplication. No mail was sent or inbox interpretation implied. Google Testing token continuity, owner Telegram/Hermes enrollment and live Tavily checks remain unfinished. Both old VM instances and boot disks have been retired after recovery verification. Shared free-allowance coverage through December 15 still needs attention. The credential-free judge replay remains available.
 
-The immediate next step is controlled Google source-to-approval-to-read-back verification, followed by owner-scoped activation of the validated Hermes bridge. Longer term: richer renegotiation workflows and a professional persona using the same commitment engine.
+Actual Calendar and Gmail draft-only checks are complete. Remaining operating work is owner-scoped Hermes enrollment and Google token continuity, followed by a bounded longitudinal pilot. Longer term: richer renegotiation workflows and a professional persona using the same commitment engine.
 
 ## Significantly updated from an earlier hackathon
 

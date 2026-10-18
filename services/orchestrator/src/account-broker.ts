@@ -2,6 +2,8 @@ import { ActionLedger, type ActionRecord } from '@dira/action-ledger';
 import { isoToMinutes, type Commitment, type DomainState } from '@dira/commitment-model';
 import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { evaluateAction } from '@dira/policy-engine';
+import { applyAction } from '@dira/constraint-engine';
+import { assertReviewedCalendarOccupancy } from './calendar-occupancy.js';
 import { ToolError, type CalendarEvent } from '@dira/tool-contracts';
 import { calendarIsoToMinutes, revalidateAccountApproval } from './account-approval.js';
 import {
@@ -189,7 +191,10 @@ export async function resumeApprovedAccountWorkflow(
           if (!record || record.actionId !== initial.actionId || record.status !== 'EXECUTING') {
             throw new Error('another action is already being executed for this workflow');
           }
-          const response = await executeCalendarAction(calendar, snapshot.state, record);
+          const observedState = ledger.byWorkflow(workflowId).filter(r => r.status === 'VERIFIED')
+            .reduce((state, completed) => applyAction(state, completed.action), snapshot.state);
+          const response = await executeCalendarAction(calendar, observedState, record,
+            records.filter(r => r.action.type === 'CREATE_CALENDAR_EVENT').map(r => r.idempotencyKey));
           record = await ledger.transition(record.actionId, 'EXECUTED_UNVERIFIED', { externalResponse: response }, 'Calendar API returned; independent verification follows');
         }
 
@@ -334,7 +339,8 @@ async function inspectCalendarAction(
   return { alreadyApplied: false, observed: current };
 }
 
-async function executeCalendarAction(calendar: GoogleUserCalendarTool, state: DomainState, record: ActionRecord): Promise<unknown> {
+async function executeCalendarAction(calendar: GoogleUserCalendarTool, state: DomainState, record: ActionRecord, allowedCreatedIds: string[]): Promise<unknown> {
+  await assertReviewedCalendarOccupancy(calendar, state, allowedCreatedIds);
   const action = record.action;
   const desired = action.desired_state as Record<string, unknown>;
   if (action.type === 'CREATE_CALENDAR_EVENT') {

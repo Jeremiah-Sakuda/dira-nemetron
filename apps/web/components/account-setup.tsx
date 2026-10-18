@@ -26,6 +26,10 @@ interface CalendarEvent {
 
 export function AccountSetup() {
   const [section, setSection] = useState<'connections' | 'focus' | 'review'>('connections');
+  useEffect(() => {
+    const requested = new URL(window.location.href).searchParams.get('section');
+    if (requested === 'connections' || requested === 'focus' || requested === 'review') setSection(requested);
+  }, []);
   const [account, setAccount] = useState<Account | null>(null);
   const [stateSummary, setStateSummary] = useState<AccountStateSummary | null>(null);
   const [calendarWriteEnabled, setCalendarWriteEnabled] = useState(false);

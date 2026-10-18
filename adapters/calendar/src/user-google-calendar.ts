@@ -4,6 +4,7 @@ import { ToolError, type CalendarEvent, type CalendarTool } from '@dira/tool-con
 
 /** User Calendar adapter; mutations stay disabled unless the account has separately granted write scope. */
 export class GoogleUserCalendarTool implements CalendarTool {
+  private readonly checkedEtags = new Map<string, string>();
   constructor(
     private readonly accessToken: () => Promise<string>,
     private readonly canWrite: () => Promise<boolean> = async () => false,
@@ -30,6 +31,7 @@ export class GoogleUserCalendarTool implements CalendarTool {
       metadata: {
         googleEventId,
         source: 'google-calendar',
+        ...(event.transparency ? { transparency: event.transparency } : {}),
         ...(event.etag ? { etag: event.etag } : {}),
         ...(event.updated ? { updatedIso: event.updated } : {}),
         ...(event.status ? { status: event.status } : {}),
@@ -38,17 +40,36 @@ export class GoogleUserCalendarTool implements CalendarTool {
   }
 
   async getEvents(): Promise<CalendarEvent[]> {
+    const start = new Date();
+    return this.getEventsInWindow(start.toISOString(), new Date(start.getTime() + 90 * 86400000).toISOString());
+  }
+
+  /** Complete bounded occupancy read. Incomplete pages never imply free time. */
+  async getEventsInWindow(timeMin: string, timeMax: string): Promise<CalendarEvent[]> {
+    const span = Date.parse(timeMax) - Date.parse(timeMin);
+    if (!Number.isFinite(span) || span <= 0 || span > 120 * 86400000) throw new ToolError('Invalid Calendar occupancy window', 'INVALID_WINDOW', false);
     try {
       const api = await this.client();
-      const response = await api.events.list({
+      const events: CalendarEvent[] = [];
+      let pageToken: string | undefined;
+      const seen = new Set<string>();
+      for (let page = 0; page < 20; page++) {
+        const response = await api.events.list({
         calendarId: 'primary',
-        timeMin: new Date().toISOString(),
+        timeMin, timeMax,
         maxResults: 250,
         singleEvents: true,
         showDeleted: false,
         orderBy: 'startTime',
-      });
-      return (response.data.items ?? []).map((event) => this.toCalendarEvent(event));
+        ...(pageToken ? { pageToken } : {}),
+        });
+        events.push(...(response.data.items ?? []).filter(event => event.status !== 'cancelled').map(event => this.toCalendarEvent(event)));
+        const next = response.data.nextPageToken;
+        if (!next) return events;
+        if (seen.has(next)) break;
+        seen.add(next); pageToken = next;
+      }
+      throw new ToolError('Calendar occupancy read is incomplete; refusing to assume free time', 'INCOMPLETE_CALENDAR', true);
     } catch (error) {
       throw asToolError(error, 'getEvents');
     }
@@ -131,6 +152,7 @@ export class GoogleUserCalendarTool implements CalendarTool {
       const api = await this.client();
       const existing = await this.findEvent(api, id);
       if (!existing?.id) throw new ToolError(`Google Calendar event ${id} was not found`, 'NOT_FOUND', false);
+      this.requireCurrentEtag(id, existing);
       await api.events.patch({
         calendarId: 'primary',
         eventId: existing.id,
@@ -138,7 +160,8 @@ export class GoogleUserCalendarTool implements CalendarTool {
           start: { dateTime: startIso },
           end: { dateTime: endIso },
         },
-      });
+      }, { headers: { 'If-Match': existing.etag! } });
+      this.checkedEtags.delete(id);
     } catch (error) {
       throw asToolError(error, 'moveEvent');
     }
@@ -150,7 +173,9 @@ export class GoogleUserCalendarTool implements CalendarTool {
       const api = await this.client();
       const existing = await this.findEvent(api, id);
       if (!existing?.id) return;
-      await api.events.delete({ calendarId: 'primary', eventId: existing.id });
+      this.requireCurrentEtag(id, existing);
+      await api.events.delete({ calendarId: 'primary', eventId: existing.id }, { headers: { 'If-Match': existing.etag! } });
+      this.checkedEtags.delete(id);
     } catch (error) {
       throw asToolError(error, 'deleteEvent');
     }
@@ -164,10 +189,17 @@ export class GoogleUserCalendarTool implements CalendarTool {
       const event = this.toCalendarEvent(found);
       if (query.title && event.title !== query.title) return null;
       if (query.startIso && Date.parse(event.startIso) !== Date.parse(query.startIso)) return null;
+      if (query.id && found.etag) this.checkedEtags.set(query.id, found.etag);
       return event;
     } catch (error) {
       throw asToolError(error, 'verifyEvent');
     }
+  }
+
+  private requireCurrentEtag(id: string, event: calendar_v3.Schema$Event): void {
+    if (!event.etag) throw new ToolError('Calendar returned no write precondition', 'PRECONDITION_REQUIRED', false);
+    const checked = this.checkedEtags.get(id);
+    if (checked && checked !== event.etag) throw new ToolError('Calendar changed after the checked read; request a fresh plan', 'STALE_EVENT', false);
   }
 
   private async requireWriteAccess(): Promise<void> {
@@ -178,8 +210,15 @@ export class GoogleUserCalendarTool implements CalendarTool {
 
   private async findEvent(api: calendar_v3.Calendar, id: string): Promise<calendar_v3.Schema$Event | undefined> {
     if (id.startsWith('google:')) {
-      const response = await api.events.get({ calendarId: 'primary', eventId: id.slice('google:'.length) });
-      return response.data;
+      try {
+        const response = await api.events.get({ calendarId: 'primary', eventId: id.slice('google:'.length) });
+        return response.data.status === 'cancelled' ? undefined : response.data;
+      } catch (error) {
+        const value = error as { code?: number; response?: { status?: number } };
+        const status = value.code ?? value.response?.status;
+        if (status === 404 || status === 410) return undefined;
+        throw error;
+      }
     }
     const response = await api.events.list({
       calendarId: 'primary',

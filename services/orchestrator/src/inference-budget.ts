@@ -97,18 +97,36 @@ function tokenCount(value: number | undefined): number | null {
 }
 
 export async function inferenceUsageSummary(store: PostgresAccountStore, scope = INFERENCE_SCOPE) {
-  const [counts, usage] = await Promise.all([
+  const [counts, usage, windows] = await Promise.all([
     store.pool.query<Counts>(countsSql, [scope]),
     store.pool.query<{ reported_tokens: string; estimated_cost_usd: string; unreported_calls: number }>(
       `SELECT coalesce(sum(total_tokens), 0)::text AS reported_tokens,
        coalesce(sum(estimated_cost_usd), 0)::text AS estimated_cost_usd,
        count(*) FILTER (WHERE estimated_cost_usd IS NULL)::int AS unreported_calls
        FROM dira_inference_usage WHERE scope = $1`, [scope]),
+    store.pool.query<{ started_at: Date; status: string }>(
+      `SELECT started_at, status FROM dira_inference_usage WHERE scope=$1 AND started_at >= now()-interval '24 hours' ORDER BY started_at`, [scope]),
   ]);
-  return { limits: inferenceLimits(), calls: counts.rows[0]!,
+  const limits = inferenceLimits();
+  return { limits, calls: counts.rows[0]!, availability: inferenceAvailability(limits, counts.rows[0]!, windows.rows),
     reportedTokens: Number(usage.rows[0]!.reported_tokens),
     estimatedCostUsd: Number(usage.rows[0]!.estimated_cost_usd),
     unreportedCalls: usage.rows[0]!.unreported_calls,
     disclosure: 'Call limits are enforced locally. Cost is estimated from reported usage, not a provider invoice or a hard dollar cap.',
   };
+}
+
+export function inferenceAvailability(limits: InferenceLimits, counts: Counts,
+  rows: { started_at: Date; status: string }[], now = Date.now()) {
+  const reached = (Object.keys(limits) as (keyof InferenceLimits)[]).filter(key => counts[key] >= limits[key]);
+  if (!reached.length) return { available: true, reason: 'Deployment call allowance is available.', resetsAtIso: null };
+  if (reached.includes('total')) return { available: false, reason: 'The deployment’s total inference allowance is used. The credential-free replay remains available; this limit needs an operator decision.', resetsAtIso: null };
+  const resetTimes = reached.map(key => {
+    const duration = key === 'daily' ? 86400000 : key === 'hourly' ? 3600000 : 90000;
+    const cohort = rows.filter(row => row.started_at.getTime() >= now - duration && (key !== 'concurrent' || row.status === 'reserved'));
+    const boundary = cohort[Math.max(0, counts[key] - limits[key])];
+    return boundary ? boundary.started_at.getTime() + duration : undefined;
+  });
+  return { available: false, reason: `Live inference is paused at the ${reached.join(' and ')} call allowance. Use the credential-free replay while it resets.`,
+    resetsAtIso: resetTimes.every(time => time !== undefined) ? new Date(Math.max(...resetTimes as number[])).toISOString() : null };
 }

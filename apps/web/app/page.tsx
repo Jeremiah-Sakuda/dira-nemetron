@@ -5,12 +5,12 @@ export default function HomePage() {
   return (
     <main className="landing">
       <section className="landing-hero" aria-labelledby="hero-title">
-        <div className="section-label">Personal AI · always on · yours</div>
+        <div className="section-label">Personal AI · persistent memory · yours</div>
         <h1 id="hero-title" className="landing-title">When one thing moves, Dira fixes everything it breaks.</h1>
         <p className="landing-lede">
           A professor moves your midterm two days earlier. Suddenly your interview is too close, your study time is gone,
           and a teammate is waiting on work you can&rsquo;t do. Dira notices, finds every promise the change breaks, and
-          repairs your week within limits you set. It tells the people affected before they have to ask.
+          repairs your week within limits you set. It prepares updates for the people affected, with drafts only by default.
         </p>
         <StartButtons />
         <p className="landing-note">The demo is a synthetic student week with a simulated calendar and mailbox. It needs no account and cannot contact real people.</p>
@@ -19,8 +19,8 @@ export default function HomePage() {
       <section className="landing-steps" aria-label="How Dira works">
         <article className="panel">
           <div className="section-label">1 · Notices</div>
-          <h2>Always watching the sources you choose</h2>
-          <p>Gmail, Google Calendar and course deadline feeds, each connected with its own permission. Dira polls them in the background and keeps a commitment graph of what you promised, to whom, and what depends on what.</p>
+          <h2>Scheduled checks for sources you opt into</h2>
+          <p>Gmail, Google Calendar and course deadline feeds each have their own permission. Background checks require owner opt-in and deployment enrollment; they are not enabled by connecting an account. Dira keeps a graph of what you promised and what depends on what.</p>
         </article>
         <article className="panel">
           <div className="section-label">2 · Repairs</div>
@@ -30,7 +30,7 @@ export default function HomePage() {
         <article className="panel">
           <div className="section-label">3 · Remembers</div>
           <h2>Your corrections become your rules</h2>
-          <p>Reject or edit a step and Dira suggests a rule. Confirm it and it is committed to a private Git repository you can export, and mirrored as a read-only Skill for your Hermes assistant.</p>
+          <p>Reject or edit a step and Dira suggests a rule. Confirm it and it is committed to a private Git repository you can export, with a reusable Skill for an optional Hermes companion. The owner runtime is a separate enrollment step.</p>
         </article>
       </section>
 
