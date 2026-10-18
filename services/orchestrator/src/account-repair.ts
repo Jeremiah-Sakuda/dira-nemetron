@@ -4,6 +4,7 @@ import {
   FixtureModelClient,
   FixtureRepairModel,
   NemotronModelClient,
+  normalizeActionTimes,
   UltraRepairProposer,
   type ModelClient,
   type RepairProposalInput,
@@ -326,7 +327,7 @@ async function prepareRuntime(store: PostgresAccountStore, accountId: string, op
             const [latestPolicy,latestProfile]=await Promise.all([store.getAccountPolicySettings(accountId),store.getAvailabilityProfile(accountId)]);
             if (!latestProfile) throw new Error('Focus hours are unavailable; request a fresh plan');
             for(const item of remaining) {
-              const decision=evaluateAction(fresh,item.action,latestPolicy.requireApproval,latestPolicy.correctionRules);
+              const decision=evaluateAction(fresh,normalizeActionTimes(item.action,fresh.horizonStartIso),latestPolicy.requireApproval,latestPolicy.correctionRules);
               if (decision.verdict !== item.policyVerdict || decision.rule !== item.policyRule || decision.verdict === 'DENY') throw new Error('Policy changed; request a fresh plan');
             }
             assertRemainingCalendarPlanFresh(fresh,latestProfile,remaining,latestPolicy,now());

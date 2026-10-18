@@ -31,6 +31,12 @@ describe('event-repair read-back and real-clock execution boundary',()=>{
   const normalized=normalizeActionTimes(action,'2030-01-02T00:00:00Z');
   expect(normalized.desired_state.start_min).toBe(600);expect(normalized.desired_state.duration_min).toBe(60);expect(action.desired_state.start_min).toBe(2040);
  });
+ it('rechecks offered-slot policy with normalized offsets after rebasing',async()=>{
+  const {evaluateAction}=await import('@dira/policy-engine');const fixture=buildGoldenFixture();const state=fixture.state;const target='technical-interview-1';const slot=state.approvedSlots[target]![0]!;
+  const action={type:'BOOK_INTERVIEW_SLOT' as const,target,desired_state:{start_min:slot.startMin,start_iso:new Date(Date.parse(state.horizonStartIso)+slot.startMin*60000).toISOString(),end_iso:new Date(Date.parse(state.horizonStartIso)+(slot.startMin+slot.durationMin)*60000).toISOString()},provenance:[slot.provenance],external_system:'recruiter' as const,summary:'Rebased booking'};
+  const fresh=rebaseDomainState(state,new Date(Date.parse(state.horizonStartIso)+3600000));
+  expect(evaluateAction(fresh,action).verdict).toBe('DENY');expect(evaluateAction(fresh,normalizeActionTimes(action,fresh.horizonStartIso)).verdict).toBe('ALLOW');
+ });
  it('an expired real-clock approved plan makes zero external mutations',async()=>{
   const fixture=buildGoldenFixture();const runtime=await buildReplayRuntime(fixture);const workflows=new InMemoryWorkflowStore();
   let saved=structuredClone(fixture.state);let now=new Date(fixture.trigger.receivedAtIso);
