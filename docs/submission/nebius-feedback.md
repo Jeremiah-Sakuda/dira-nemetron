@@ -16,7 +16,7 @@ Written during the Dira v2 build, October 2026. Each item says what we observed,
 
 ## Nebius AI Cloud
 
-5. **Serverless Jobs have no schedule.** *From docs.* The docs describe jobs as "one-off or scheduled", but `nebius ai job create` has no schedule or cron flag, and no scheduling procedure is documented. Our scripts propose launching the daily pass from cron; this job deployment has not yet been run. Only the nightly backup cron is verified as configured.
+5. **Serverless Jobs have no schedule.** *From docs.* The docs describe jobs as "one-off or scheduled", but `nebius ai job create` has no schedule or cron flag, and no scheduling procedure is documented. Our scripts propose launching the daily pass from cron; this job deployment has not yet been run. The former VM nightly backup cron was configured, then stopped when that VM was retired. Current background delivery uses authenticated Cloud Scheduler to Cloud Run every fifteen minutes.
    - **Ask:** a schedule field, or documentation that scheduling is out of scope.
 6. **CPU-only jobs are unclear.** *From docs.* The job platform defaults to a GPU platform, and non-GPU VMs are described as supporting only the regular type. Our daily recompute needs no GPU.
    - **Ask:** state whether `cpu-d3` is a valid job platform.
@@ -38,3 +38,9 @@ Written during the Dira v2 build, October 2026. Each item says what we observed,
     - **Ask:** put the full non-interactive variable list on the inference options page.
 12. **Hermes approvals are text replies.** *From docs.* Exec approvals in the Telegram gateway are "yes"/"no" messages the agent reads. For a personal agent that can act on email and calendars, an approval should not pass through the model. Dira therefore runs its own bot whose inline buttons carry single-use nonces checked outside any model.
     - **Ask:** a first-class, model-bypassing approval callback in NemoClaw.
+
+
+## October 18 local runtime observation
+
+13. **Onboarding bridge reachability needs a narrower diagnostic.** *Observed.* Official NemoHermes0.0.135/OpenShell0.0.116 installed inside an isolated Ubuntu24.04 ARM Colima VM with no host-directory mounts. Docker DNS/preflight worked, and the authenticated TLS gateway listened on loopback, but onboarding failed the Docker-bridge callback probe. `lsof` helped identify listeners. We did not disable TLS/JWT/network protection; an internal diagnostic relay was removed and no owner enrollment was claimed.
+    - **Ask:** report expected versus actual listen interfaces/callback route and missing diagnostic prerequisites. Document a supported authenticated narrow bridge listener for this configuration.

@@ -6,6 +6,8 @@
 
 **Source:** https://github.com/Jeremiah-Sakuda/dira-nemetron
 
+**Video:** revised 2:26 English walkthrough prepared in `docs/demo/v2/2026-10-18`; public YouTube upload pending.
+
 **Built with:** NVIDIA Nemotron Super and Ultra on Nebius Token Factory; Vercel, Cloud Run, Neon Postgres and Cloud Scheduler; separately validated NemoClaw/OpenShell on Nebius AI Cloud; TypeScript and Next.js.
 
 ## Inspiration
@@ -31,6 +33,8 @@ Nano-based source drafting and Ultra-based edge review are implemented as separa
 Our October 13 synthetic live evaluations passed 8/8 interpretation cases and resolved 7/7 repair scenarios. Eleven Ultra repair calls completed without truncation, averaging 1.24 seconds. All eleven proposals compiled against provenance, but only three passed every downstream gate; Ultra won two of the seven repairs. The deterministic fallback remains essential. All seven labeled adversarial proposals were rejected. Estimated repair-corpus inference cost was $0.0454, approximately $0.0065 per resolved scenario.
 
 Through the deployed public app, the professor change reduced global slack from +246 to −216 minutes. Dira paused for authenticated approval, handled the counterparty's stale-slot failure, replanned, and verified thirteen simulated actions, restoring slack to +78 minutes. A subsequent injection email changed no commitments or action surfaces. The broker's application egress probe returned an audited 403.
+
+A fresh October18 deployed run rejected all four Ultra proposals, including an invalid calendar-only interview shortcut. The deterministic plan handled the stale-slot409 and independently verified13 actions; a later injection changed no surfaces. The compiler, plan policy and execution now require a verified booking before a window-bound calendar mirror. All ten GitHub CI jobs passed on the follow-up fix.
 
 These are small synthetic evaluations and provider-token cost estimates, not a general reliability guarantee or a billing invoice. Full evidence and failure reviews are in `docs/evidence`.
 

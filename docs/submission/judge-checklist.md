@@ -24,7 +24,7 @@ Public demo: https://dira-nemetron.vercel.app/try. Credential-free replay: https
 ## Labels you will see
 
 - "Stored interpretations · no inference" means the deployment has no Nebius key and the sample emails use stored interpretations.
-- "Nemotron available · Nebius Token Factory" means the provider is configured for real Super/Ultra calls. Calls pause safely when the durable quota is exhausted; stored Evidence replay remains free.
+- "Nemotron available · Nebius Token Factory" means real Super/Ultra calls are configured and the current durable allowance check permits admission. The server rechecks atomically at call time. Calls pause safely when the durable quota is exhausted; stored Evidence replay remains free.
 - Demo surfaces are labeled as simulated. Actual Calendar and Gmail draft-only provider checks are documented separately from this simulated demo; they are not implied by the simulated surfaces.
 - The application egress test does not establish OpenShell enforcement. Separate Linux OpenShell checks are documented in the October 16 evidence review; OpenShell is not active around the public Cloud Run broker.
 

@@ -24,3 +24,10 @@ Impact remains limited by controlled fixtures and absence of a sustained user pi
 The first post-iteration live synthetic run exposed a further proposal-shape flaw: Ultra used a Calendar MOVE for a MOVE_WITHIN_WINDOW interview without a BOOK step. The old per-action policy accepted the offered-slot provenance, so the run mirrored the stale offered time without triggering the booking adapter's 409. This was simulated only, with no real contact/provider mutation. It is not used as a successful counterparty-recovery claim in the revised video.
 
 The final follow-up rejects that model shape in the compiler, denies an unmatched calendar mirror at plan policy, and requires a matching VERIFIED booking plus fresh booking read at execution/read-back. Deterministic booking→calendar plans retain their normal path. Two regression checks cover model/raw-plan bypasses; the entire credential-free suite now passes **159** checks (23 database checks run separately). The public scenario is rerun before footage is accepted. This is part of the final verification/iteration, not a fourth scored panel.
+
+
+## Final observed outcome
+
+The corrected public walkthrough passed on backend `00018-w55` / source `070e1df`, frontend `dpl_Azc7sKTGz5tvdxaXJ2tZfyW3769x` / source `8165d69`. Zero simulated calendar/message effects preceded authenticated approval. The stale first booking failed409; the later offered time was booked/read back, all13 actions verified, final slack78min. A subsequent hostile email produced NO_ACTION_NEEDED with unchanged independent surface reads. The application egress probe returned an audited403. [Exact model/fallback and deployment evidence](../../evidence/2026-10-18-final-judge-path.json).
+
+CI [39172973527](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/runs/39172973527) passed all ten jobs on that follow-up. The new local 2:26 narrated video/captions and upload-ready materials are complete; public YouTube/Devpost publication awaits unlocked signed-in Chrome and any action-time owner/security/legal steps. Google project publishing still needs the owner's decision. No owner Hermes activation or sustained impact result is claimed.

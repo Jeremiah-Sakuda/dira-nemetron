@@ -1,0 +1,41 @@
+What actually changed
+
+Independent simulated-surface reads checked 6:39:50 PM, compared with the published synthetic reference week (student-week-v1). Dira marks an action verified only after a read like this.
+
+Simulated calendar (demo session)
+Study: ECON 402 exam preparation
+new → Tue 7:30 PM
+Study: ECON 402 exam preparation
+new → Wed 9:00 AM
+Workout
+Tue 7:30 PM → Wed 4:45 PM
+TechCorp technical interview
+Wed 5:00 PM → Thu 1:00 PM
+Side-project build block
+Wed 9:00 AM → Thu 2:00 PM
+Study: ECON 402
+Wed 8:30 PM → removed
+Study: ECON 402
+Thu 7:00 PM → removed
+Study: ECON 402
+Thu 9:15 PM → removed
+Study: ECON 402
+Fri 8:30 AM → removed
+Study: ECON 402
+Fri 10:00 AM → removed
+Simulated mailbox (demo session) · Sent
+Sent · to maya.okafor@university.demo
+Handing over: Sponsor deck visual QA
+
+Hi Maya — a schedule conflict landed on my exam block, so per our backup plan I'm handing you "Sponsor deck visual QA". It needs to happen between Wed 14:00 and Wed 16:00. Thank you! (Sent by Dira on behalf of Sam Adeyemi.)
+
+Sent · to jordan.lee@techcorp.demo
+Re: TechCorp technical interview
+
+Hi Jordan, this is Dira, an assistant writing on behalf of Sam Adeyemi. Sam Adeyemi would like to take the Thu 13:00 time you offered for "TechCorp technical interview". Please reply to confirm; until then the time is held as tentative.
+
+Bookings and owners
+
+Interview Thu 1:00 PM · Awaiting Counterparty
+
+Sponsor deck visual QA owner: Maya Okafor

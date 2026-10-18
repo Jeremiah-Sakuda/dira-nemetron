@@ -1,0 +1,33 @@
+{
+  "checkedOn": "2026-10-18",
+  "source": "070e1df",
+  "frontendSource": "8165d69",
+  "frontendDeployment": "dpl_Azc7sKTGz5tvdxaXJ2tZfyW3769x",
+  "backendRevision": "dira-nemetron-backend-00018-w55",
+  "backendImage": "sha256:fefbdd030dc5833d8b1cbd7d967e496e7f984cee94998061c0da2217dbf85b35",
+  "scope": "Actual deployed Nebius Token Factory inference with account-isolated synthetic action adapters, exercised by assisted browser automation. No real Calendar/Gmail provider mutation in this check.",
+  "repair": {
+    "beforeSlackMin": 246,
+    "afterSourceChangeSlackMin": -216,
+    "beforeApprovalCalendarDifferences": 0,
+    "beforeApprovalMessagesSent": 0,
+    "approval": "authenticated web action in the synthetic session",
+    "result": "RESOLVED",
+    "finalSlackMin": 78,
+    "verifiedActions": 13,
+    "recoveredSlotConflict": "409 SLOT_NO_LONGER_AVAILABLE at first offered slot; later offered time booked and independently verified",
+    "counterpartyState": "AWAITING_COUNTERPARTY, not real confirmed acceptance",
+    "selectedPlan": "deterministic",
+    "modelCalls": [
+      {"tier":"Super","seconds":1.6,"tokensShown":1296},
+      {"tier":"Ultra","seconds":2.2,"tokensShown":5024,"proposed":1,"compiled":0,"rejected":1},
+      {"tier":"Ultra","seconds":3.2,"tokensShown":5467,"proposed":3,"compiled":0,"rejected":3}
+    ],
+    "modelLimit": "All four Ultra proposals in this run were rejected, including a booking bypass and invented/unsupported references. Deterministic fallback completed the repair; do not apply historical corpus acceptance rates to this run."
+  },
+  "injection": {"result":"NO_ACTION_NEEDED","superSeconds":1.2,"tokensShown":1201,"independentlyReadSurfacesUnchanged":true},
+  "egress": {"scope":"application broker allowlist, not public OpenShell network enforcement","status":403,"auditedDenial":true},
+  "ci": {"run":39172973527,"source":"070e1df","allTenJobsPassed":true},
+  "tests": {"credentialFreePassed":159,"postgresSkippedInThatRun":23,"separatePostgresPassed":23,"rootTypecheck":"passed","webTypecheck":"passed"},
+  "limitations": ["Google actual-provider evidence remains dated October16–17 with its original revision", "Owner Google continuity approval/reconnect and owner Hermes gateway/Skills enrollment remain open", "No actual inbox intake, mail sending, longitudinal adoption or productivity benefit was measured", "Future judge availability requires the operating plan and existing allowance coverage"]
+}

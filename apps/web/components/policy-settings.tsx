@@ -230,7 +230,7 @@ export function PolicySettingsForm() {
             <label className="policy-rule retention-row">
               <span>
                 <strong>Delete flight records after</strong>
-                <small>Run logs older than this are removed by the nightly job. 0 keeps them.</small>
+                <small>Run-log pruning requires background enrollment. 0 keeps all records.</small>
               </span>
               <input
                 type="number" min={0} max={365} step={1} inputMode="numeric" aria-label="Retention in days"
@@ -248,7 +248,7 @@ export function PolicySettingsForm() {
                 onChange={(event) => setCalendarAutoSync(event.currentTarget.checked)}
               />
               <span>
-                <strong>Check Calendar for changes every five minutes</strong>
+                <strong>Enable scheduled Calendar checks</strong>
                 <small>When this deployment has background checks enabled for your account, new Calendar items are sent to Nebius Token Factory for draft extraction. Changes to confirmed commitments are proposed for your review. Turn this off to stop scheduled reads; use Sync Calendar changes for a one-time check.</small>
               </span>
             </label>
@@ -260,7 +260,7 @@ export function PolicySettingsForm() {
                 onChange={(event) => setGmailAutoSync(event.currentTarget.checked)}
               />
               <span>
-                <strong>Check new Gmail messages every five minutes</strong>
+                <strong>Enable scheduled Gmail checks</strong>
                 <small>When enabled for your account by this deployment, recent inbox messages and new arrivals are checked. The subject and up to 8,000 body characters are sent to Nebius Token Factory for extraction; Dira stores only the subject, sender, date, short evidence quote, and proposal.</small>
               </span>
             </label>

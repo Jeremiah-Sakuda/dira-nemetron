@@ -4,6 +4,8 @@
 
 Personal AI entry for the Nebius × NVIDIA Global AI Hackathon. NVIDIA Nemotron models on Nebius Token Factory propose; deterministic code decides what runs.
 
+[Three-round internal judging and fixes](docs/submission/judging/summary.md) · [Upload-ready submission package](docs/submission/submission-package.md) · [Current launch gaps](docs/submission/remaining-launch-work.md)
+
 [![ci](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/workflows/ci.yml)
 
 ---
@@ -16,7 +18,7 @@ A professor moves a midterm from Friday to Wednesday. The interview that afterno
 
 ## Try it
 
-**No sign-in:** open the [hosted app](https://dira-nemetron.vercel.app/try), choose **Try the demo**, and send the sample professor email. In under three minutes you see:
+**No sign-in:** open the [hosted app](https://dira-nemetron.vercel.app/try), choose **Try the demo**, and send the sample professor email. The guided path shows:
 
 1. The cascade, with global slack dropping from +4.1h to −3.6h.
 2. Nemotron Ultra's structured repair proposal next to the deterministic candidates.
