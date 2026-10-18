@@ -25,3 +25,5 @@ Before submission, November 30, then each judging day:
 ## Completion evidence still required
 
 Record an actual November 30 check and checks during judging. Confirm provider credit balance and quota coverage with the owner before promising continuous live inference. Public YouTube video and Devpost final submission remain separate checklist items. Google publishing/reconnect and the local Hermes gateway require the exact owner/runtime steps recorded in the launch tracker.
+
+Runtime stability: root and web package engines are pinned to Node22.x, matching CI/backend. A later provider-default major upgrade should be reviewed and verified deliberately rather than inherited during the judging window.
