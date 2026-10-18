@@ -1975,3 +1975,9 @@ table.data td:first-child {
 @media (max-width: 860px) { .graph-columns { grid-template-columns: minmax(0, 1fr); } }
 
 .setup-feed-disclosure > .deadline-feeds { margin-top: 20px; padding: 0; border: 0; background: transparent; }
+.legal-page { max-width: 760px; margin: 48px auto 72px; font-size: 16px; line-height: 1.75; }
+.legal-page section { margin-block: 36px; }
+.legal-page h2 { font-size: 22px; line-height: 1.35; }
+.legal-page a { text-underline-offset: 4px; }
+.site-footer { display: flex; gap: 24px; flex-wrap: wrap; padding: 24px 0; border-top: 1px solid var(--border, #33332e); font-size: 14px; }
+.site-footer a { display: inline-flex; align-items: center; min-height: 44px; }

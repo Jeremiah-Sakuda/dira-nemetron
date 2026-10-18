@@ -23,6 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </header>
           <SessionBanner />
           {children}
+          <footer className="site-footer" aria-label="Legal and source links">
+            <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+            <a href="https://github.com/Jeremiah-Sakuda/dira-nemetron">Source code</a>
+          </footer>
         </div>
       </body>
     </html>

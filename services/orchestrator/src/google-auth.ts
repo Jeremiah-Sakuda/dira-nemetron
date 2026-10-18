@@ -136,6 +136,9 @@ export async function completeGoogleOAuth(
   if (!user.sub || !user.email || user.email_verified !== true) {
     throw new Error('Google account identity is missing a verified email');
   }
+  if (!googleAccountAllowed(user.email)) {
+    throw new Error('This Google connection is limited to the owner pilot. Use the synthetic demo without signing in.');
+  }
   if (signedState.purpose !== 'sign-in' && signedState.accountId !== user.sub) {
     throw new Error('Additional Google permissions must be granted by the connected Google account');
   }
@@ -185,6 +188,15 @@ export async function completeGoogleOAuth(
     sessionCookie: session,
     clearStateCookie: clearCookie(STATE_COOKIE, '/auth/google'),
   };
+}
+
+/** A personal pilot can keep enrollment closed even when OAuth is published.
+ * Exact verified addresses only; no domain wildcards or model-controlled input. */
+export function googleAccountAllowed(email: string): boolean {
+  const configured = process.env.DIRA_GOOGLE_ALLOWED_EMAILS;
+  if (configured === undefined) return true;
+  const allowed = configured.split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+  return allowed.includes(email.trim().toLowerCase());
 }
 
 /** Signed HttpOnly session for an account Dira created server-side (the demo persona). */
