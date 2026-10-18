@@ -923,6 +923,12 @@ export class DiraOrchestrator {
           record.idempotencyKey,
         );
       case 'MOVE_CALENDAR_EVENT':
+        if (this.state.commitments[action.target]?.flexibility === 'MOVE_WITHIN_WINDOW') {
+          const booked=this.ledger.byWorkflow(this.run.id).some(item=>item.status === 'VERIFIED' && item.action.type === 'BOOK_INTERVIEW_SLOT'
+            && item.action.target === action.target && item.action.desired_state.start_iso === d.start_iso && item.action.desired_state.end_iso === d.end_iso);
+          const actual=booked ? await this.tools.recruiter.verifyBooking(action.target) : null;
+          if(!actual || Date.parse(actual.startIso) !== Date.parse(String(d.start_iso))) throw new ToolError('Calendar mirror requires a matching independently verified booking','BOOKING_REQUIRED',false);
+        }
         await this.tools.calendar.moveEvent(
           this.externalId(action),
           String(d.start_iso),
@@ -967,6 +973,12 @@ export class DiraOrchestrator {
         return { ok: same, observed: booking };
       }
       case 'MOVE_CALENDAR_EVENT': {
+        if (this.state.commitments[action.target]?.flexibility === 'MOVE_WITHIN_WINDOW') {
+          const booked=this.ledger.byWorkflow(this.run.id).some(item=>item.status === 'VERIFIED' && item.action.type === 'BOOK_INTERVIEW_SLOT'
+            && item.action.target === action.target && item.action.desired_state.start_iso === d.start_iso && item.action.desired_state.end_iso === d.end_iso);
+          const actual=booked ? await this.tools.recruiter.verifyBooking(action.target) : null;
+          if(!actual || Date.parse(actual.startIso)!==Date.parse(String(d.start_iso)))return {ok:false,observed:{reason:'matching booking not verified'}};
+        }
         const ev = await this.tools.calendar.verifyEvent({
           id: this.externalId(action),
           startIso: String(d.start_iso),

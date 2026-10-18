@@ -298,6 +298,7 @@ export function compileProposedPlan(
 
     switch (proposed.type) {
       case 'MOVE_CALENDAR_EVENT': {
+        if (target.flexibility === 'MOVE_WITHIN_WINDOW') {shapeErrors.push(`${target.title}: use BOOK_INTERVIEW_SLOT so the offered slot is booked and verified before its calendar mirror`);break;}
         const startMin = parseStart(proposed.start_iso, state);
         if (startMin === undefined) { shapeErrors.push(`${target.title}: start_iso is missing or invalid`); break; }
         if (target.kind === 'effort' || target.startMin === undefined || !target.durationMin) {

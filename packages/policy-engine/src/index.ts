@@ -343,7 +343,15 @@ export function evaluatePlanActions(
   requireApproval: readonly PolicyRuleOverride[] = [],
   rules: readonly CorrectionRule[] = [],
 ): { decisions: PolicyDecision[]; autonomous: boolean } {
-  const decisions = actions.map((a) => evaluateAction(state, a, requireApproval, rules));
+  const decisions = actions.map((a,index) => {
+    const decision=evaluateAction(state,a,requireApproval,rules);
+    if(a.type === 'MOVE_CALENDAR_EVENT' && state.commitments[a.target]?.flexibility === 'MOVE_WITHIN_WINDOW') {
+      const matching=actions.slice(0,index).some(prior=>prior.type === 'BOOK_INTERVIEW_SLOT' && prior.target === a.target
+        && prior.desired_state.start_iso === a.desired_state.start_iso && prior.desired_state.end_iso === a.desired_state.end_iso);
+      if(!matching)return {verdict:'DENY' as const,rule:'calendar-mirror-requires-booking',reason:'A window-bound calendar move must follow the matching booking in this plan'};
+    }
+    return decision;
+  });
   const autonomous = decisions.every(
     (d) => d.verdict === 'ALLOW' || d.verdict === 'ALLOW_AND_NOTIFY',
   );

@@ -18,3 +18,9 @@ GitHub CI on preceding iteration `04520e1` passed all ten jobs ([39172075199](ht
 ## Honest residuals
 
 Impact remains limited by controlled fixtures and absence of a sustained user pilot. The recovered ASK_FIRST proof measures a policy verdict, not owner Hermes operation. Google publishing/reconnect remains owner-dependent. The local official Hermes gateway did not pass its bridge probe; no owner token/turn or active immutable Skills mirror is claimed. Revised footage, public YouTube and final Devpost confirmation are tracked separately until completed. Future free hosting/live inference through December15 is an operating obligation, not observed uptime.
+
+## Final deployed walkthrough follow-up
+
+The first post-iteration live synthetic run exposed a further proposal-shape flaw: Ultra used a Calendar MOVE for a MOVE_WITHIN_WINDOW interview without a BOOK step. The old per-action policy accepted the offered-slot provenance, so the run mirrored the stale offered time without triggering the booking adapter's 409. This was simulated only, with no real contact/provider mutation. It is not used as a successful counterparty-recovery claim in the revised video.
+
+The final follow-up rejects that model shape in the compiler, denies an unmatched calendar mirror at plan policy, and requires a matching VERIFIED booking plus fresh booking read at execution/read-back. Deterministic booking→calendar plans retain their normal path. Two regression checks cover model/raw-plan bypasses; the entire credential-free suite now passes **159** checks (23 database checks run separately). The public scenario is rerun before footage is accepted. This is part of the final verification/iteration, not a fourth scored panel.

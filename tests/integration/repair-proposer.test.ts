@@ -204,3 +204,18 @@ describe('approval pause and resume', () => {
   });
 });
 
+
+describe('counterparty booking cannot be bypassed by a calendar-only proposal',()=>{
+ it('rejects a window-bound MOVE and requires the booking action shape',()=>{
+  const state=buildGoldenFixture().state;const start=iso(at(2,10));
+  const result=compileRepairProposal({state,feasibility:computeFeasibility(state),nowMin:0},{plans:[{label:'Calendar bypass',rationale:'',actions:[{type:'MOVE_CALENDAR_EVENT',target:IDS.interview,start_iso:start,new_owner:null,recipient:null,provenance:[`slot:${IDS.interview}@${start}`]}]}]});
+  expect(result.accepted).toHaveLength(0);expect(JSON.stringify(result.rejected)).toContain('BOOK_INTERVIEW_SLOT');
+ });
+ it('denies a raw window-bound move without a preceding matching booking',async()=>{
+  const {evaluatePlanActions}=await import('@dira/policy-engine');const state=buildGoldenFixture().state;const slot=state.approvedSlots[IDS.interview]![0]!;
+  const move={type:'MOVE_CALENDAR_EVENT' as const,target:IDS.interview,desired_state:{start_min:slot.startMin,start_iso:iso(slot.startMin),end_iso:iso(slot.startMin+slot.durationMin)},provenance:[slot.provenance],external_system:'calendar' as const,summary:'Synthetic mirror'};
+  expect(evaluatePlanActions(state,[move]).decisions[0]?.rule).toBe('calendar-mirror-requires-booking');
+  const booking={...move,type:'BOOK_INTERVIEW_SLOT' as const,external_system:'recruiter' as const};
+  expect(evaluatePlanActions(state,[booking,move]).decisions.map(x=>x.verdict)).toEqual(['ALLOW','ALLOW']);
+ });
+});
