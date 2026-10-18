@@ -12,10 +12,11 @@ import {
   type WorkflowStore,
 } from '@dira/agent';
 import { isoToMinutes, type DomainState } from '@dira/commitment-model';
-import { applyRulesToPlanningState } from '@dira/policy-engine';
+import { applyRulesToPlanningState, evaluateAction } from '@dira/policy-engine';
 import type { InterpretationResult, RawEmailEvent } from '@dira/event-schema';
 import { FlightRecorder, type FlightEntry } from '@dira/observability';
 import type { ToolSet } from '@dira/tool-contracts';
+import { assertRemainingCalendarPlanFresh } from './calendar-resume.js';
 import { availabilityIntervals, rebaseDomainState } from './account-planning.js';
 import { appendFlightRecords, getAccountKind, recordEgressAttempt } from './account-records.js';
 import { accountToolLabels, buildAccountToolSet, type AccountKind, type AccountToolLabels } from './account-tools.js';
@@ -319,6 +320,18 @@ async function prepareRuntime(store: PostgresAccountStore, accountId: string, op
     orchestrator(model: ModelClient, clockIso: string) {
       return new DiraOrchestrator(current, tools, ledger, recorder, model, new ClockedWorkflowStore(workflows, clockIso), {
         approvals: true,
+        ...(kind === 'google' ? {
+          executionClock:now,
+          beforeExternalAction:async (_record:ActionRecord,remaining:ActionRecord[],fresh:DomainState) => {
+            const [latestPolicy,latestProfile]=await Promise.all([store.getAccountPolicySettings(accountId),store.getAvailabilityProfile(accountId)]);
+            if (!latestProfile) throw new Error('Focus hours are unavailable; request a fresh plan');
+            for(const item of remaining) {
+              const decision=evaluateAction(fresh,item.action,latestPolicy.requireApproval,latestPolicy.correctionRules);
+              if (decision.verdict !== item.policyVerdict || decision.rule !== item.policyRule || decision.verdict === 'DENY') throw new Error('Policy changed; request a fresh plan');
+            }
+            assertRemainingCalendarPlanFresh(fresh,latestProfile,remaining,latestPolicy,now());
+          },
+        } : {}),
         policyOverrides: policy.requireApproval,
         correctionRules: policy.correctionRules,
         approvalSources: ['authenticated-web', 'telegram-callback'],

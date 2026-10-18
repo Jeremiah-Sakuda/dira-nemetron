@@ -1,0 +1,10 @@
+{
+  "checkedAtUtc": "2026-10-18T22:30:30.760Z",
+  "postgresMajor": 16,
+  "populatedLegacyGraphPreserved": true,
+  "syntheticMigrationFailureRolledBack": true,
+  "retryApplied18ImmutableMigrations": true,
+  "tenantContextStillRequired": true,
+  "runtimeRoleBypass": false,
+  "scope": "Disposable synthetic database; no production or Google provider data"
+}

@@ -34,6 +34,7 @@ import {
   type PolicyRuleOverride,
 } from '@dira/policy-engine';
 import { propagateConsequences } from '@dira/propagation-engine';
+import { normalizeActionTimes } from './action-time.js';
 import { ToolError, type ToolSet } from '@dira/tool-contracts';
 import { interpretEmail, type ModelClient } from './interpreter.js';
 import { generateCandidatePlans, type LiveSlot } from './planner.js';
@@ -114,6 +115,9 @@ export class InMemoryWorkflowStore implements WorkflowStore {
 
 export interface OrchestratorOptions {
   maxReplans?: number;
+  /** Real-account current clock; omitted for deterministic demo/replay. */
+  executionClock?: () => Date;
+  beforeExternalAction?: (record: ActionRecord, remaining: ActionRecord[], state: DomainState) => Promise<void>;
   /** Injected backoff; the deterministic replay passes a no-op. */
   sleep?: (ms: number) => Promise<void>;
   /** Optional model candidate source (Nemotron Ultra). Never authorizes anything. */
@@ -183,7 +187,7 @@ export class DiraOrchestrator {
       this.applyMutation(persistedMutation, trigger);
       for (const record of this.ledger.byWorkflow(workflowId)) {
         if (record.status === 'VERIFIED') {
-          this.state = applyAction(this.state, record.action);
+          this.state = applyAction(this.state, normalizeActionTimes(record.action, this.state.horizonStartIso));
         }
       }
       this.recorder.record('EVENT', `Resuming workflow ${workflowId} from persisted state`);
@@ -379,7 +383,7 @@ export class DiraOrchestrator {
           await this.ledger.transition(record.actionId, 'VERIFIED', {
             verification: { verifiedAtIso: this.recorder.record('VERIFY', `Reconciled: ${record.action.summary}`).atIso, observed: observed.observed },
           });
-          this.state = applyAction(this.state, record.action);
+          this.state = applyAction(this.state, normalizeActionTimes(record.action, this.state.horizonStartIso));
         } else {
           await this.ledger.transition(record.actionId, 'FAILED_TRANSIENT', {}, 'in-flight action not observed externally');
           await this.ledger.transition(record.actionId, 'PENDING_EXECUTION', {}, 'retry after restart');
@@ -425,6 +429,7 @@ export class DiraOrchestrator {
       }
 
       try {
+        await this.opts.beforeExternalAction?.(record, this.ledger.byWorkflow(this.run.id).filter(r=>r.planId===record.planId && r.status !== 'VERIFIED'),this.state);
         const response = await this.executeExternal(record);
         await this.ledger.transition(record.actionId, 'EXECUTED_UNVERIFIED', {
           externalResponse: response,
@@ -472,7 +477,7 @@ export class DiraOrchestrator {
       await this.ledger.transition(record.actionId, 'VERIFIED', {
         verification: { verifiedAtIso: entry.atIso, observed: observed.observed },
       });
-      this.state = applyAction(this.state, record.action);
+      this.state = applyAction(this.state, normalizeActionTimes(record.action, this.state.horizonStartIso));
       const externalId = (observed.observed as { metadata?: { externalId?: unknown } } | null)?.metadata?.externalId;
       const created = this.state.commitments[record.action.target];
       if (record.action.type === 'CREATE_CALENDAR_EVENT' && created && typeof externalId === 'string') {
@@ -711,7 +716,7 @@ export class DiraOrchestrator {
     }
 
     // Revalidate the exact authorized action set against the fresh state.
-    const actions = planRecords.map((r) => r.action);
+    const actions = planRecords.map((r) => normalizeActionTimes(r.action,this.state.horizonStartIso));
     const validation = validatePlan(this.state, { id: latestPlanId ?? 'resume', label: 'resume', actions, notes: [] });
     const decisions = actions.map((a) => evaluateAction(this.state, a, this.opts.policyOverrides ?? [], this.opts.correctionRules ?? []));
     const policyChanged = planRecords.find((r, i) => decisions[i]!.verdict !== r.policyVerdict || decisions[i]!.rule !== r.policyRule);
@@ -861,7 +866,7 @@ export class DiraOrchestrator {
   /** Planning "now": the trigger's arrival, projected onto the horizon. */
   private nowMin = 0;
   private currentNowMin(): number {
-    return this.nowMin;
+    return this.opts.executionClock ? Math.max(0,isoToMinutes(this.opts.executionClock().toISOString(),this.state.horizonStartIso)) : this.nowMin;
   }
 
   // ---------------------------------------------------------------------- //
@@ -966,14 +971,14 @@ export class DiraOrchestrator {
           id: this.externalId(action),
           startIso: String(d.start_iso),
         });
-        return { ok: ev !== null, observed: ev };
+        return { ok: ev !== null && Date.parse(ev.endIso) === Date.parse(String(d.end_iso)) && (typeof d.title !== 'string' || ev.title === d.title), observed: ev };
       }
       case 'CREATE_CALENDAR_EVENT': {
         const ev = await this.tools.calendar.verifyEvent({
           id: `cal-${action.target}`,
           startIso: String(d.start_iso),
         });
-        return { ok: ev !== null, observed: ev };
+        return { ok: ev !== null && Date.parse(ev.endIso) === Date.parse(String(d.end_iso)) && (typeof d.title !== 'string' || ev.title === d.title), observed: ev };
       }
       case 'DELETE_CALENDAR_EVENT': {
         const ev = await this.tools.calendar.verifyEvent({ id: this.externalId(action) });

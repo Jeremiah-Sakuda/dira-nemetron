@@ -75,7 +75,7 @@ export function TodayView() {
           {!monitoring.simulated && <p>Daily summaries: {monitoring.dailySummaryEnrolled ? 'enrolled' : 'not enrolled'} · last report {monitoring.latestSummary ? new Date(monitoring.latestSummary).toLocaleString() : 'not recorded'}</p>}
           <p className="footnote">{monitoring.disclosure}</p>
         </>}
-        <Link className="btn btn-secondary" href="/onboarding?section=connections">Review source permissions</Link>
+        <button className="btn btn-secondary" onClick={()=>setRetry(value=>value+1)}>Refresh source status</button> {session.kind === 'demo' ? <Link className="btn btn-secondary" href="/policies">Explore simulated policy controls</Link> : <Link className="btn btn-secondary" href="/onboarding?section=connections">Review source permissions</Link>}
       </section>
       <RelayedNotes />
       {session.kind !== 'demo' && <section className="panel"><MorningSummary /></section>}

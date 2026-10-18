@@ -1,6 +1,6 @@
 # Dira
 
-**Dira tracks what you have promised and to whom. When an upstream change breaks one of those promises, it repairs your week within limits you set, and tells the affected person before they have to ask.**
+**Dira tracks what you have promised and to whom. When an upstream change breaks one of those promises, it repairs your week within limits you set, and prepares updates for the affected people, with draft-only mail enabled by default.**
 
 Personal AI entry for the Nebius × NVIDIA Global AI Hackathon. NVIDIA Nemotron models on Nebius Token Factory propose; deterministic code decides what runs.
 

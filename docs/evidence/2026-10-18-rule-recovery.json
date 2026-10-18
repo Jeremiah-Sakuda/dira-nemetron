@@ -1,0 +1,9 @@
+{
+  "checkedOn": "2026-10-18",
+  "sourceSnapshot": "04520e1",
+  "scope": "Synthetic fixture on disposable PostgreSQL16, restricted runtime role. No owner Hermes, monitored owner source or real provider call.",
+  "check": "tests/postgres/durable-memory.test.ts",
+  "steps": ["Persist encrypted private Git bundle with graph and ASK_FIRST correction Skill", "Delete local memory checkout", "Restore the same Git history and Skill from the durable bundle", "Read recovered policy from restored policy.json", "Evaluate a later synthetic Calendar move with and without the recovered rule"],
+  "results": {"gitBundleBytesIdentical": true, "graphAndSkillContentsIdentical": true, "withoutRule": "ALLOW", "withRecoveredRule": "REQUIRE_APPROVAL", "rule": "user-rule:rule-recovery"},
+  "limitation": "Policy-verdict reuse is measured. This does not establish a later complete planner/approval/provider run, owner adoption, active Hermes Skills mirroring or time saved."
+}

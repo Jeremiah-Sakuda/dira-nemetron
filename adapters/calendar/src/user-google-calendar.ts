@@ -187,6 +187,7 @@ export class GoogleUserCalendarTool implements CalendarTool {
       const found = query.id ? await this.findEvent(api, query.id) : undefined;
       if (!found) return null;
       const event = this.toCalendarEvent(found);
+      if (query.id && (query.id.startsWith('google:') ? found.id !== query.id.slice(7) : event.id !== query.id || found.id !== googleEventIdFor(query.id))) return null;
       if (query.title && event.title !== query.title) return null;
       if (query.startIso && Date.parse(event.startIso) !== Date.parse(query.startIso)) return null;
       if (query.id && found.etag) this.checkedEtags.set(query.id, found.etag);

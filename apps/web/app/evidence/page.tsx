@@ -48,7 +48,7 @@ export default async function EvidencePage() {
             Calendars show that conflict. Dira repairs it.
           </p>
           <p className="muted">
-            It only takes actions already permitted by the people and policies in the plan,
+            This reference uses its original autonomous fixture policy. The v2 demo pauses for authenticated approval before delegation. Dira only takes actions permitted by the people and policies in the plan,
             then verifies the changed world before calling the repair complete.
           </p>
           <div className="hero-actions">
@@ -78,7 +78,7 @@ export default async function EvidencePage() {
           <div className="story-step story-repair">
             <span className="story-kicker">Dira&apos;s verified repair</span>
             <strong>Replan, rebook, delegate, rebuild</strong>
-            <span className="mono">RESOLVED · +1.3h · 0 HUMAN ACTIONS</span>
+            <span className="mono">V1 REPLAY · +1.3h · 0 INTERVENTIONS</span>
           </div>
         </div>
       </section>

@@ -18,6 +18,8 @@ interface DemoState {
   labels: { calendar: string; mail: string; delegation: string; booking: string; simulated: boolean };
   modelMode: 'live' | 'fixture';
   inferenceUsage?: { availability?: { available: boolean; reason?: string; resetsAtIso?: string | null } };
+  referenceCalendar?: Surfaces['calendar'];
+  referenceVersion?: string;
   clockIso: string;
   timezone: string;
   presets: Preset[];
@@ -63,13 +65,14 @@ export function DemoConsole() {
     const body = await readJson<DemoState>(response);
     if (!response.ok) throw new Error(body.error ?? 'The demo could not be loaded.');
     setState(body);
+    setBaseline(body.referenceCalendar ? {calendar:body.referenceCalendar,messages:[],bookings:[],delegations:[]} : null);
     setSurfaces(null); setSurfaceCheckedAt(null); setSurfaceError('');
     try {
     const surfaceResponse = await fetch('/api/surfaces', { cache: 'no-store' });
     const surfaceBody = await readJson<Surfaces>(surfaceResponse);
     if (surfaceResponse.ok) {
       setSurfaceCheckedAt(new Date().toISOString()); setSurfaces(surfaceBody);
-      setBaseline((current) => current ?? surfaceBody);
+
     } else throw new Error('Independent surface reads are unavailable. No fresh external result is displayed.');
     } catch { setSurfaces(null); setSurfaceError('Independent surface reads are unavailable. Retry before relying on an external result.'); }
     setPhase('ready');
@@ -292,14 +295,15 @@ export function DemoConsole() {
       )}
 
       {surfaceError && <section className="panel" role="alert"><h2 id="verify-title">Verification unavailable</h2><p>{surfaceError}</p><button className="btn" onClick={() => void recheck()} disabled={busy !== ''}>Retry verification</button></section>}
-      {surfaces && (changed.length > 0 || outbound.length > 0 || surfaces.bookings.length > 0) && (
+      {surfaces && (run || changed.length > 0 || outbound.length > 0 || surfaces.bookings.length > 0) && (
         <section className="panel demo-verify" aria-labelledby="verify-title">
           <h2 id="verify-title">What actually changed</h2>
-          <p className="muted">Independent simulated-surface reads checked {surfaceCheckedAt ? new Date(surfaceCheckedAt).toLocaleTimeString() : 'at an unknown time'}, compared with the start of the session. Dira marks an action verified only after a read like this.</p>
+          <p className="muted">Independent simulated-surface reads checked {surfaceCheckedAt ? new Date(surfaceCheckedAt).toLocaleTimeString() : 'at an unknown time'}, compared with the published synthetic reference week ({state.referenceVersion ?? 'version unavailable'}). Dira marks an action verified only after a read like this.</p>
+          {!baseline && <p className="form-error" role="alert">Reference comparison unavailable. The values below are current independent reads only.</p>}
           <div className="verify-grid">
             <div>
               <h3>{state.labels.calendar}</h3>
-              {changed.length === 0 ? <p className="muted">No calendar changes.</p> : (
+              {changed.length === 0 ? <p className="muted">{baseline ? 'No differences from the reference calendar.' : 'Before/after comparison unavailable.'}</p> : (
                 <ul className="change-list">{changed.map((item) => (
                   <li key={item.id}><strong>{item.title}</strong>
                     <span>{item.before ? formatWhen(item.before, state.timezone) : 'new'} → {item.after ? formatWhen(item.after, state.timezone) : 'removed'}</span></li>

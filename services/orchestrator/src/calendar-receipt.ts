@@ -1,3 +1,4 @@
+import { googleEventIdFor } from '@dira/adapter-calendar/user-google';
 import type { CalendarEvent } from '@dira/tool-contracts';
 
 /** Provider identity is distinct from Dira's logical/idempotency identity. */
@@ -15,6 +16,6 @@ export function calendarProviderId(value: unknown): string | undefined {
 }
 export function calendarReceipt(event: CalendarEvent, logicalId: string): CalendarExecutionReceipt {
   const googleEventId = calendarProviderId(event);
-  if (!googleEventId || event.id !== logicalId) throw new Error('Calendar read-back identity does not match the approved create');
+  if (!googleEventId || googleEventId !== googleEventIdFor(logicalId) || event.id !== logicalId) throw new Error('Calendar read-back identity does not match the approved create');
   return { kind: 'google-calendar', googleEventId, logicalId };
 }

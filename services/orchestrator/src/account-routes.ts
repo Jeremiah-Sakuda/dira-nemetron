@@ -104,6 +104,8 @@ export async function handleAccountRoutes(req: IncomingMessage, res: ServerRespo
       labels: accountToolLabels('demo'),
       modelMode: liveModelConfigured() ? 'live' : 'fixture',
       ...(liveModelConfigured() ? { inferenceUsage: await inferenceUsageSummary(store) } : {}),
+      referenceCalendar:world.calendarSeed,
+      referenceVersion:'student-week-v1',
       clockIso: world.clockIso,
       timezone: state.timezone,
       presets: world.presets.map((preset) => ({

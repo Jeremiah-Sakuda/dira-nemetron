@@ -13,30 +13,40 @@ interface ActionRow { actionId: string; type: string; summary: string; status: s
 export function ActivityLog() {
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [selected, setSelected] = useState<string>('');
-  const [detail, setDetail] = useState<{ flight: FlightLine[]; actions: ActionRow[] } | null>(null);
+  const [detail, setDetail] = useState<{ workflowId:string; flight: FlightLine[]; actions: ActionRow[] } | null>(null);
   const [error, setError] = useState('');
+  const [detailError,setDetailError]=useState('');
+  const [loaded,setLoaded]=useState(false);
+  const [retry,setRetry]=useState(0);
+  const [detailRetry,setDetailRetry]=useState(0);
 
   useEffect(() => {
+    let cancelled=false; setLoaded(false);setError('');
     void (async () => {
-      const response = await fetch('/api/workflows', { cache: 'no-store' });
-      const body = await readJson<{ workflows: WorkflowSummary[] }>(response);
-      if (!response.ok) { setError(body.error ?? 'Activity could not be loaded.'); return; }
-      setWorkflows(body.workflows);
-      const fromUrl = new URLSearchParams(window.location.search).get('workflow');
-      setSelected(fromUrl ?? body.workflows[0]?.id ?? '');
-    })();
-  }, []);
+      const response=await fetch('/api/workflows',{cache:'no-store'});
+      const body=await readJson<{workflows:WorkflowSummary[]}>(response);
+      if(!response.ok)throw Error(body.error ?? 'Activity could not be loaded.');
+      if(cancelled)return;
+      setWorkflows(body.workflows);setLoaded(true);
+      const fromUrl=new URLSearchParams(window.location.search).get('workflow');
+      setSelected(current=>body.workflows.some(run=>run.id===current)?current:body.workflows.some(run=>run.id===fromUrl)?fromUrl!:body.workflows[0]?.id ?? '');
+    })().catch(cause=>{if(!cancelled)setError(cause instanceof Error?cause.message:'Activity unavailable');});
+    return ()=>{cancelled=true;};
+  },[retry]);
+  useEffect(()=>{
+    let cancelled=false;setDetail(null);setDetailError('');
+    if(!selected)return ()=>{cancelled=true;};
+    void (async()=>{
+      const response=await fetch(`/api/workflows/${encodeURIComponent(selected)}`,{cache:'no-store'});
+      const body=await readJson<{flight:FlightLine[];actions:ActionRow[]}>(response);
+      if(!response.ok)throw Error(body.error ?? 'Selected run details are unavailable.');
+      if(!cancelled)setDetail({...body,workflowId:selected});
+    })().catch(cause=>{if(!cancelled)setDetailError(cause instanceof Error?cause.message:'Run details unavailable');});
+    return ()=>{cancelled=true;};
+  },[selected,detailRetry]);
 
-  useEffect(() => {
-    if (!selected) return;
-    void (async () => {
-      const response = await fetch(`/api/workflows/${encodeURIComponent(selected)}`, { cache: 'no-store' });
-      const body = await readJson<{ flight: FlightLine[]; actions: ActionRow[] }>(response);
-      if (response.ok) setDetail(body);
-    })();
-  }, [selected]);
-
-  if (error) return <p className="form-error" role="alert">{error}</p>;
+  if (error) return <section className="panel"><p className="form-error" role="alert">{error}</p><button className="btn" onClick={()=>setRetry(value=>value+1)}>Retry activity</button></section>;
+  if (!loaded) return <p role="status">Loading activity…</p>;
   if (!workflows.length) return <section className="panel"><p className="muted">No runs yet. Repairs appear here when an email, calendar change or feed update affects your commitments.</p></section>;
 
   return (
@@ -50,7 +60,7 @@ export function ActivityLog() {
         ))}
       </nav>
       <section className="panel activity-detail" aria-live="polite">
-        {!detail ? <p className="muted">Loading…</p> : (
+        {detailError ? <><p className="form-error" role="alert">{detailError}</p><button className="btn" onClick={()=>setDetailRetry(value=>value+1)}>Retry selected run</button></> : !detail || detail.workflowId !== selected ? <p className="muted" role="status">Loading selected run…</p> : (
           <>
             <h2>Actions</h2>
             <div className="ledger-table" role="table" aria-label="Action ledger">

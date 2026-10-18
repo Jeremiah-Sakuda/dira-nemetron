@@ -37,7 +37,7 @@ export function assertRemainingCalendarPlanFresh(
   const pending = [...records].filter(r => r.status !== 'VERIFIED').sort((a,b) => (a.planSeq ?? 0)-(b.planSeq ?? 0));
   if (!pending.length) return observed;
   for (const record of pending) {
-    if (!['CREATE_CALENDAR_EVENT','MOVE_CALENDAR_EVENT'].includes(record.action.type)) continue;
+    if (!['CREATE_CALENDAR_EVENT','MOVE_CALENDAR_EVENT','BOOK_INTERVIEW_SLOT'].includes(record.action.type)) continue;
     const desired = record.action.desired_state as Record<string,unknown>;
     if (typeof desired.start_iso !== 'string' || !Number.isFinite(Date.parse(desired.start_iso)) || Date.parse(desired.start_iso) < now.getTime()) {
       throw new Error('An approved Calendar slot has passed. Request a fresh plan before resuming.');
@@ -54,7 +54,7 @@ export function assertRemainingCalendarPlanFresh(
 function absoluteAction(record: ActionRecord, horizonStartIso: string): ActionRecord['action'] {
   const action = structuredClone(record.action);
   const desired = action.desired_state as Record<string,unknown>;
-  if (['CREATE_CALENDAR_EVENT','MOVE_CALENDAR_EVENT'].includes(action.type)) {
+  if (['CREATE_CALENDAR_EVENT','MOVE_CALENDAR_EVENT','BOOK_INTERVIEW_SLOT'].includes(action.type)) {
     if (typeof desired.start_iso !== 'string' || typeof desired.end_iso !== 'string') throw new Error('Calendar action is missing its absolute intent');
     desired.start_min = isoToMinutes(desired.start_iso, horizonStartIso);
     desired.duration_min = isoToMinutes(desired.end_iso, horizonStartIso) - Number(desired.start_min);

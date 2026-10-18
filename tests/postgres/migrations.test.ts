@@ -9,7 +9,7 @@ const url=process.env.DIRA_TEST_DATABASE_URL;
   await first.initialize();
   const before=await first.pool.query('SELECT name,sha256,applied_at FROM dira_schema_migrations ORDER BY name');
   expect(before.rows).toHaveLength(18);
-  const query=second.pool.query.bind(second.pool);const statements:string[]=[];
+  const query=second.pool.query.bind(second.pool);
   // The observable database record timestamps must survive actual reinitialization.
   await second.initialize();
   const after=await query('SELECT name,sha256,applied_at FROM dira_schema_migrations ORDER BY name');
