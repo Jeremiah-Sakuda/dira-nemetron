@@ -1,0 +1,116 @@
+{
+  "checkedAtUtc": "2026-10-30T04:39:40.054924+00:00",
+  "scope": "Synthetic public demo and local/CI architecture regression checks. No owner Google mutations, new sandbox deployment, or publication confirmation is implied.",
+  "architecturePasses": 3,
+  "recommendationsImplemented": 4,
+  "source": {
+    "architecture": "eec619c9500bbe3c1557d1e14d6b7f53b3518730",
+    "securityFollowup": "80d7c6ddd7c665f2f1b847f7459955ad093c88fb",
+    "repository": "https://github.com/Jeremiah-Sakuda/dira-nemetron",
+    "legacyRepositoryPushed": false
+  },
+  "localVerification": {
+    "credentialFreeTestsPassed": 192,
+    "postgresTestsPassedSeparately": 23,
+    "postgresRole": "NOSUPERUSER NOBYPASSRLS",
+    "rootTypecheck": "passed",
+    "webTypecheck": "passed",
+    "webProductionBuild": "passed",
+    "deterministicReplayRunsPassed": 20,
+    "duplicateMutations": 0,
+    "policyViolations": 0,
+    "injectedFailuresRecovered": 20,
+    "repairEvaluation": {
+      "mode": "fixture; no inference",
+      "scenariosResolved": 7,
+      "scenarios": 7,
+      "adversarialProbesRejected": 7
+    },
+    "npmAudit": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "ci": {
+    "architecture": "https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/runs/41003392067",
+    "securityFollowup": "https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/runs/41003724332",
+    "jobsPassedPerRun": 10
+  },
+  "deployment": {
+    "frontendDeploymentId": "dpl_AizAHJTz9BcCfe7pmarGhQyDr9CD",
+    "frontendUrl": "https://dira-nemetron.vercel.app/try",
+    "backendRevision": "dira-nemetron-backend-00021-4vh",
+    "backendImage": "sha256:37acfd0c561157b9597393132ba679d6ac7c63f7fe8526f2f1516bab562212a3",
+    "backendHealth": {
+      "ok": true
+    },
+    "paidVmCreated": false,
+    "existingScaleLimitsChanged": false
+  },
+  "publicCredentialFreeReplay": {
+    "status": "RESOLVED",
+    "runtime": "deterministic",
+    "slackFinalMin": 78,
+    "failuresRecovered": 1
+  },
+  "publicInteractiveCheck": {
+    "data": "synthetic only; simulated Calendar/mailbox/counterparty slots",
+    "status": "RESOLVED",
+    "approval": "explicit web button; no effects before approval in independent surface comparison",
+    "verifiedActionReadbacks": 13,
+    "injected409Recovered": true,
+    "slackAfterSourceChangeMin": -216,
+    "slackAfterRepairMin": 78,
+    "modelCalls": [
+      {
+        "tier": "Super",
+        "provider": "Nebius Token Factory",
+        "durationSeconds": 1.3,
+        "tokens": 1296
+      },
+      {
+        "tier": "Ultra",
+        "provider": "Nebius Token Factory",
+        "durationSeconds": 2.6,
+        "tokens": 5029,
+        "plansProposed": 1,
+        "plansCompiled": 1
+      },
+      {
+        "tier": "Ultra",
+        "provider": "Nebius Token Factory",
+        "durationSeconds": 1.8,
+        "tokens": 5029,
+        "plansProposed": 1,
+        "plansCompiled": 0,
+        "rejected": "offered slot no longer open"
+      }
+    ],
+    "selectedRepair": "deterministic",
+    "labeledAdversarialProposal": "rejected at provenance",
+    "proofDirectory": "docs/demo/v2/2026-10-30",
+    "brokerEgress": {
+      "httpStatus": 403,
+      "auditVerdict": "DENIED",
+      "scope": "application allowlist; not OpenShell network enforcement"
+    }
+  },
+  "judging": {
+    "rulesChecked": "2026-10-30",
+    "source": "https://nebiusglobalaihackathon.devpost.com/rules",
+    "period": "2026-12-09 to 2026-12-23",
+    "freeAccessRequiredUntil": "2026-12-23",
+    "futureUptimeVerified": false
+  },
+  "remaining": [
+    "Google Testing publication/reconnect and current owner token verification",
+    "Owner Hermes gateway activation and actual Skills/model turn",
+    "Sustained owner impact pilot and actual inbox intake evidence",
+    "Public YouTube URL and final Devpost confirmation",
+    "Judge-period hosting/inference allowance coverage through December 23"
+  ]
+}
