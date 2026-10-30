@@ -22,6 +22,6 @@
     "@dira/policy-engine": "*",
     "@dira/propagation-engine": "*",
     "@dira/tool-contracts": "*",
-    "zod": "^3.24.1"
+    "zod": "^4.6.7"
   }
 }

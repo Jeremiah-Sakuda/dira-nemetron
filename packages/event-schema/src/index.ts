@@ -158,7 +158,7 @@ export type ActionType = z.infer<typeof ActionTypeSchema>;
 export const PlannedActionSchema = z.object({
   type: ActionTypeSchema,
   target: z.string(),
-  desired_state: z.record(z.unknown()),
+  desired_state: z.record(z.string(), z.unknown()),
   /** PRD §22 — no provenance, no execution. */
   provenance: z.array(z.string()).min(1),
   external_system: z.enum(['calendar', 'recruiter', 'organization', 'gmail']),
