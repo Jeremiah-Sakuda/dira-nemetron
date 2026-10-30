@@ -1,4 +1,5 @@
-import { isoToMinutes, type DomainState } from '@dira/commitment-model';
+import type { DomainState } from '@dira/commitment-model';
+import { normalizeActionTimes } from '@dira/agent';
 import type { ActionRecord } from '@dira/action-ledger';
 import { applyAction, validatePlan } from '@dira/constraint-engine';
 import { applyRulesToPlanningState } from '@dira/policy-engine';
@@ -17,7 +18,7 @@ export function createdCalendarIntent(record: ActionRecord): CalendarCreatedInte
 export function verifiedCalendarState(state: DomainState, records: ActionRecord[]): DomainState {
   let observed = structuredClone(state);
   for (const record of [...records].filter(r => r.status === 'VERIFIED').sort((a,b) => (a.planSeq ?? 0)-(b.planSeq ?? 0))) {
-    const action = absoluteAction(record, observed.horizonStartIso);
+    const action = normalizeActionTimes(record.action, observed.horizonStartIso);
     observed = applyAction(observed, action);
     if (action.type === 'CREATE_CALENDAR_EVENT') {
       const providerId = calendarProviderId(record.externalResponse);
@@ -47,17 +48,7 @@ export function assertRemainingCalendarPlanFresh(
   rebased.availability = availabilityIntervals(profile, rebased, now);
   const planning = applyRulesToPlanningState(rebased, policy.correctionRules);
   const checked = validatePlan(planning, { id:'resume-check', label:'Remaining approved Calendar intents', notes:[],
-    actions:pending.map(r => absoluteAction(r, rebased.horizonStartIso)) });
+    actions:pending.map(r => normalizeActionTimes(r.action, rebased.horizonStartIso)) });
   if (!checked.acceptable) throw new Error(`Remaining Calendar plan is no longer feasible: ${checked.rejectionReason ?? 'fresh schedule check failed'}. Request a fresh plan.`);
   return observed;
-}
-function absoluteAction(record: ActionRecord, horizonStartIso: string): ActionRecord['action'] {
-  const action = structuredClone(record.action);
-  const desired = action.desired_state as Record<string,unknown>;
-  if (['CREATE_CALENDAR_EVENT','MOVE_CALENDAR_EVENT','BOOK_INTERVIEW_SLOT'].includes(action.type)) {
-    if (typeof desired.start_iso !== 'string' || typeof desired.end_iso !== 'string') throw new Error('Calendar action is missing its absolute intent');
-    desired.start_min = isoToMinutes(desired.start_iso, horizonStartIso);
-    desired.duration_min = isoToMinutes(desired.end_iso, horizonStartIso) - Number(desired.start_min);
-  }
-  return action;
 }

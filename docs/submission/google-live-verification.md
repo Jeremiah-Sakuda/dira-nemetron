@@ -43,6 +43,6 @@ Do not call the full integration verified until both actual provider paths have 
 
 ## Persistence limitation
 
-An external Google OAuth app in **Testing** generally receives refresh tokens expiring after seven days when it requests Calendar/Gmail scopes. That requires reauthorization and must be addressed before promising continuous real-account operation through December 15. The no-sign-in judge replay is independent of Google OAuth.
+An external Google OAuth app in **Testing** generally receives refresh tokens expiring after seven days when it requests Calendar/Gmail scopes. That requires reauthorization and must be addressed before promising continuous real-account operation through December 23. The no-sign-in judge replay is independent of Google OAuth.
 
 Sources: [Google OAuth web-server flow](https://developers.google.com/identity/protocols/oauth2/web-server), [Google refresh-token limitations](https://developers.google.com/identity/protocols/oauth2#expiration).

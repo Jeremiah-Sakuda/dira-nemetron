@@ -13,7 +13,7 @@ import {
   type ApprovalRevalidationEvidence,
   type PostgresAccountStore,
 } from './postgres-store.js';
-import type { WorkflowRun } from '@dira/agent';
+import { verifyCalendarEffect, type WorkflowRun } from '@dira/agent';
 
 export interface AccountWorkflowResumeResult {
   status: 'RESOLVED' | 'WAITING_REVIEW';
@@ -314,16 +314,15 @@ async function inspectCalendarAction(
   record: ActionRecord,
 ): Promise<{ alreadyApplied: boolean; observed: CalendarEvent | null }> {
   const action = record.action;
-  const desired = action.desired_state as Record<string, unknown>;
   if (action.type === 'CREATE_CALENDAR_EVENT') {
-    const current = await calendar.verifyEvent({ id: record.idempotencyKey });
+    const { ok, observed: current } = await verifyCalendarEffect(calendar, record.idempotencyKey, action);
     if (!current) return { alreadyApplied: false, observed: null };
-    if (!matchesDesired(current, desired)) throw new Error(`Calendar id ${action.target} exists with different content`);
+    if (!ok) throw new Error(`Calendar id ${action.target} exists with different content`);
     return { alreadyApplied: true, observed: current };
   }
   const commitment = state.commitments[action.target];
   if (!commitment?.externalId) throw new Error(`Calendar source id is missing for ${action.target}`);
-  const current = await calendar.verifyEvent({ id: `google:${commitment.externalId}` });
+  const { ok, observed: current } = await verifyCalendarEffect(calendar, `google:${commitment.externalId}`, action);
   if (action.type === 'DELETE_CALENDAR_EVENT') {
     if (!current) return { alreadyApplied: true, observed: null };
     if (!matchesCommitment(current, commitment, state.horizonStartIso, state.timezone ?? 'UTC')) {
@@ -332,7 +331,7 @@ async function inspectCalendarAction(
     return { alreadyApplied: false, observed: current };
   }
   if (!current) throw new Error(`Calendar event for ${commitment.title} is no longer available`);
-  if (matchesDesired(current, desired)) return { alreadyApplied: true, observed: current };
+  if (ok) return { alreadyApplied: true, observed: current };
   if (!matchesCommitment(current, commitment, state.horizonStartIso, state.timezone ?? 'UTC')) {
     throw new Error(`Calendar event for ${commitment.title} changed after approval`);
   }
@@ -368,14 +367,11 @@ async function verifyCalendarAction(
 ): Promise<{ ok: boolean; observed: unknown }> {
   const action = record.action;
   if (action.type === 'CREATE_CALENDAR_EVENT') {
-    const event = await calendar.verifyEvent({ id: record.idempotencyKey });
-    return { ok: Boolean(event && matchesDesired(event, action.desired_state as Record<string, unknown>)), observed: event };
+    return verifyCalendarEffect(calendar, record.idempotencyKey, action);
   }
   const commitment = state.commitments[action.target];
   if (!commitment?.externalId) return { ok: false, observed: null };
-  const event = await calendar.verifyEvent({ id: `google:${commitment.externalId}` });
-  if (action.type === 'DELETE_CALENDAR_EVENT') return { ok: event === null, observed: event };
-  return { ok: Boolean(event && matchesDesired(event, action.desired_state as Record<string, unknown>)), observed: event };
+  return verifyCalendarEffect(calendar, `google:${commitment.externalId}`, action);
 }
 
 function calendarEventFromAction(action: ActionRecord['action'], id: string): CalendarEvent {
@@ -390,15 +386,6 @@ function calendarEventFromAction(action: ActionRecord['action'], id: string): Ca
   return { id, title: desired.title, startIso: desired.start_iso, endIso: desired.end_iso };
 }
 
-function matchesDesired(event: CalendarEvent, desired: Record<string, unknown>): boolean {
-  const expectedTitle = typeof desired.title === 'string' ? desired.title : undefined;
-  return (!expectedTitle || event.title === expectedTitle)
-    && typeof desired.start_iso === 'string'
-    && typeof desired.end_iso === 'string'
-    && sameInstant(event.startIso, desired.start_iso)
-    && sameInstant(event.endIso, desired.end_iso);
-}
-
 function matchesCommitment(event: CalendarEvent, commitment: Commitment, horizonStartIso: string, timezone: string): boolean {
   if (commitment.startMin === undefined) return false;
   try {
@@ -408,11 +395,6 @@ function matchesCommitment(event: CalendarEvent, commitment: Commitment, horizon
   } catch {
     return false;
   }
-}
-
-function sameInstant(actual: string, expected: string): boolean {
-  return Number.isFinite(Date.parse(actual)) && Number.isFinite(Date.parse(expected))
-    && Date.parse(actual) === Date.parse(expected);
 }
 
 async function waitForReview(

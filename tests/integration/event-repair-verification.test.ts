@@ -6,12 +6,13 @@ import {assertRemainingCalendarPlanFresh} from '../../services/orchestrator/src/
 import {DEFAULT_ACCOUNT_POLICY} from '../../services/orchestrator/src/account-policy.js';
 
 describe('event-repair read-back and real-clock execution boundary',()=>{
- it.each(['end','title'])('never verifies a created event with wrong %s through the full orchestrator',async field=>{
+ it.each(['start','end','title'])('never verifies a created event with wrong %s through the full orchestrator',async field=>{
   const fixture=buildGoldenFixture();const runtime=await buildReplayRuntime(fixture);
   const original=runtime.tools.calendar.verifyEvent.bind(runtime.tools.calendar);
   runtime.tools.calendar.verifyEvent=async query=>{
    const event=await original(query);
    if(!event || !query.id?.startsWith('cal-study-'))return event;
+   if (field==='start') return {...event,startIso:new Date(Date.parse(event.startIso)+60000).toISOString()};
    return field==='end'?{...event,endIso:new Date(Date.parse(event.endIso)+60000).toISOString()}:{...event,title:'Unexpected external title'};
   };
   await runtime.orchestrator.handleEvent(fixture.trigger);
@@ -19,6 +20,22 @@ describe('event-repair read-back and real-clock execution boundary',()=>{
   expect(creates.length).toBeGreaterThan(0);
   expect(creates.filter(r=>r.status==='VERIFIED')).toHaveLength(0);
   expect(creates.some(r=>r.status==='REPLAN_REQUIRED')).toBe(true);
+ });
+ it.each(['missing','wrong-slot'])('blocks the Calendar mirror when its verified booking becomes %s',async mode=>{
+  const fixture=buildGoldenFixture();const runtime=await buildReplayRuntime(fixture);
+  const original=runtime.tools.recruiter.verifyBooking.bind(runtime.tools.recruiter);
+  let confirmed=0;
+  runtime.tools.recruiter.verifyBooking=async id=>{
+   const booking=await original(id);
+   if (!booking) return null;
+   confirmed++;
+   if (confirmed===1) return booking; // BOOK verification succeeds first.
+   return mode==='missing'?null:{...booking,slotId:'unexpected-slot'};
+  };
+  await runtime.orchestrator.handleEvent(fixture.trigger);
+  expect(runtime.ledger.all().some(r=>r.action.type==='BOOK_INTERVIEW_SLOT' && r.status==='VERIFIED')).toBe(true);
+  expect(runtime.ledger.all().filter(r=>r.action.type==='MOVE_CALENDAR_EVENT' && r.action.target==='technical-interview-1' && r.status==='VERIFIED')).toHaveLength(0);
+  expect(runtime.tools.calendar.mutationLog.filter(m=>m.id==='cal-technical-interview-1')).toHaveLength(0);
  });
  it('does not verify a moved event whose end differs from the approved result',async()=>{
   const fixture=buildGoldenFixture();const runtime=await buildReplayRuntime(fixture);const original=runtime.tools.calendar.verifyEvent.bind(runtime.tools.calendar);

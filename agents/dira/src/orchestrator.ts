@@ -35,6 +35,7 @@ import {
 } from '@dira/policy-engine';
 import { propagateConsequences } from '@dira/propagation-engine';
 import { normalizeActionTimes } from './action-time.js';
+import { verifyCalendarEffect } from './calendar-effect.js';
 import { ToolError, type ToolSet } from '@dira/tool-contracts';
 import { interpretEmail, type ModelClient } from './interpreter.js';
 import { generateCandidatePlans, type LiveSlot } from './planner.js';
@@ -912,6 +913,20 @@ export class DiraOrchestrator {
     return c?.externalId ?? `cal-${action.target}`;
   }
 
+  private async hasVerifiedCalendarBooking(action: PlannedAction): Promise<boolean> {
+    if (this.state.commitments[action.target]?.flexibility !== 'MOVE_WITHIN_WINDOW') return true;
+    const desired = action.desired_state;
+    const booked = this.ledger.byWorkflow(this.run.id).some(item => item.status === 'VERIFIED'
+      && item.action.type === 'BOOK_INTERVIEW_SLOT' && item.action.target === action.target
+      && item.action.desired_state.start_iso === desired.start_iso
+      && item.action.desired_state.end_iso === desired.end_iso
+      && item.action.desired_state.slot_id === desired.slot_id);
+    if (!booked) return false;
+    const actual = await this.tools.recruiter.verifyBooking(action.target);
+    return actual !== null && actual.slotId === desired.slot_id
+      && Date.parse(actual.startIso) === Date.parse(String(desired.start_iso));
+  }
+
   private async executeExternal(record: ActionRecord): Promise<unknown> {
     const action = record.action;
     const d = action.desired_state as Record<string, string | number | undefined>;
@@ -923,12 +938,7 @@ export class DiraOrchestrator {
           record.idempotencyKey,
         );
       case 'MOVE_CALENDAR_EVENT':
-        if (this.state.commitments[action.target]?.flexibility === 'MOVE_WITHIN_WINDOW') {
-          const booked=this.ledger.byWorkflow(this.run.id).some(item=>item.status === 'VERIFIED' && item.action.type === 'BOOK_INTERVIEW_SLOT'
-            && item.action.target === action.target && item.action.desired_state.start_iso === d.start_iso && item.action.desired_state.end_iso === d.end_iso);
-          const actual=booked ? await this.tools.recruiter.verifyBooking(action.target) : null;
-          if(!actual || Date.parse(actual.startIso) !== Date.parse(String(d.start_iso))) throw new ToolError('Calendar mirror requires a matching independently verified booking','BOOKING_REQUIRED',false);
-        }
+        if (!await this.hasVerifiedCalendarBooking(action)) throw new ToolError('Calendar mirror requires a matching independently verified booking','BOOKING_REQUIRED',false);
         await this.tools.calendar.moveEvent(
           this.externalId(action),
           String(d.start_iso),
@@ -973,28 +983,14 @@ export class DiraOrchestrator {
         return { ok: same, observed: booking };
       }
       case 'MOVE_CALENDAR_EVENT': {
-        if (this.state.commitments[action.target]?.flexibility === 'MOVE_WITHIN_WINDOW') {
-          const booked=this.ledger.byWorkflow(this.run.id).some(item=>item.status === 'VERIFIED' && item.action.type === 'BOOK_INTERVIEW_SLOT'
-            && item.action.target === action.target && item.action.desired_state.start_iso === d.start_iso && item.action.desired_state.end_iso === d.end_iso);
-          const actual=booked ? await this.tools.recruiter.verifyBooking(action.target) : null;
-          if(!actual || Date.parse(actual.startIso)!==Date.parse(String(d.start_iso)))return {ok:false,observed:{reason:'matching booking not verified'}};
-        }
-        const ev = await this.tools.calendar.verifyEvent({
-          id: this.externalId(action),
-          startIso: String(d.start_iso),
-        });
-        return { ok: ev !== null && Date.parse(ev.endIso) === Date.parse(String(d.end_iso)) && (typeof d.title !== 'string' || ev.title === d.title), observed: ev };
+        if (!await this.hasVerifiedCalendarBooking(action)) return { ok: false, observed: { reason: 'matching booking not verified' } };
+        return verifyCalendarEffect(this.tools.calendar, this.externalId(action), action);
       }
       case 'CREATE_CALENDAR_EVENT': {
-        const ev = await this.tools.calendar.verifyEvent({
-          id: `cal-${action.target}`,
-          startIso: String(d.start_iso),
-        });
-        return { ok: ev !== null && Date.parse(ev.endIso) === Date.parse(String(d.end_iso)) && (typeof d.title !== 'string' || ev.title === d.title), observed: ev };
+        return verifyCalendarEffect(this.tools.calendar, `cal-${action.target}`, action);
       }
       case 'DELETE_CALENDAR_EVENT': {
-        const ev = await this.tools.calendar.verifyEvent({ id: this.externalId(action) });
-        return { ok: ev === null, observed: ev };
+        return verifyCalendarEffect(this.tools.calendar, this.externalId(action), action);
       }
       case 'DELEGATE_TASK': {
         const c = this.state.commitments[action.target];

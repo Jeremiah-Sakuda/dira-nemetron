@@ -1,6 +1,6 @@
-# Judge access and operating plan — October 18, 2026
+# Judge access and operating plan — October 30, 2026
 
-Owner: Jeremiah Sakuda. Coverage target: December 1–15, 2026. No paid VM, minimum Cloud Run instance, database upgrade or automatic top-up is authorized by this plan. This is a plan, not proof of future uptime or a hard dollar cap.
+Owner: Jeremiah Sakuda. Coverage target: December 9–23, 2026. No paid VM, minimum Cloud Run instance, database upgrade or automatic top-up is authorized by this plan. This is a plan, not proof of future uptime or a hard dollar cap.
 
 ## Paths
 
@@ -10,11 +10,11 @@ Owner: Jeremiah Sakuda. Coverage target: December 1–15, 2026. No paid VM, mini
 
 ## Existing hosting
 
-Vercel frontend, scale-to-zero Cloud Run backend, Neon Free database/encrypted private Git bundles and a fifteen-minute authenticated Cloud Scheduler job. Both Nebius instances and disks were retired. Free allowances can be shared/exhausted; GCP request/storage/network costs are not an enforced zero-dollar ceiling. No uptime through December 15 has yet been observed.
+Vercel frontend, scale-to-zero Cloud Run backend, Neon Free database/encrypted private Git bundles and a fifteen-minute authenticated Cloud Scheduler job. Both Nebius instances and disks were retired. Free allowances can be shared/exhausted; GCP request/storage/network costs are not an enforced zero-dollar ceiling. No uptime through December 23 has yet been observed.
 
 ## Required owner checks
 
-Before submission, November 30, then each judging day:
+Before submission, December 8, then each judging day:
 
 1. Open Evidence in a signed-out browser; run the reference stream and confirm its verified result/ledger.
 2. Open Try and check successful session creation and quota-derived availability. Avoid burning inference for a mere health check. Run one full synthetic email→approval→read-back when preparing the submission and again before judging if the existing allowance permits.
@@ -24,6 +24,8 @@ Before submission, November 30, then each judging day:
 
 ## Completion evidence still required
 
-Record an actual November 30 check and checks during judging. Confirm provider credit balance and quota coverage with the owner before promising continuous live inference. Public YouTube video and Devpost final submission remain separate checklist items. Google publishing/reconnect and the local Hermes gateway require the exact owner/runtime steps recorded in the launch tracker.
+Record an actual December 8 check and checks during judging. Confirm provider credit balance and quota coverage with the owner before promising continuous live inference. Public YouTube video and Devpost final submission remain separate checklist items. Google publishing/reconnect and the local Hermes gateway require the exact owner/runtime steps recorded in the launch tracker.
 
 Runtime stability: root and web package engines are pinned to Node22.x, matching CI/backend. A later provider-default major upgrade should be reviewed and verified deliberately rather than inherited during the judging window.
+
+Official timing rechecked October 30: judging now runs December 9–23; the previous December 1–15 window is superseded. [Current official rules](https://nebiusglobalaihackathon.devpost.com/rules). No future uptime is established by updating this plan.

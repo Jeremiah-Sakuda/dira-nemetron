@@ -1,6 +1,12 @@
-# Launch and judging readiness — October 18, 2026
+# Launch and judging readiness — October 30, 2026
 
-## Completed and measured
+## October 30 architecture follow-up
+
+Three requested architecture passes are implemented: one complete approved-time interpretation, one shared JSON account transport, one Calendar effect read-back module and reuse of the created-intent projection. [Recommendations and closure](../architecture/review-2026-10-30.md). The current credential-free replay and backend health were checked again; recorded Google and sandbox results below retain their October 16–18 dates. Final source/deployment/CI checks for this follow-up are recorded in [dated evidence](../evidence/2026-10-30-architecture-readiness.json).
+
+The official rules now list judging as **December 9–23**, requiring free judge access through December 23. The submission deadline remains **October 30 at 10:00 AM Pacific / 1:00 PM Eastern**. [Rules rechecked October 30](https://nebiusglobalaihackathon.devpost.com/rules).
+
+## Completed and measured on October 18
 
 - Three independent internal AI judging rounds, each followed by implementation: equal-weight panel means **7.17 → 7.29 → 7.46/10** before each following iteration. These are not official hackathon results. [Panel protocol, original scorecards and iteration reports](judging/summary.md).
 - Public frontend on Vercel, backend on scale-to-zero Cloud Run, Neon Free database/encrypted Git memory, authenticated fifteen-minute Cloud Scheduler. Both Nebius VM instances and boot disks were retired. No new paid VM, hosting upgrade or automatic top-up was enabled. Registry measured about477MB after the full rebuild; free allowances remain shared, not a hard spending cap.
@@ -20,6 +26,6 @@
 | Persistent Hermes | Resolve the official local gateway bridge probe, then owner creates/enrolls an account-scoped token and immutable Skills mirror is actually tested. TLS/auth/network guards stay enabled. | Actual owner read/report turn and read-only Skills check; availability only while local host is awake |
 | Owner impact pilot | No sustained monitored owner workflow, independent user study or measured time saved exists. | Bounded authorized pilot, including later confirmed-rule reuse after recovery; report actual outcomes |
 | Video and submission | Revised 2:26 local English walkthrough, subtitles and upload copy are prepared. The Mac must be unlocked for signed-in Chrome publishing. Final Google security/Devpost legal actions require the owner at the point of action. | Public YouTube URL under3minutes, completed Devpost fields and submission confirmation |
-| Judge-period operations | [Operating plan](judge-availability.md) names owner checks before/during December1–15. Inference has durable lifetime/rolling limits; no capacity or funds are increased automatically. | Actual pre-judging/daily checks and allowance coverage, not a future-uptime promise |
+| Judge-period operations | [Operating plan](judge-availability.md) names owner checks before/during December9–23. Inference has durable lifetime/rolling limits; no capacity or funds are increased automatically. | Actual pre-judging/daily checks and allowance coverage, not a future-uptime promise |
 
 Backups remain private and off the deleted VMs. The retired VM nightly backup timer is no longer running. Actual Calendar/OAuth recovery and separate synthetic migration/rule tests do not establish future token validity, owner Hermes availability or current Google behavior on every hardened branch.

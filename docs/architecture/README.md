@@ -50,4 +50,6 @@ flowchart LR
 
 ## Deployment
 
-One Nebius VM runs Postgres, the orchestrator and broker, the web app, Caddy, and the NemoClaw/OpenShell gateway, with one Hermes sandbox per account. See [`../../infrastructure/README.md`](../../infrastructure/README.md). The v1 Google Cloud architecture diagram is kept in `v1/`.
+The public frontend runs on Vercel. A scale-to-zero Cloud Run deployment runs the orchestrator and broker; Neon PostgreSQL holds account-partitioned state, credentials, ledger, workflow records and encrypted private Git memory bundles. An authenticated Cloud Scheduler request runs every fifteen minutes. Both Nebius VMs and their disks were retired after recovery verification. Runtime model calls use Nebius Token Factory.
+
+OpenShell enforcement was verified separately on an isolated Linux VM; it does not surround the public Cloud Run broker. The owner Hermes runtime is unfinished. See the [current operating plan](../submission/judge-availability.md), [readiness tracker](../submission/remaining-launch-work.md), and [three architecture passes](review-2026-10-30.md). Historical Nebius deployment instructions and the v1 diagram remain references, not the current deployment.

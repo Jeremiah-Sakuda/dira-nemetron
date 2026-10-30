@@ -1,0 +1,3 @@
+# Persist account state independently of the web and execution hosts
+
+The public app uses Vercel for the web module, scale-to-zero Cloud Run for execution, and Neon PostgreSQL for durable account state and encrypted private Git memory bundles. This replaces the retired Nebius VMs to avoid their standing compute costs while keeping runtime inference on Nebius Token Factory. Account partitioning, durable approval/ledger records and independent read-back must survive host replacement; local host files cannot become the authoritative production store. Separate OpenShell validation does not imply network enforcement around Cloud Run, and free provider allowances are not a hard dollar cap.

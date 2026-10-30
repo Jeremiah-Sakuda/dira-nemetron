@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { ActionRecord } from '@dira/action-ledger';
 import { isoToMinutes, localDateTimeToIso, type Commitment } from '@dira/commitment-model';
-import { GoogleUserCalendarTool, googleEventIdFor } from '@dira/adapter-calendar/user-google';
+import { GoogleUserCalendarTool } from '@dira/adapter-calendar/user-google';
 import { PostgresWorkflowStore, type ApprovalRevalidationEvidence, type PostgresAccountStore } from './postgres-store.js';
 import { availabilityIntervals, prepareAccountSchedule, rebaseDomainState, stableActionIntentKey } from './account-planning.js';
 import { assertReviewedCalendarOccupancy } from './calendar-occupancy.js';
+import { createdCalendarIntent } from './calendar-resume.js';
 
 export type ApprovalRevalidation =
   | { ok: true; evidence: ApprovalRevalidationEvidence; checkedCalendarEvents: number; planLabel: string }
@@ -70,7 +71,7 @@ export async function revalidateAccountApproval(
   const freshReads: { id: string; startIso: string; endIso: string }[] = [];
   try {
     await assertReviewedCalendarOccupancy(calendar, oldState,
-      workflowRecords.filter(r => r.action.type === 'CREATE_CALENDAR_EVENT').map(r => {const d=r.action.desired_state as Record<string, unknown>;return {logicalId:r.idempotencyKey,googleEventId:googleEventIdFor(r.idempotencyKey),title:String(d.title),startIso:String(d.start_iso),endIso:String(d.end_iso)};}));
+      workflowRecords.filter(r => r.action.type === 'CREATE_CALENDAR_EVENT').map(createdCalendarIntent));
   } catch (error) {
     return { ok: false, retryable: true, reason: error instanceof Error ? error.message : 'Complete Calendar occupancy could not be read.' };
   }

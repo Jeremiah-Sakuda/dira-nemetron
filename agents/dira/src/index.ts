@@ -8,3 +8,4 @@ export * from './repair-proposer.js';
 export * from './model-routing.js';
 
 export { normalizeActionTimes } from './action-time.js';
+export { verifyCalendarEffect } from './calendar-effect.js';

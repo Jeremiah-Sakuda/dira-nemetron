@@ -22,6 +22,13 @@ describe('Calendar retry guards and distinct provider receipts',()=>{
  it('reconstructs verified creates with the real source reference',()=>{
   expect(verifiedCalendarState(state(),[create()]).commitments['new-block']?.externalId).toBe(providerId);
  });
+ it.each([undefined,'invalid','2030-01-02T10:00:00Z','2030-01-02T09:00:00Z'])(
+  'rejects malformed approved intervals during recovery and before execution: %s',endIso=>{
+   const record=create();record.action.desired_state.end_iso=endIso;
+   expect(()=>verifiedCalendarState(state(),[record])).toThrow('Scheduled action');
+   record.status='AUTHORIZED';
+   expect(()=>assertRemainingCalendarPlanFresh(state(),profile,[record],DEFAULT_ACCOUNT_POLICY,new Date('2030-01-01T12:00:00Z'))).toThrow('Scheduled action');
+  });
  it.each([false,true])('rejects a past slot on transient retry, completed sibling=%s',completed=>{
   const pending=create('FAILED_TRANSIENT');pending.actionId='pending';pending.action.target='pending-block';
   const records=completed?[create(),pending]:[pending];

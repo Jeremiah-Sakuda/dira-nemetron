@@ -15,13 +15,13 @@ The official rules currently use a Stage One pass/fail gate followed by four equ
 
 Stage One requires genuine track fit and meaningful use of the required APIs/SDKs; a superficial rebrand does not qualify. For the Personal AI track, keep the always-on, private, persistent-memory, reusable-skills, and user-chosen-tools experience visible in the product and judge path.
 
-Official references (rechecked October 18, 2026):
+Official references (rules rechecked October 30, 2026):
 
 - [Official rules and judging criteria](https://nebiusglobalaihackathon.devpost.com/rules)
 - [Hackathon overview and criteria](https://nebiusglobalaihackathon.devpost.com/)
 - [Organizer explanation of judging](https://nebiusglobalaihackathon.devpost.com/updates/46204-here-s-how-judging-works)
 
-Recheck official rules before architecture commitments and submission. The submission deadline is October 30, 2026 at 10:00 AM Pacific Time; the judging period is December 1–15, 2026. Keep a working, free judge path available throughout judging.
+Recheck official rules before architecture commitments and submission. The submission deadline is October 30, 2026 at 10:00 AM Pacific Time; the judging period is December 9–23, 2026. Keep a working, free judge path available throughout judging.
 
 ## Engineering constraints
 

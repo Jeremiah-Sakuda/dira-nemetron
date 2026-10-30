@@ -46,4 +46,4 @@ make eval-repair-fixture
 
 ## Operating the free path
 
-See [judge availability and operating plan](judge-availability.md). Hosting allowance and actual model availability are separate. Existing deployment is observed today; uninterrupted access through December 15 is a future operational obligation, not a measured result.
+See [judge availability and operating plan](judge-availability.md). Hosting allowance and actual model availability are separate. Existing deployment is observed today; uninterrupted access through December 23 is a future operational obligation, not a measured result.
