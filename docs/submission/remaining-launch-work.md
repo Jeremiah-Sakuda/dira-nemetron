@@ -1,4 +1,6 @@
-# Launch and judging readiness — October 30, 2026
+# Operator launch tracker — October 30, 2026
+
+Engineering and account-operation notes for the owner. Use [Devpost copy](devpost.md) for the public project narrative and [the submission package](submission-package.md) for publishing assets.
 
 ## October 30 architecture follow-up
 
@@ -6,9 +8,9 @@ Three requested architecture passes are implemented: one complete approved-time 
 
 The official rules now list judging as **December 9–23**, requiring free judge access through December 23. The submission deadline remains **October 30 at 10:00 AM Pacific / 1:00 PM Eastern**. [Rules rechecked October 30](https://nebiusglobalaihackathon.devpost.com/rules).
 
-## Completed and measured on October 18
+## October 18 engineering and deployment record
 
-- Three independent internal AI judging rounds, each followed by implementation: equal-weight panel means **7.17 → 7.29 → 7.46/10** before each following iteration. These are not official hackathon results. [Panel protocol, original scorecards and iteration reports](judging/summary.md).
+- Three internal review rounds, each followed by implementation, informed the Calendar, persistence, approval and product refinements. [Review findings and iteration reports](judging/summary.md). The October 30 documentation revision withdraws the internal Impact scores and aggregate means; they are not used in the submission.
 - Public frontend on Vercel, backend on scale-to-zero Cloud Run, Neon Free database/encrypted Git memory, authenticated fifteen-minute Cloud Scheduler. Both Nebius VM instances and boot disks were retired. No new paid VM, hosting upgrade or automatic top-up was enabled. Registry measured about477MB after the full rebuild; free allowances remain shared, not a hard spending cap.
 - Final code follow-up `070e1df`, after deployed verification exposed a booking bypass: compiler shape, plan-level policy and execution/read-back now require the matching verified counterparty booking before a window-bound calendar mirror. [CI39172973527](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/runs/39172973527) passed all ten jobs. The earlier CI deadlock and fixed-clock regression were repaired, not bypassed.
 - **159 credential-free tests passed**; **23 actual PostgreSQL tests passed separately** with a non-superuser/NOBYPASSRLS role. Root/web TypeScript and Vercel build passed. Compatible patched dependencies report zero npm advisories at the check. Migration repeat-startup, populated legacy adoption, injected failure rollback and recovered rule verdict reuse were measured with synthetic data.
@@ -16,7 +18,7 @@ The official rules now list judging as **December 9–23**, requiring free judge
 - Actual synthetic Google Calendar source→review→approval→broker→independent provider read-back and actual self-addressed Gmail draft creation/recovery remain recorded October16–17 checks. No actual inbox intake or message sending is implied. Calendar fixtures were deleted; two synthetic drafts retained. [Calendar evidence](../evidence/2026-10-16-google-calendar-live.json), [Gmail evidence](../evidence/2026-10-16-google-gmail-live.json).
 - Separately measured isolated Linux OpenShell network/tool/filesystem/credential checks remain narrowly valid. They do not surround Cloud Run. The temporary cloud VM was removed. The new no-mount local runtime has official NemoHermes0.0.135/OpenShell0.0.116 installed, but its gateway did not pass the internal Docker bridge probe. No owner MCP token, owner model turn or active immutable Skills mirror is claimed.
 - Google v2 branding links now point to deployed home/privacy/terms; v2 OAuth completion restricts enrollment to the configured verified owner. This does not change the project's current Testing-token lifetime. Scheduled Google enrollment remains empty and automatic sync remains disabled.
-- Mobile Today at390×844 had document width390 and scroll width390. The final product has source status/history, explicit errors/retry, step links, current evidence and race-safe Activity details. New walkthrough uses actual public screens with held/edited narration; it is not a real-time recording.
+- Mobile Today at390×844 had document width390 and scroll width390. The final product has source status/history, explicit errors/retry, step links, current evidence and race-safe Activity details. The October 18 walkthrough uses held public screenshots; the October 30 master uses actual Chrome screen footage with edited waits and narration holds labeled.
 
 ## Exact remaining actions
 
@@ -24,8 +26,7 @@ The official rules now list judging as **December 9–23**, requiring free judge
 | --- | --- | --- |
 | Google continuity | Await owner decision on publishing shared `dira-prod` from Testing to Production; affects legacy clients too. Then owner reconnects/consents. Browser security requires action-time approval. | New authorized token after publishing; no blanket public verification claim |
 | Persistent Hermes | Resolve the official local gateway bridge probe, then owner creates/enrolls an account-scoped token and immutable Skills mirror is actually tested. TLS/auth/network guards stay enabled. | Actual owner read/report turn and read-only Skills check; availability only while local host is awake |
-| Owner impact pilot | No sustained monitored owner workflow, independent user study or measured time saved exists. | Bounded authorized pilot, including later confirmed-rule reuse after recovery; report actual outcomes |
-| Video and submission | Revised 2:26 local English walkthrough, subtitles and upload copy are prepared. The Mac must be unlocked for signed-in Chrome publishing. Final Google security/Devpost legal actions require the owner at the point of action. | Public YouTube URL under3minutes, completed Devpost fields and submission confirmation |
+| Video and submission | A 2:40 Gemini-narrated Chrome screen recording, English captions, narration script and upload copy are prepared; the original silent master is retained. Final Google security/Devpost legal actions require the owner at the point of action. | Public YouTube URL under3minutes, completed Devpost fields and submission confirmation |
 | Judge-period operations | [Operating plan](judge-availability.md) names owner checks before/during December9–23. Inference has durable lifetime/rolling limits; no capacity or funds are increased automatically. | Actual pre-judging/daily checks and allowance coverage, not a future-uptime promise |
 
 Backups remain private and off the deleted VMs. The retired VM nightly backup timer is no longer running. Actual Calendar/OAuth recovery and separate synthetic migration/rule tests do not establish future token validity, owner Hermes availability or current Google behavior on every hardened branch.

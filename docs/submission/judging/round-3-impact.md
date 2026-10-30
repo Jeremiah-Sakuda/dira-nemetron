@@ -1,14 +1,16 @@
 # Round 3 — impact and originality review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Independent internal AI judging simulation, October 18, 2026. Snapshot: `04520e1398e0bfcb4ce2b81005e47e170356a08b`. The 0–10 scores are internal calibration, not an official scale or award prediction. All four criteria have equal weight. This reviewer read source, submission documents and recorded evidence; no tests, inference, computer UI, private runtime files or sibling scorecards were used. The round context still marks iteration 2 deployment and full CI as pending, so those are not treated as completed public checks.
 
 | Criterion | Score / 10 | Basis |
 | --- | --- | --- |
 | Technological Implementation | 8.0 | Recorded live model contribution and actual provider verification now sit alongside reported 23/23 real PostgreSQL checks, recovery-rule behavior and stronger Calendar guards. The remaining owner/runtime and full source-to-model intake limits remain explicit. |
 | Design | 7.5 | Dated v2 evidence and its integration limits are now accessible from the product source. Outcome wording, monitoring history and quota/read-back states are clearer. This review does not certify the latest deployed rendering. |
-| Potential Impact | 6.0 | The student cascade remains credible and specific, but the evidence still establishes controlled synthetic behavior rather than recurring usefulness to an independent user. No extra audience outcome or longitudinal observation was added. |
-| Quality of the Idea | 8.0 | Promise dependencies, model-expanded repair candidates and deterministic provenance compilation remain a strong combination. Clearer presentation reveals existing originality; it does not expand the small model corpus or establish broader novelty through outcomes. |
-| Equal-weight mean | **7.375** | Engineering and evidence clarity improved. Impact and Idea are unchanged because their principal evidence limits remain. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
+| Quality of the Idea | 8.0 | Promise dependencies, model-expanded repair candidates and deterministic provenance compilation form a creative application of Nemotron to a concrete coordination problem. The comparative repair case makes that contribution inspectable. |
+| Equal-weight mean | — | Withdrawn with the earlier Impact assessment; no replacement numerical judging round was run. |
 
 ## Stage One
 
@@ -16,7 +18,7 @@ Independent internal AI judging simulation, October 18, 2026. Snapshot: `04520e1
 
 ## Submission compliance and availability
 
-Public YouTube and final Devpost publication remain open per `docs/submission/judging/round-3-context.md:15`. The existing video, planned revised footage and planned pilot receive no completion credit. Free access through December 15 is an obligation separate from the four scores and Stage One.
+Public YouTube and final Devpost publication remain open per `docs/submission/judging/round-3-context.md:15`. Publication completion is recorded with the actual public video URL and submission confirmation. Free access through December 15 is an obligation separate from the four scores and Stage One.
 
 `docs/submission/judge-availability.md:3,7–9,13,17–27` is appropriately bounded: it separates credential-free replay, live admitted inference and the owner pilot; names future checks and ownership; acknowledges shared free allowances and unknown continuous uptime; and leaves funding/credit decisions explicit. This is a useful operating plan, not evidence those future checks happened. It does not guarantee continuous live inference. The supplied context confirms iteration 1 session creation, while iteration 2 deployment remains in progress. No fresh external access certification is claimed by this reviewer.
 
@@ -34,15 +36,17 @@ Public YouTube and final Devpost publication remain open per `docs/submission/ju
 
 **Action:** Complete the current English public YouTube video under three minutes and required Devpost fields; record the deployed source/revisions and unauthenticated Try/Evidence checks. Make the submitted text say live inference occurs when configured and admitted by allowance, with a clearly labeled recorded/credential-free fallback. Keep exact owner-only publishing/reconnect and final terms actions assigned until completed.
 
-**Acceptance:** The final package has a public video URL/duration, submission confirmation or precise outstanding owner step, verified deployment identifiers and documented fallback behavior. No planned owner runtime, later pilot, future uptime or new inference balance is presented as already established.
+**Acceptance:** The final package has a public video URL/duration, submission confirmation or precise outstanding owner step, verified deployment identifiers and documented fallback behavior. Record account configuration, publication and access checks with their actual completion dates.
 
-### 2. High — close the audience outcome gap without inventing adoption
+### 2. Present the student problem and its demonstrated resolution
 
-**Evidence:** `docs/submission/devpost.md:13,19,33` still relies on the same professor shock and thirteen simulated actions. Line 55 places the bounded longitudinal pilot in future work. `docs/evidence/2026-10-16-google-gmail-live.json:3` explicitly starts from an operator-provisioned synthetic plan; it establishes adapter behavior rather than an ordinary user's inbox-to-outcome workflow. New database and recovery checks do not change that Impact boundary.
+**Audience:** a student coordinating coursework, recruiting and a team deliverable.
 
-**Action:** Keep a student coordinating coursework, recruiting and one team deliverable as the primary audience. Demonstrate another independently specified source change through normal reviewed intake, affected promise, approved plan and observed result, recording the user's confirmations and manual work. If time or owner access prevents that, state the synthetic/controlled scope prominently and keep the pilot as next work.
+**Problem:** a changed exam date removes preparation time, breaks an interview buffer and conflicts with work another person depends on.
 
-**Acceptance:** An additional outcome can be followed without a prepared action plan being injected, or the submission clearly acknowledges that limitation. Any pilot observation names its actual duration and sample size. No saved-time, adoption, professional-user or general reliability result is inferred from tests.
+**Presentation:** follow source → interpreted change → affected commitments → approved repair → independently read-back result. Show restored study time, the delegated task and the interview request's explicit counterparty status. This sequence makes the problem, audience and solution concrete under the official Potential Impact criterion.
+
+**Acceptance:** a judge can explain whose problem Dira addresses, why the commitments are connected, and how the demonstrated repair addresses the disruption. Keep the synthetic integration label alongside the demonstration.
 
 ### 3. Medium — make the Ultra comparison inspectable beyond aggregate counts
 
@@ -58,7 +62,7 @@ Public YouTube and final Devpost publication remain open per `docs/submission/ju
 
 **Action:** Add a dated public evidence note for the measured PostgreSQL fixture: same stored rule after restoration, `ALLOW` without it, `REQUIRE_APPROVAL` with it. If the final iteration also demonstrates normal correction confirmation and a later planner/approval outcome, record that separately. Continue labeling automatic owner Hermes mirror activation incomplete.
 
-**Acceptance:** The no-sign-in evidence path shows the new result and its fixture/policy-only scope. It does not call direct `evaluateAction` assertions a full later workflow or a measured user benefit. A later end-to-end claim requires its own actual observed run.
+**Acceptance:** The no-sign-in evidence path shows the new result and its fixture/policy-only scope. Describe the `evaluateAction` result as a recovered-rule policy verdict and link any subsequent workflow recording separately.
 
 ### 5. Medium — finish aligning the remaining headline and autonomy claims
 
@@ -68,6 +72,6 @@ Public YouTube and final Devpost publication remain open per `docs/submission/ju
 
 **Acceptance:** The primary written pitch and visible evidence metric do not imply actual real stakeholder sends or bypassed human approvals. A judge understands which automation belongs to the inherited fixture and which approval steps the live product requires.
 
-## Assessment limit
+## Submission emphasis
 
-This is a stronger and more candid submission than the initial review snapshot. The proof is specific enough to credit substantive new model and product work while retaining inherited core attribution. The remaining Impact limit cannot be closed by polishing copy or increasing test counts: it requires another observed audience workflow or an explicit, credible limitation on what is being claimed.
+Lead with the student commitment cascade, the owner-controlled repair and the verified result. Make the model contribution and persistent correction rules easy to inspect. Use the current submission package for the public narrative and operator checklists for publishing and account tasks.

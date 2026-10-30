@@ -29,5 +29,5 @@
   "egress": {"scope":"application broker allowlist, not public OpenShell network enforcement","status":403,"auditedDenial":true},
   "ci": {"run":39172973527,"source":"070e1df","allTenJobsPassed":true},
   "tests": {"credentialFreePassed":159,"postgresSkippedInThatRun":23,"separatePostgresPassed":23,"rootTypecheck":"passed","webTypecheck":"passed"},
-  "limitations": ["Google actual-provider evidence remains dated October16–17 with its original revision", "Owner Google continuity approval/reconnect and owner Hermes gateway/Skills enrollment remain open", "No actual inbox intake, mail sending, longitudinal adoption or productivity benefit was measured", "Future judge availability requires the operating plan and existing allowance coverage"]
+  "limitations": ["Google actual-provider evidence remains dated October16–17 with its original revision", "Owner Google continuity approval/reconnect and owner Hermes gateway/Skills enrollment remain open", "The actual Gmail provider check covers self-addressed draft creation and recovery", "Future judge availability requires the operating plan and existing allowance coverage"]
 }

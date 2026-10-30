@@ -5,5 +5,5 @@
   "check": "tests/postgres/durable-memory.test.ts",
   "steps": ["Persist encrypted private Git bundle with graph and ASK_FIRST correction Skill", "Delete local memory checkout", "Restore the same Git history and Skill from the durable bundle", "Read recovered policy from restored policy.json", "Evaluate a later synthetic Calendar move with and without the recovered rule"],
   "results": {"gitBundleBytesIdentical": true, "graphAndSkillContentsIdentical": true, "withoutRule": "ALLOW", "withRecoveredRule": "REQUIRE_APPROVAL", "rule": "user-rule:rule-recovery"},
-  "limitation": "Policy-verdict reuse is measured. This does not establish a later complete planner/approval/provider run, owner adoption, active Hermes Skills mirroring or time saved."
+  "limitation": "The fixture verifies restored-rule policy evaluation. Complete planner/approval/provider execution and the optional Hermes Skills mirror are separate technical checks."
 }

@@ -21,3 +21,4 @@ coverage
 **/*.tsbuildinfo
 **/._*
 docs/demo/**/*.mp4
+docs/demo/**/*.wav

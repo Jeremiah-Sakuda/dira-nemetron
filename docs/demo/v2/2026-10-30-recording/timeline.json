@@ -1,0 +1,207 @@
+{
+  "durationSeconds": 160,
+  "audioTracks": 0,
+  "capture": "Actual Chrome screen recording; 30fps; edited; holds labeled",
+  "scenes": [
+    {
+      "id": "problem",
+      "startSeconds": 0,
+      "durationSeconds": 15,
+      "title": "One changed date can break a week",
+      "shots": [
+        {
+          "in": 0.8,
+          "out": 13.5,
+          "duration": 15
+        }
+      ]
+    },
+    {
+      "id": "change",
+      "startSeconds": 15,
+      "durationSeconds": 20,
+      "title": "One email exposes three conflicts",
+      "shots": [
+        {
+          "in": 14.0,
+          "out": 22.0,
+          "duration": 8
+        },
+        {
+          "in": 51.5,
+          "out": 61.0,
+          "duration": 12,
+          "waitCut": true
+        }
+      ]
+    },
+    {
+      "id": "models",
+      "startSeconds": 35,
+      "durationSeconds": 22,
+      "title": "Models propose. Deterministic checks decide.",
+      "shots": [
+        {
+          "in": 64.5,
+          "out": 70.0,
+          "duration": 9
+        },
+        {
+          "in": 73.0,
+          "out": 78.8,
+          "duration": 13,
+          "crop": [
+            310,
+            260,
+            1300,
+            740
+          ]
+        }
+      ]
+    },
+    {
+      "id": "approval",
+      "startSeconds": 57,
+      "durationSeconds": 20,
+      "title": "The owner approves before execution",
+      "shots": [
+        {
+          "in": 80.3,
+          "out": 86.0,
+          "duration": 12,
+          "crop": [
+            305,
+            0,
+            1310,
+            840
+          ]
+        },
+        {
+          "in": 88.4,
+          "out": 95.5,
+          "duration": 8,
+          "crop": [
+            305,
+            260,
+            1310,
+            740
+          ]
+        }
+      ]
+    },
+    {
+      "id": "recovery",
+      "startSeconds": 77,
+      "durationSeconds": 30,
+      "title": "An unavailable slot triggers recovery",
+      "shots": [
+        {
+          "in": 101.5,
+          "out": 107.5,
+          "duration": 6,
+          "crop": [
+            305,
+            0,
+            1310,
+            840
+          ]
+        },
+        {
+          "in": 173.4,
+          "out": 183.0,
+          "duration": 12,
+          "waitCut": true,
+          "crop": [
+            310,
+            330,
+            1300,
+            720
+          ]
+        },
+        {
+          "in": 185.0,
+          "out": 195.0,
+          "duration": 12,
+          "crop": [
+            310,
+            420,
+            1300,
+            670
+          ]
+        }
+      ]
+    },
+    {
+      "id": "outcome",
+      "startSeconds": 107,
+      "durationSeconds": 20,
+      "title": "Thirteen verified actions. Positive slack.",
+      "shots": [
+        {
+          "in": 204.0,
+          "out": 211.0,
+          "duration": 7
+        },
+        {
+          "in": 211.0,
+          "out": 224.0,
+          "duration": 13,
+          "crop": [
+            305,
+            150,
+            1310,
+            744
+          ]
+        }
+      ]
+    },
+    {
+      "id": "controls",
+      "startSeconds": 127,
+      "durationSeconds": 18,
+      "title": "Private memory and owner-chosen controls",
+      "shots": [
+        {
+          "in": 357.5,
+          "out": 363.5,
+          "duration": 6
+        },
+        {
+          "in": 368.0,
+          "out": 373.5,
+          "duration": 6
+        },
+        {
+          "in": 235.0,
+          "out": 241.0,
+          "duration": 6
+        }
+      ]
+    },
+    {
+      "id": "safety",
+      "startSeconds": 145,
+      "durationSeconds": 15,
+      "title": "An audited denial \u2014 and a free judge path",
+      "shots": [
+        {
+          "in": 385.0,
+          "out": 396.0,
+          "duration": 11,
+          "crop": [
+            305,
+            510,
+            1310,
+            580
+          ]
+        },
+        {
+          "in": 211.0,
+          "out": 215.0,
+          "duration": 4,
+          "endCard": true
+        }
+      ]
+    }
+  ]
+}

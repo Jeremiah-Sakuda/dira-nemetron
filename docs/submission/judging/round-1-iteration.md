@@ -1,6 +1,6 @@
 # Iteration after round 1 — October 18, 2026
 
-Internal panel mean: **7.17/10**, using equal criterion weights. This is an AI review simulation, not an official result. Original independent scorecards are preserved beside this file.
+Engineering and product changes following internal review round 1. The October 30 editorial correction withdraws the earlier internal Impact score and aggregate mean; see [the review summary](summary.md).
 
 ## Changes
 
@@ -15,4 +15,4 @@ Full Vitest suite: **145 passed, 22 PostgreSQL tests skipped** (23 files passed,
 
 ## Open findings carried into round 2
 
-The revised UI still needs deployed visual checks. Owner Hermes onboarding fails the gateway's internal Docker-bridge reachability probe; TLS and authentication stay enabled. No owner token or Skills enrollment is claimed. The Google project publishing choice is pending owner approval. Today source health, an accessible live-provider evidence summary, model-specific repair results, recovered rule reuse and the revised video/submission package remain candidates for further improvement. No adoption or time-saving claims were invented.
+The revised UI still needs deployed visual checks. Owner Hermes onboarding fails the gateway's internal Docker-bridge reachability probe; TLS and authentication stay enabled. No owner token or Skills enrollment is claimed. The Google project publishing choice is pending owner approval. Today source health, an accessible live-provider evidence summary, model-specific repair results, recovered rule reuse and the revised video/submission package remain candidates for further improvement.

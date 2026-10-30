@@ -1,5 +1,7 @@
 # Round 3 — independent product/design review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Reviewed October 18, 2026, source **`04520e1`**. Third and final internal judging round. Deployment IDs and current visual checks will be appended by the parent. These are internal scores, not official judgments or predictions.
 
 ## Basis, gate and compliance
@@ -20,7 +22,7 @@ Internal 0–10 scale; equally weighted mean **7.625/10**.
 | --- | ---: | --- |
 | Technological Implementation | 8.0 | Structured proposals, deterministic authorization and durable verified execution form a substantial system. The supplied 23/23 actual PostgreSQL checks, restored-memory rule reuse and tightened Calendar execution guards strengthen implementation evidence. These are recorded checks, not tests run by this reviewer. Live account intake breadth, owner runtime activation and future operation remain bounded. |
 | Design | 8.0 | The source now gives the main judge path recovery/recheck controls, result focus, short step links, collapsed trace, explicit owner access and a useful dated evidence index. Source health distinguishes scheduled configuration from proven delivery. Remaining issues affect evidence consistency and edge-case recovery; current visual and timed completion proof remains pending. |
-| Potential Impact | 6.5 | The student/early-career audience and broken-promise cascade remain specific and credible. Controlled synthetic checks and memory reuse show functionality; they add no adoption, saved-time or sustained real-workflow evidence. This score remains limited by that absence. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
 | Quality of the Idea | 8.0 | Dependency-aware promise repair, bounded Nemotron proposals and confirmed reusable corrections remain a creative, coherent use of the technology. The new Ultra comparison explains its non-obvious role and preserves rejected-plan counts. More settings or tests do not alone establish a stronger idea or user outcome. |
 
 ## What is now clear in source
@@ -59,4 +61,4 @@ The new monitoring request has a separate error (`components/today-view.tsx:26`)
 
 ## Residual limits for the final iteration
 
-Preserve the current evidence labels and dated revision limits. Source fixes do not replace deployment checks; an updated narrated public video and a measured uncoached judge run remain useful completion evidence. Actual Calendar mutation does not prove all current concurrency changes against Google; draft creation/recovery does not prove inbox intake or sending. A restored rule fixture does not prove owner Hermes Skills activation. No adoption, productivity or continuous-uptime claim is supported by this review.
+Preserve the current evidence labels and dated revision limits. Source fixes do not replace deployment checks; an updated narrated public video and a measured uncoached judge run remain useful completion evidence. Actual Calendar mutation does not prove all current concurrency changes against Google; draft creation/recovery does not prove inbox intake or sending. A restored rule fixture does not prove owner Hermes Skills activation. Use the current recording and operator access plan for the submission package.

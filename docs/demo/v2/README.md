@@ -1,4 +1,10 @@
-# October 13 product walkthrough
+# Product walkthroughs
+
+## Current recording — October 30
+
+The [2:40 Gemini-narrated Chrome screen recording](2026-10-30-recording/README.md) follows the source change, approval, stale-slot recovery, independent verification and audited egress denial. The package includes the original silent master, narration script and English captions.
+
+## Historical walkthrough — October 13
 
 `dira-v2-walkthrough-draft.mp4` is a 2:29 English narrated walkthrough built from actual captures of the running synthetic demo. The captured screens show live Nemotron, a policy approval pause, proposal rejection, read-back and broker egress evidence. Screens are held and edited for narration; playback timing is not a latency measurement. The voice is the local macOS Samantha voice. Text and narration are in `storyboard.json`; reproduce with `python3 scripts/render-v2-walkthrough.py` on macOS with ImageMagick and FFmpeg installed.
 

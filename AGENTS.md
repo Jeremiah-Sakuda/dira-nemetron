@@ -23,6 +23,12 @@ Official references (rules rechecked October 30, 2026):
 
 Recheck official rules before architecture commitments and submission. The submission deadline is October 30, 2026 at 10:00 AM Pacific Time; the judging period is December 9–23, 2026. Keep a working, free judge path available throughout judging.
 
+## Submission writing
+
+- Lead with the specific problem, audience, working experience and demonstrated result. Map the explanation to the four official criteria.
+- Assess Potential Impact by the credibility and specificity of the problem and audience, and whether the demonstration addresses that problem. Do not introduce user studies, adoption metrics, time-saved measurements or longitudinal pilots as judging requirements or score deductions.
+- Use concise, factual labels for simulated integrations, recorded evidence and deployment scope. Put account-operation tasks and publishing status in operator checklists; keep the project narrative focused on what Dira does.
+
 ## Engineering constraints
 
 - The configured `origin` is the legacy Dira repository. Never push branches, commits, tags, or any other content to it. The v2 repository is `Jeremiah-Sakuda/dira-nemetron`, configured as remote `v2`; v2 pushes may target `v2` only.

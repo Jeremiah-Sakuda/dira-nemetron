@@ -6,11 +6,11 @@ Owner: Jeremiah Sakuda. Coverage target: December 9–23, 2026. No paid VM, mini
 
 - **Always credential-free:** https://dira-nemetron.vercel.app/evidence runs the deterministic reference from repository data without database, Google login or model credits. Its stream, ledger and dated evidence remain clearly labeled. Public licensed source permits local reproduction.
 - **Interactive:** https://dira-nemetron.vercel.app/try uses an isolated synthetic session and actual Nebius Token Factory inference when configured and admitted by the durable budget. Its action integrations are simulated. Paused/failed access must link to Evidence without implying live inference occurred.
-- **Owner pilot:** Google sign-in is restricted to the configured verified owner. Calendar/Gmail tokens can expire/revoke; the public judge path does not depend on them. Owner Hermes is incomplete and is not a judge access dependency.
+- **Owner account:** Google sign-in is restricted to the configured verified owner. Calendar/Gmail tokens can expire/revoke; the public judge path does not depend on them. The optional Hermes companion is separate from the judge path.
 
 ## Existing hosting
 
-Vercel frontend, scale-to-zero Cloud Run backend, Neon Free database/encrypted private Git bundles and a fifteen-minute authenticated Cloud Scheduler job. Both Nebius instances and disks were retired. Free allowances can be shared/exhausted; GCP request/storage/network costs are not an enforced zero-dollar ceiling. No uptime through December 23 has yet been observed.
+Vercel frontend, scale-to-zero Cloud Run backend, Neon Free database/encrypted private Git bundles and a fifteen-minute authenticated Cloud Scheduler job. Both Nebius instances and disks were retired. Free allowances can be shared/exhausted; GCP request/storage/network costs are not an enforced zero-dollar ceiling.
 
 ## Required owner checks
 
@@ -28,4 +28,4 @@ Record an actual December 8 check and checks during judging. Confirm provider cr
 
 Runtime stability: root and web package engines are pinned to Node22.x, matching CI/backend. A later provider-default major upgrade should be reviewed and verified deliberately rather than inherited during the judging window.
 
-Official timing rechecked October 30: judging now runs December 9–23; the previous December 1–15 window is superseded. [Current official rules](https://nebiusglobalaihackathon.devpost.com/rules). No future uptime is established by updating this plan.
+Official timing rechecked October 30: judging now runs December 9–23; the previous December 1–15 window is superseded. [Current official rules](https://nebiusglobalaihackathon.devpost.com/rules).

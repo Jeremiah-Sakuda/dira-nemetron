@@ -1,0 +1,16 @@
+01-the-repaired-week.jpg
+The repaired week: approved changes, independent read-back and positive slack.
+
+02-one-email-three-conflicts.jpg
+One exam-change email exposes three connected conflicts.
+
+03-approval-before-action.jpg
+Dira pauses the plan for owner approval before execution.
+
+04-nemotron-reasoning.jpg
+Nemotron Super and Ultra run through Nebius Token Factory; deterministic gates validate proposals.
+
+05-owner-controls.jpg
+Owner-chosen approval requirements and Calendar/Gmail source controls.
+
+All images show synthetic demo data. Nebius Token Factory inference is real; calendar, mailbox and booking integrations in this demo are simulated.

@@ -8,7 +8,7 @@ Google branding now links to the v2 home/privacy/terms. The project-wide publish
 
 No paid VM or upgrade was created. The isolated no-mount local Colima VM has official NemoHermes 0.0.135/OpenShell 0.0.116 installed; onboarding still fails its gateway's Docker-bridge reachability probe. A temporary TLS pass-through diagnostic relay was removed. Authentication, TLS and network enforcement were not disabled. No owner MCP token, model turn, scheduled workflow or owner Skills mirror activation is claimed. Historical separate Linux sandbox enforcement evidence remains valid within its recorded scope.
 
-Existing actual Google Calendar and Gmail synthetic checks remain available in docs/evidence (October 16). No actual Gmail inbox intake or longitudinal adoption is claimed. Existing narrated video is outdated; a revised video and YouTube/Devpost publication remain incomplete.
+Existing actual Google Calendar and Gmail synthetic checks remain available in docs/evidence (October 16). The actual Gmail check covers self-addressed draft creation and recovery. Existing narrated video is outdated; a revised video and YouTube/Devpost publication remain incomplete.
 
 Judge the current state independently. Do not assume remaining work is done. Do not read the other reviewers' scorecards before completing your own.
 

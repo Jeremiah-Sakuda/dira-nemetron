@@ -1,5 +1,7 @@
 # Round 1 — independent engineering and reliability review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Internal AI judging simulation, October 18, 2026. These scores use the panel's 0–10 calibration, not an official Devpost scale or prediction of winning. Reviewed source HEAD `efd6a262190df054285377b32ce987b73d939281`, matching the round snapshot; local guidance/report files are outside that commit. No implementation changes, tests, inference, private runtime reads or computer UI were used. Other reviewers' reports were not consulted.
 
 ## Basis and deployment boundary
@@ -22,9 +24,9 @@ The supplied context identifies frontend `dpl_6FZmNNUE2K4CeooC9xU8Ww2JuoRj` and 
 | --- | ---: | --- |
 | Technological Implementation | 7.5 | Substantial typed proposal/compiler/policy/ledger/read-back architecture, recorded recovery and RLS checks, real model evaluations and actual Calendar/Gmail draft verification. Fresh-state gaps below and unfinished operating enrollment prevent a stronger score. |
 | Design | 7.0 | A coherent source-change, approval, correction and activity journey is present in source and prior evidence. Conflicting readiness claims and the configured-versus-available model label weaken trust. Current rendering was not independently inspected here. |
-| Potential Impact | 6.5 | Specific student cascade and credible intervention model. Demonstrated results are chiefly synthetic; the live Calendar case is small and Gmail begins with an operator-provisioned plan. No adoption or measured user productivity result is established. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
 | Quality of the Idea | 8.0 | Explicit dependencies and promise repair, bounded model proposals, reusable correction rules and independently verified effects are a thoughtful combination. Ultra repairs beyond the enumerator substantiate the idea; eleven proposals are still a narrow basis for generalization. |
-| Equal-weight mean | **7.25** | Internal calibration only. |
+| Equal-weight mean | — | Withdrawn with the earlier Impact assessment; no replacement numerical judging round was run. |
 
 ## Highest-impact findings
 
@@ -50,15 +52,13 @@ The supplied context identifies frontend `dpl_6FZmNNUE2K4CeooC9xU8Ww2JuoRj` and 
 
 **Acceptance check:** with an exhausted hourly, daily or total budget, the first loaded demo state shows a paused state and an actionable Evidence link; it never presents a green live-available claim. Hourly/daily reset times are correct, total exhaustion has no false reset promise, and the fallback completes with zero model calls. Publish the dated operating plan and distinguish forecast capacity from measured availability.
 
-### E3 — The real personal-agent loop is still piecemeal rather than demonstrated over time
+### E3 — Owner connector and companion configuration
 
-**Priority: high. Criteria: Implementation, Design, Impact.**
+**Operator follow-up.** Keep Calendar/Gmail consent, scheduled connector opt-in and the optional Hermes companion scoped to the configured owner. Recorded Calendar repair, Gmail draft recovery and persistent-rule checks each retain their dated technical scope.
 
-`docs/evidence/2026-10-16-google-calendar-live.json` establishes one actual source-change/review/approval/read-back path, but its limitations explicitly say background Google sync is disabled and no account is enrolled. Gmail evidence explicitly starts from an operator-provisioned synthetic plan and excludes inbox interpretation. `README.md:47` leaves actual Google scheduler enrollment pending, and line 50 leaves the revised Skills mirror unvalidated. The round context records no enrolled owner MCP token and an unresolved local Hermes gateway connection. These distinctions are reported honestly in current readiness, but the always-on, persistent reusable-skill value is not yet shown as one operating personal product.
+**Action:** complete owner-authorized connector or companion configuration through the normal consent flow. Validate the immutable Skills mirror before labeling that companion active. Keep account setup tasks in the operator tracker and the public judge journey independent of owner credentials.
 
-**Action:** complete a bounded owner pilot using synthetic content and explicit connector opt-in, and record one scheduled source change leading to a reviewed repair plus one confirmed rule reused after a restart. Complete the revised immutable Skills mirror check before claiming active Hermes use. If owner authentication blocks enrollment, publish a precise pilot-only boundary and retain the owner action as open.
-
-**Acceptance check:** evidence links one scheduled delivery, owner-opted-in sync, pending approval with zero preapproval mutations, authenticated approval, actual provider read-back and later rule reuse after backend replacement. The active sandbox can read but cannot modify the mirrored Skill. Preserve the separate scopes of Calendar, Gmail draft-only and Hermes observations. A synthetic scheduler fixture alone must not be labeled an enrolled owner deployment.
+**Acceptance:** the public demo and credential-free evidence remain accessible without Google login or a local Hermes runtime. Account-specific features describe their configured permissions and runtime accurately.
 
 ### E4 — Contradictory submission claims obscure the strongest completed evidence
 

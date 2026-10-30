@@ -1,5 +1,7 @@
 # Round 1 — independent product/design review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Reviewed October 18, 2026 against source snapshot `efd6a26` and the supplied deployment context: frontend `dpl_6FZmNNUE2K4CeooC9xU8Ww2JuoRj`, backend `dira-nemetron-backend-00014-xtd`. Internal AI review; these scores are not official judgments or predictions.
 
 ## Basis and limits
@@ -22,7 +24,7 @@ Internal 0–10 scale from the panel protocol; equal-weight mean **7.25/10**.
 | --- | ---: | --- |
 | Technological Implementation | 7.5 | Structured proposals, deterministic gates, approvals, durable ledger and explicit fresh read-back create a convincing explanation of safe execution. Recorded provider calls and separate Calendar/draft-only checks support substance. Owner-only enrollment, unfinished Hermes activation and limited live intake coverage constrain completeness. |
 | Design | 7.0 | The student cascade is concrete; approval, correction, verification and evidence belong to a coherent product. Setup screenshots show restrained typography, clear permission cards, responsive stacking and useful disclosure. Dashboard error handling, availability claims and the long demo action/result path undermine trust and first-use completion. |
-| Potential Impact | 6.5 | Students and early-career professionals are a specific audience; the midterm/interview/team dependency cascade demonstrates a problem beyond calendar overlap. Evidence remains a small synthetic corpus and controlled owner checks. There is no demonstrated adoption, measured user benefit, or unscripted sustained daily use to support a higher impact score. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
 | Quality of the Idea | 8.0 | Repairing promises to people through typed dependencies, constrained model proposals and confirmed reusable corrections is distinctive. Ultra broadening repair options provides a credible reason for the chosen model. The weakest part is the incomplete visible experience of continuous monitoring and memory reuse beyond the scripted repair. |
 
 ## Highest-impact findings
@@ -63,4 +65,4 @@ The DOM renders the complete week before the email composer (`components/demo-co
 
 The public Try disclosure, model-mode badge, session banner, simulated read-back description and explicit statement that OpenShell does not surround the Cloud Run broker are strong (`components/nav.tsx`, `demo-console.tsx:172–176`, `:282`, `:318`). Evidence also explicitly calls its data stored interpretations and stateful simulators (`app/evidence/page.tsx`). Keep these labels near the action/result they qualify. “0 HUMAN ACTIONS” on the reference Evidence story is only a property of its stored policy fixture; it should not be generalized to the interactive path, which requires approval.
 
-The Setup screenshots support visual coherence and responsive permission controls; they do not demonstrate live account onboarding or recurring processing. The supplied actual Calendar source-change check and Gmail draft recovery check support those narrow provider claims only. Neither proves a running semester, automatic Hermes Skills reuse, live inbox interpretation, nor sent email. No productivity or adoption estimate is warranted by this evidence.
+The Setup screenshots support visual coherence and responsive permission controls; they do not demonstrate live account onboarding or recurring processing. The supplied actual Calendar source-change check and Gmail draft recovery check support those narrow provider claims only. The provider artifacts cover Calendar repair and draft recovery; the optional Hermes companion has a separate runtime setup.

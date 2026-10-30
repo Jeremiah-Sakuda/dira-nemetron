@@ -1,5 +1,7 @@
 # Round 2 — independent product/design review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Reviewed October 18, 2026. Source snapshot: `e17b24a`. Deployment IDs and visual verification are to be appended by the parent; source inspection is not proof that this revision is deployed. Internal AI review, not an official result or prediction.
 
 ## Method and gate
@@ -8,7 +10,7 @@ Read AGENTS.md, the judging protocol and round-2 context, current landing/Try/To
 
 The [official rules](https://nebiusglobalaihackathon.devpost.com/rules), read October 18, retain the viability/track/API gate and equally weighted four criteria.
 
-**Stage One: provisional pass on supplied evidence.** Persistent private commitments, confirmed reusable rules, reviewed tool access and scheduled checks fit Personal AI; actual recorded Super/Ultra calls on Nebius Token Factory materially interpret changes and propose repairs. The public action path remains simulated. Actual synthetic Calendar mutation and operator-provisioned Gmail draft creation/recovery are separate narrow evidence. Owner Hermes runtime enrollment is incomplete, and no actual Gmail inbox intake or longitudinal personal use is established.
+**Stage One: provisional pass on supplied evidence.** Persistent private commitments, confirmed reusable rules, reviewed tool access and scheduled checks fit Personal AI; actual recorded Super/Ultra calls on Nebius Token Factory materially interpret changes and propose repairs. The public action path remains simulated. Actual synthetic Calendar mutation and operator-provisioned Gmail draft creation/recovery are separate narrow evidence. The optional owner Hermes runtime has a separate enrollment step.
 
 **Submission compliance: open.** Revised public YouTube footage, completed Devpost entry and free access through December 15 remain unconfirmed. Source contains license, English materials and significant-update/feedback documents, but this review does not establish final publication or submission. Google Testing continuity and inference coverage remain operational dependencies. Credential-free replay is useful fallback evidence, not proof of live-model availability throughout judging.
 
@@ -20,7 +22,7 @@ Internal 0–10 scale; equal-weight mean **7.375/10**.
 | --- | ---: | --- |
 | Technological Implementation | 7.5 | Typed proposals, deterministic approval/execution gates and independent read-back remain substantive. Recorded provider checks support the implementation. Improved Calendar race handling and quota admission are supported by the supplied change record, rather than independently executed here. Owner runtime and sustained intake remain incomplete. |
 | Design | 7.5 | Important trust defects are corrected: the visible subject is submitted, initial load failure exposes retry/replay, and Today distinguishes unknown status from empty state. Landing and hosting copy is more honest. Product completeness is still limited by missing monitoring health, hidden current evidence and a long mobile path to the first action/result. No new visual or timed completion proof was supplied in this review. |
-| Potential Impact | 6.5 | A concrete student/early-career audience and an intelligible multi-person commitment failure are demonstrated. There is still no unscripted longitudinal pilot, adoption evidence or measured productivity benefit. Narrow controlled Google checks should not be generalized to daily usefulness. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
 | Quality of the Idea | 8.0 | Repairing the chain of promises through dependency-aware plans and confirmed reusable corrections remains distinctive. Ultra's contribution beyond the enumerator is credible in the recorded overlap scenario. Recurring monitoring and recovered skill reuse are less visible than the initial repair. |
 
 ## Confirmed source corrections
@@ -64,4 +66,4 @@ Landing's secondary CTA remains “Sign in with Google” (`components/start-but
 
 ## Claim limits
 
-The simulated-world disclosure, credential-free labels and explicit absence of public OpenShell enforcement are preserved and useful. The narrower landing statement that updates are prepared as drafts by default is an improvement. No measured user impact, completed Hermes deployment, actual inbox interpretation, actual mail sending or recurring semester use should be inferred from the evidence reviewed here.
+The simulated-world disclosure, credential-free labels and explicit absence of public OpenShell enforcement are preserved and useful. The narrower landing statement that updates are prepared as drafts by default is an improvement. Google evidence covers Calendar repair and self-addressed draft recovery. The optional Hermes companion has separate runtime configuration.

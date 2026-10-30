@@ -1,5 +1,7 @@
 # Round 3 — independent engineering and reliability review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Internal AI judging simulation, October 18, 2026. This is the third and final panel round. Scores are internal 0–10 calibration, not official scores or a winning prediction. Reviewed commit `04520e1398e0bfcb4ce2b81005e47e170356a08b`, protocol/context, iteration change log, availability plan, revised execution/receipt/occupancy/migration code, public evidence component and selected test source. No tests, inference, private runtime reads, browser UI or implementation edits were performed. No sibling scorecard was read.
 
 ## Stage One, compliance and evidence boundary
@@ -8,7 +10,7 @@ Internal AI judging simulation, October 18, 2026. This is the third and final pa
 
 **Submission compliance: incomplete.** Revised narrated footage/public YouTube and final Devpost publication are pending. Google project-wide publishing/reconnect requires owner action; the owner Hermes gateway, token/turn and immutable Skills activation remain incomplete. Future free judge availability and credit coverage have a more specific operating plan but are not measured future uptime. Required feedback submission and final legal/eligibility actions are not attested by this review.
 
-The context reports 152 credential-free tests, a separate **23/23 real PostgreSQL checks** under a non-superuser/NOBYPASSRLS role, root/web TypeScript success and a zero-advisory dependency check. These are credited as supplied measurements, not reruns by this reviewer. The PostgreSQL run is stronger evidence than skipped DB tests and includes recovered-rule reuse, but is a fixture check rather than owner adoption.
+The context reports 152 credential-free tests, a separate **23/23 real PostgreSQL checks** under a non-superuser/NOBYPASSRLS role, root/web TypeScript success and a zero-advisory dependency check. These are credited as supplied measurements, not reruns by this reviewer. The PostgreSQL run exercises the real database under a restricted role and includes recovered-rule reuse.
 
 Iteration 1 deployment/session creation is confirmed in the context. At review time, the new Vercel/backend deployment and exact-snapshot GitHub CI are in progress. No credit is given for their planned success. October 16–17 provider evidence and separate Linux sandbox enforcement retain their original revision/scope limits; they do not attest the revised broker against actual Google today.
 
@@ -18,9 +20,9 @@ Iteration 1 deployment/session creation is confirmed in the context. At review t
 | --- | ---: | --- |
 | Technological Implementation | 7.5 | Strong deterministic execution architecture, additional retry/receipt protections and actual restricted-role DB validation. The separate event-repair path still has the clock/read-back gaps below; full provider interruption and migration transition evidence remain limited. |
 | Design | 7.5 | Evidence now explains live model contribution and dated actual-provider checks; Today distinguishes configuration/history from delivered monitoring; Try exposes unknown/retry states. Current revision's deployed presentation is not independently inspected here. |
-| Potential Impact | 6.5 | Specific audience and plausible promise cascade, with controlled verified effects. No additional user study, actual Gmail intake, longitudinal owner operation or measured time saving supports a higher score. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
 | Quality of the Idea | 8.0 | Explicit dependency repair, bounded structured model proposals, persistent corrections and independent verification remain a thoughtful combination. The model comparison is clearer without overstating eleven proposals. |
-| Equal-weight mean | **7.375** | Internal calibration only; unchanged scores reflect remaining evidence boundaries, not absence of useful fixes. |
+| Equal-weight mean | — | Withdrawn with the earlier Impact assessment; no replacement numerical judging round was run. |
 
 ## Fixes credited
 
@@ -54,13 +56,13 @@ Migration scripts are now hashed, serialized and transactionally recorded once (
 
 **Acceptance:** before/after semantic snapshots match for synthetic populated accounts and a pending approval; restricted-role cross-account reads remain denied. Concurrent initializers complete without deadlock or duplicate migration records. A deliberate script failure leaves neither its partial schema effects nor its migration record, and a subsequent corrected run succeeds. Link the exact-snapshot green GitHub PostgreSQL job and actual deployment confirmation separately from this local fixture evidence.
 
-### E3.4 — Persistent owner operation remains an open product proof, despite improved status disclosure
+### E3.4 — Owner connector and companion configuration
 
-**High submission priority — Design, Impact.** `README.md:47–50`, `docs/submission/judge-availability.md` and Round 3 context retain open scheduled owner enrollment, Google continuity and active Hermes Skills mirroring. The recovered ASK_FIRST rule check is valuable fixture proof; it does not establish a real owner teaching a rule and relying on it across later monitored changes. Actual Calendar and draft-only Gmail checks remain separate bounded observations. No actual inbox intake or longitudinal outcome is established.
+**Operator follow-up.** Keep Calendar/Gmail consent, scheduled connector opt-in and the optional Hermes companion scoped to the configured owner. Recorded Calendar repair, Gmail draft recovery and persistent-rule checks each retain their dated technical scope.
 
-**Action:** keep the owner-pilot boundary prominent, complete only owner-authorized enrollment/publishing steps, and record one bounded synthetic-content chain of scheduled detection, review/approval, actual read-back and later rule reuse after recovery when feasible. If runtime or owner authorization prevents this, keep the exact gap open in video/submission and avoid claiming an active end-to-end always-on Hermes product.
+**Action:** complete owner-authorized connector or companion configuration through the normal consent flow. Validate the immutable Skills mirror before labeling that companion active. Keep account setup tasks in the operator tracker and the public judge journey independent of owner credentials.
 
-**Acceptance:** either a dated evidence chain establishes that owner workflow within its narrow scope, or the final walkthrough accurately identifies the manual demo, actual-provider fixtures, recovered-rule fixture, inactive owner integrations and remaining owner actions. Public replay and judge access must work without those unfinished integrations. Final public video and Devpost confirmation remain separate required deliverables.
+**Acceptance:** the public demo and credential-free evidence remain accessible without Google login or a local Hermes runtime. Account-specific features describe their configured permissions and runtime accurately.
 
 ## Final engineering assessment
 

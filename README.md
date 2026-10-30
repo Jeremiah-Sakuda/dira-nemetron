@@ -4,7 +4,7 @@
 
 Personal AI entry for the Nebius × NVIDIA Global AI Hackathon. NVIDIA Nemotron models on Nebius Token Factory propose; deterministic code decides what runs.
 
-[Three-round internal judging and fixes](docs/submission/judging/summary.md) · [Upload-ready submission package](docs/submission/submission-package.md) · [Current launch gaps](docs/submission/remaining-launch-work.md)
+[Try the demo](https://dira-nemetron.vercel.app/try) · [Explore the evidence](https://dira-nemetron.vercel.app/evidence) · [Judge guide](docs/submission/judge-checklist.md) · [Submission package](docs/submission/submission-package.md)
 
 [![ci](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/workflows/ci.yml)
 
@@ -15,6 +15,8 @@ Personal AI entry for the Nebius × NVIDIA Global AI Hackathon. NVIDIA Nemotron 
 Students and early-career professionals owe things to other people, and their weeks depend on dates they don't control. What they drop is rarely a forgotten task. It is a promise that broke because something upstream moved, and they found out when the other person asked.
 
 A professor moves a midterm from Friday to Wednesday. The interview that afternoon now violates the recovery buffer. The study hours no longer fit, and a teammate is waiting on deck QA that can't happen. A calendar shows the overlap. Dira finds the whole cascade, plans a repair, asks before anything sensitive, does the work, and reads each change back to make sure it happened.
+
+![Dira restores positive slack and shows independently verified changes in the synthetic demo](docs/submission/gallery/01-the-repaired-week.jpg)
 
 ## Try it
 
@@ -31,25 +33,30 @@ You can also correct a step ("not at that time") and watch the confirmed rule sh
 
 The demo is a synthetic student with a simulated calendar, mailbox and counterparty, isolated per session by row-level security and deleted after four hours. It cannot contact anyone real. Without a Nebius key it runs on stored interpretations and says so on screen. With a key and available durable call allowance, Super and Ultra run live. The demo displays paused quota windows; credential-free Evidence remains available without model credits.
 
-**Your own account:** the implemented flow grants Calendar, Gmail and drafting one scope at a time, then asks you to confirm the proposed graph, source authority and effort estimates. Owner Google sign-in, an actual Calendar source-change repair and Gmail draft-only creation/recovery have passed approval and independent provider read-back. The pilot is owner-only; Google token continuity, inbox interpretation and actual sending remain separate open work. Follow [the controlled Google verification guide](docs/submission/google-live-verification.md).
+**Your own account:** the implemented flow grants Calendar, Gmail and drafting one scope at a time, then asks you to confirm the proposed graph, source authority and effort estimates. Owner Google sign-in, an actual Calendar source-change repair and Gmail draft-only creation/recovery have passed approval and independent provider read-back. Real-account access is restricted to the configured owner; judges can use the public demo without Google sign-in. Follow [the controlled Google verification guide](docs/submission/google-live-verification.md).
 
 **From a terminal:**
 
+Use Node.js 22.x and npm. The reference replay needs no API key, database or Google account. Run these commands from the repository root; `make` is optional.
+
 ```bash
-npm install
-make demo-replay        # the engine's golden workflow: 18/18 assertions, credential-free
-make test               # unit, integration, property and chaos suites
-make eval-repair-fixture  # the repair-proposer gates on stored proposals (no inference)
+npm ci
+npm run demo:replay     # golden workflow: 18/18 assertions, credential-free
+npm run eval:repair -- --fixture  # stored proposals through the repair gates; no inference
 ```
+
+To explore the credential-free Evidence page locally, run `npm --workspace apps/web run dev` and open `http://localhost:3000/evidence`. The hosted demo above provides the account-backed interactive journey. Deployment and persistence configuration are documented in [the backend guide](infrastructure/serverless/README.md); environment variable names are in [`.env.example`](.env.example).
+
+The [2:40 narrated screen recording](docs/demo/v2/2026-10-30-recording/dira-demo-gemini-2m40.mp4) follows the source change through approval, recovery and verification. The [recording package](docs/demo/v2/2026-10-30-recording/README.md) includes the silent master, script, English captions and Gemini TTS narration details.
 
 ## How it fits the Personal AI track
 
 | Track ask | What Dira does |
 | --- | --- |
-| Always on | Authenticated fifteen-minute passes for configured, owner-opted-in connectors, with per-account recompute and morning reports. Cloud Run scales to zero between requests; durable jobs are idempotent. Actual Google enrollment remains pending. |
+| Always on | Authenticated fifteen-minute passes for configured, owner-opted-in connectors, with per-account recompute and morning reports. Cloud Run scales to zero between requests; durable jobs are idempotent. Connector processing follows explicit owner opt-in. |
 | Private | Forced Postgres row-level security per account. Credentials stay in the broker, outside the model. The public broker enforces an audited egress allowlist; separate OpenShell enforcement was validated on an isolated Linux VM. Draft-only by default, with Calendar/Gmail/person fences. |
 | Persistent memory | Graph, focus hours, policy and rules are committed to private Git history and stored as encrypted per-account bundles in Postgres. Export/restore and recovery after instance replacement are verified. |
-| Reusable skills | Confirmed correction rules shape later plans and produce `skills/dira/<rule>/SKILL.md`. An isolated Skill fixture was readable but immutable; the revised automatic Hermes mirror still needs end-to-end operator validation before activation. |
+| Reusable skills | Confirmed correction rules shape later plans and produce `skills/dira/<rule>/SKILL.md`. Exported Skills support an optional Hermes companion; an isolated fixture verified readable, immutable access. |
 | Tools you choose | Each connector is its own consent: Calendar read, Calendar write, Gmail read, Gmail drafting. Deadline feeds you add. Official pages you name for Tavily checks. Telegram approvals you link. Hermes, through a token you create. |
 
 ## Nemotron on Nebius Token Factory
@@ -107,19 +114,19 @@ Action broker (holds OAuth tokens, egress allowlist) → Calendar · Gmail draft
         └─ fresh read-back → graph commit → memory repo (Git) → Hermes Skills mirror
 ```
 
-The [public demo](https://dira-nemetron.vercel.app/try) uses Vercel, Cloud Run, Neon Free and authenticated Cloud Scheduler. Nemotron runtime calls remain on Nebius Token Factory. Both Nebius VMs and their managed boot disks have been deleted after verified recovery. NemoClaw/OpenShell was validated separately and is not active around the Cloud Run broker. See the [measured migration review](docs/evidence/2026-10-16-migration-and-sandbox-review.md) and [remaining launch work](docs/submission/remaining-launch-work.md).
+The [public demo](https://dira-nemetron.vercel.app/try) uses Vercel, Cloud Run, Neon Free and authenticated Cloud Scheduler. Nemotron runtime calls remain on Nebius Token Factory. Both Nebius VMs and their managed boot disks have been deleted after verified recovery. NemoClaw/OpenShell was validated separately and is not active around the Cloud Run broker. See the [migration and sandbox verification](docs/evidence/2026-10-16-migration-and-sandbox-review.md) and [operator deployment notes](docs/submission/remaining-launch-work.md).
 
-## Verification status
+## Demonstrated results
 
 | Area | Status |
 | --- | --- |
 | Deterministic core (propagation, slack, planner, policy, ledger, crash-resume) | Unit, property, chaos and replay suites in CI. The golden replay passes 18/18. |
 | Ultra proposer gates, approval pause and resume, correction rules | Tests on fixture proposals, including adversarial proposals. |
 | Demo persona, account repair engine, RLS, Hermes MCP, Telegram nonces | Postgres integration tests under a non-superuser role (`make test-postgres`), and clicked through end to end in the browser. |
-| Live Nemotron | Super and Ultra verified on Token Factory: October 13 interpretation 8/8, repair 7/7, 11 Ultra calls without truncation. Ultra wins two cases; 3/11 plans pass every downstream gate. Nano's catalog access is verified; live graph drafting remains unverified. [Evidence review](docs/evidence/2026-10-13-bounded-model-review.md). |
+| Live Nemotron | Super and Ultra verified on Token Factory: October 13 interpretation 8/8, repair 7/7, 11 Ultra calls without truncation. Ultra wins two cases; 3/11 plans pass every downstream gate. Nano catalog access is also verified. [Evidence review](docs/evidence/2026-10-13-bounded-model-review.md). |
 | Tavily official-source checks | Tested against a stubbed Tavily response. A live run needs `TAVILY_API_KEY`. |
-| Google Calendar and Gmail on a real account | Actual synthetic Calendar source-change repair and Gmail draft-only creation/recovery verified, with authenticated approval and separate provider read-back. No actual sending or Gmail inbox interpretation claimed. [Calendar](docs/evidence/2026-10-16-google-calendar-live.json), [Gmail](docs/evidence/2026-10-16-google-gmail-live.json). |
-| Deployment | Vercel → Cloud Run → Neon with encrypted Git memory and delivered fifteen-minute background jobs. Twelve Neon checks passed; pending approval and private history survived revision replacement, and 13 synthetic actions were verified through the public app. Isolated OpenShell checks passed. Owner Hermes activation, Google continuity and judging-period allowance coverage remain open. |
+| Google Calendar and Gmail on a real account | Actual synthetic Calendar source-change repair and Gmail draft-only creation/recovery verified, with authenticated approval and separate provider read-back. The Gmail check covers self-addressed draft creation and recovery. [Calendar](docs/evidence/2026-10-16-google-calendar-live.json), [Gmail](docs/evidence/2026-10-16-google-gmail-live.json). |
+| Deployment | Vercel → Cloud Run → Neon with encrypted Git memory and delivered fifteen-minute background jobs. Twelve Neon checks passed; pending approval and private history survived revision replacement, and 13 synthetic actions were verified through the public app. Isolated OpenShell checks passed. [Judge access plan](docs/submission/judge-availability.md). |
 
 ## What carried over from v1, and what is new
 

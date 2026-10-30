@@ -1,5 +1,7 @@
 # Round 2 — independent engineering and reliability review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Internal AI judging simulation, October 18, 2026. Scores use the panel's 0–10 calibration, not an official Devpost scale or prediction. Source reviewed: `e17b24a4bbbc056b7bc5dad416cd5fc69ca6e7e0`, matching the round snapshot. Read repository guidance, protocol/context, iteration change log, current submission/readiness material, Calendar/inference code and selected existing test source. No tests, inference, private runtime reads, browser UI or implementation mutations were performed. No sibling scorecard was read.
 
 ## Deployment, Stage One and compliance
@@ -16,9 +18,9 @@ The round context says deployment is in progress, with a source-only backend ima
 | --- | ---: | --- |
 | Technological Implementation | 7.5 | Pagination, occupancy checks and conditional provider writes materially strengthen the boundary. Residual retry and CREATE recovery issues below keep the engineering score at its previous level. |
 | Design | 7.5 | Quota-aware labels, clear paused replay access, corrected submission claims, subject-only editing and explicit unknown/error states improve coherence in source. Current deployed rendering remains outside this review. |
-| Potential Impact | 6.5 | The audience and cascade remain credible. No new independent user, longitudinal pilot or actual Gmail intake result establishes broader value. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
 | Quality of the Idea | 8.0 | Bounded proposals and persistent promise repair remain distinctive; the demonstrated model-only repair supports the idea. New safety work strengthens implementation more than novelty. |
-| Equal-weight mean | **7.375** | Internal calibration only. |
+| Equal-weight mean | — | Withdrawn with the earlier Impact assessment; no replacement numerical judging round was run. |
 
 ## Prioritized actionable findings
 
@@ -54,14 +56,14 @@ The round context says deployment is in progress, with a source-only backend ima
 
 **Acceptance:** load a quota-paused ready demo, advance past the reset without reloading/resetting the session, and use the refresh or automatic check. Delivery becomes available only after a successful server check; the run and draft remain intact. A quota failure updates the paused label and replay link. Document who monitors judge-period availability and the approved recovery action.
 
-### E2.5 — The operating Personal AI loop is still not demonstrated as one persistent owner workflow
+### E2.5 — Owner connector and companion configuration
 
-**High submission priority — Design, Impact; Implementation evidence.** `README.md:47` still leaves actual scheduled Google enrollment pending and line 50 leaves the revised automatic Skills mirror unvalidated. Round 2 context explicitly records no owner MCP token, model turn, scheduled workflow or owner Skills activation, plus unresolved Google Testing continuity. Existing Calendar source-to-read-back and Gmail draft-only checks are real but separate; Gmail intake and longitudinal reuse remain unproved. No amount of additional mock coverage establishes those observations.
+**Operator follow-up.** Keep Calendar/Gmail consent, scheduled connector opt-in and the optional Hermes companion scoped to the configured owner. Recorded Calendar repair, Gmail draft recovery and persistent-rule checks each retain their dated technical scope.
 
-**Action:** retain precise pilot boundaries and complete a bounded synthetic-content owner pilot where existing authorization permits. Record scheduled detection, approval, actual read-back and later confirmed-rule reuse after restart. Validate the immutable mirror before claiming an active Hermes path. Where owner authentication/publishing is required, leave that exact action open rather than bypassing it.
+**Action:** complete owner-authorized connector or companion configuration through the normal consent flow. Validate the immutable Skills mirror before labeling that companion active. Keep account setup tasks in the operator tracker and the public judge journey independent of owner credentials.
 
-**Acceptance:** one dated evidence chain identifies scheduled delivery, opted-in connector intake, zero preapproval effects, authenticated approval, actual provider read-back and rule reuse after recovery. If this cannot be completed, the submission must clearly present a restricted pilot and distinguish implemented, measured, deployed and pending behavior. The public credential-free fallback must remain independently usable.
+**Acceptance:** the public demo and credential-free evidence remain accessible without Google login or a local Hermes runtime. Account-specific features describe their configured permissions and runtime accurately.
 
 ## Improvements credited and remaining uncertainty
 
-The reviewed source addresses the first round's missing pagination and direct target-write race: incomplete bounded reads fail closed, ETags protect PATCH/DELETE, cancelled/not-found events are absent, and unknown events no longer grant graph authority. Existing tests cover those helpers and the wrapper; they do not establish the complete broker interruption scenarios above. The cross-event interval between a final occupancy read and provider mutation remains non-atomic and is honestly documented in the iteration log. Submission documents now describe Cloud Run/Neon and actual provider checks more consistently. Scores deliberately retain the gaps in current deployment proof, real owner operation and user outcomes.
+The reviewed source addresses the first round's missing pagination and direct target-write race: incomplete bounded reads fail closed, ETags protect PATCH/DELETE, cancelled/not-found events are absent, and unknown events no longer grant graph authority. Existing tests cover those helpers and the wrapper; they do not establish the complete broker interruption scenarios above. The cross-event interval between a final occupancy read and provider mutation remains non-atomic and is honestly documented in the iteration log. Submission documents now describe Cloud Run/Neon and actual provider checks more consistently. The technical findings identify the specific execution paths and deployment checks to address.

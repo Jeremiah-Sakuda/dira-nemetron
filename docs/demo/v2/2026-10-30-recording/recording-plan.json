@@ -1,0 +1,48 @@
+{
+  "durationSeconds": 160,
+  "audio": "none",
+  "output": "1920x1080 H.264, 30 fps",
+  "editing": "Actual screen footage; waits shortened and holds labeled; no invented results",
+  "chapters": [
+    {
+      "startSeconds": 0,
+      "durationSeconds": 15,
+      "title": "One changed date can break a week"
+    },
+    {
+      "startSeconds": 15,
+      "durationSeconds": 20,
+      "title": "One email exposes three conflicts"
+    },
+    {
+      "startSeconds": 35,
+      "durationSeconds": 22,
+      "title": "Models propose. Deterministic checks decide."
+    },
+    {
+      "startSeconds": 57,
+      "durationSeconds": 20,
+      "title": "The owner approves before execution"
+    },
+    {
+      "startSeconds": 77,
+      "durationSeconds": 30,
+      "title": "An unavailable slot triggers recovery"
+    },
+    {
+      "startSeconds": 107,
+      "durationSeconds": 20,
+      "title": "Thirteen verified actions. Positive slack."
+    },
+    {
+      "startSeconds": 127,
+      "durationSeconds": 18,
+      "title": "Private memory and owner-chosen controls"
+    },
+    {
+      "startSeconds": 145,
+      "durationSeconds": 15,
+      "title": "An audited denial \u2014 and a free judge path"
+    }
+  ]
+}

@@ -1,14 +1,16 @@
 # Round 2 — impact and originality review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Independent internal AI judge simulation, October 18, 2026. Snapshot reviewed: `e17b24a4bbbc056b7bc5dad416cd5fc69ca6e7e0`. Scores use the panel's internal 0–10 scale, not an official scale or award prediction. The four criteria have equal weight. Source and supplied recorded evidence were read; no tests, inference, private runtime files, computer UI or sibling scorecards were used. Deployment of this snapshot was still pending in the supplied context, so source improvements are not presented as fresh deployed proof.
 
 | Criterion | Score / 10 | Assessment |
 | --- | --- | --- |
 | Technological Implementation | 7.5 | Strong structured model boundary, recorded real inference, approval/read-back and provider recovery. The iteration reports stronger Calendar concurrency checks. The reviewed snapshot does not supply new deployed model or owner-runtime outcomes. |
 | Design | 7.0 | Primary hosting/provider claims now agree, source failure states are more honest, and paused inference points to replay. The fallback still concentrates on inherited engine proof rather than v2's distinctive model and memory evidence. |
-| Potential Impact | 6.0 | A specific student coordination problem and a credible synthetic cascade. No additional independent audience workflow or longitudinal evidence closes the gap between controlled checks and routine usefulness. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
 | Quality of the Idea | 8.0 | Promise dependencies plus model-expanded repairs constrained by provenance remain distinctive. The useful Ultra-only case exists in recorded evidence but is still absent from the short judge sequence. |
-| Equal-weight mean | **7.125** | The smaller Design gap is supported by revised copy and failure handling; Impact and Idea do not rise merely because source work was completed. |
+| Equal-weight mean | — | Withdrawn with the earlier Impact assessment; no replacement numerical judging round was run. |
 
 ## Stage One and compliance
 
@@ -28,13 +30,15 @@ The substantial-update explanation is materially improved. [significant-update.m
 
 **Acceptance:** One short no-sign-in step exposes this comparative result without reading raw JSON. It distinguishes a useful selected model plan from merely making a call or rejecting the separate adversarial fixture. It does not imply 7/7 model correctness or general reliability.
 
-### 2. High — demonstrate ordinary value for the student audience beyond the seeded cascade
+### 2. Present the student problem and its demonstrated resolution
 
-**Evidence:** `apps/web/app/page.tsx:11–16` and `docs/submission/devpost.md:13,19` still rely on the same student exam shock. The actual-provider Gmail artifact says explicitly at `docs/evidence/2026-10-16-google-gmail-live.json:3` that it starts with an operator-provisioned plan, not inbox interpretation or model planning. `docs/submission/devpost.md:55` places a longitudinal pilot in future work. The iteration added no new audience outcome evidence.
+**Audience:** a student coordinating coursework, recruiting and a team deliverable.
 
-**Action:** Keep the student leader coordinating coursework, recruiting and one team deliverable as the primary audience. Provide another independently specified synthetic change through normal reviewed intake → affected promise → approved repair → observed outcome, and record what the user had to enter or confirm. If an authorized owner pilot becomes available, describe only measured observations with sample size and duration. Do not present professional adoption or productivity estimates as established.
+**Problem:** a changed exam date removes preparation time, breaks an interview buffer and conflicts with work another person depends on.
 
-**Acceptance:** The additional case reaches an outcome without injecting a prepared action plan; its setup burden, manual steps and unhandled result are visible. If only fixtures are available, state that limitation and frame the value claim as demonstrated synthetic feasibility.
+**Presentation:** follow source → interpreted change → affected commitments → approved repair → independently read-back result. Show restored study time, the delegated task and the interview request's explicit counterparty status. This sequence makes the problem, audience and solution concrete under the official Potential Impact criterion.
+
+**Acceptance:** a judge can explain whose problem Dira addresses, why the commitments are connected, and how the demonstrated repair addresses the disruption. Keep the synthetic integration label alongside the demonstration.
 
 ### 3. High — prove memory affects a later plan after recovery
 
@@ -60,6 +64,6 @@ The substantial-update explanation is materially improved. [significant-update.m
 
 **Acceptance:** Record the public video URL/duration, submission confirmation or precise remaining owner step, checked public deployment identifiers and fallback behavior. Document how the bounded inference allowance is expected to cover judging or how judges can inspect recorded required-technology proof after exhaustion. Do not relabel replay as live inference or claim owner Hermes enrollment occurred.
 
-## Residual assessment
+## Submission emphasis
 
-The submission is more internally consistent and remains technically credible. Its largest scoring opportunity is to make the specific model contribution and persistent learning visible in the evidence judges will actually encounter, then demonstrate an additional audience workflow. The remaining gap is evidence of usefulness across changes, not a missing list of technologies.
+Lead with the student commitment cascade, the owner-controlled repair and the verified result. Make the model contribution and persistent correction rules easy to inspect. Use the current submission package for the public narrative and operator checklists for publishing and account tasks.

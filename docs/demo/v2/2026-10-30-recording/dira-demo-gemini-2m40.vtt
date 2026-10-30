@@ -1,0 +1,120 @@
+WEBVTT
+
+NOTE Chapter-aligned captions from the TTS script. Within-chapter cue timing is approximate.
+
+00:00:00.100 --> 00:00:03.673
+A calendar shows when you’re busy. It rarely shows which
+
+00:00:03.673 --> 00:00:07.246
+promises depend on each other. For a student balancing exams,
+
+00:00:07.246 --> 00:00:10.820
+interviews, and club responsibilities, one changed date can break the
+
+00:00:10.820 --> 00:00:14.393
+whole week. Dira connects those commitments and helps repair the
+
+00:00:14.393 --> 00:00:14.750
+consequences.
+
+00:00:15.100 --> 00:00:19.779
+Here’s a synthetic student week. The professor moves Friday’s exam
+
+00:00:19.779 --> 00:00:24.457
+to Wednesday. That leaves too little preparation time, breaks the
+
+00:00:24.457 --> 00:00:29.136
+recovery buffer before an interview, and conflicts with club work.
+
+00:00:29.136 --> 00:00:33.814
+Dira’s feasibility engine exposes all three problems. Available slack drops
+
+00:00:33.814 --> 00:00:34.750
+below zero.
+
+00:00:35.100 --> 00:00:40.380
+NVIDIA Nemotron Super, running on Nebius Token Factory, interprets the
+
+00:00:40.380 --> 00:00:45.661
+email. Ultra proposes structured repair candidates. Deterministic code checks their
+
+00:00:45.661 --> 00:00:50.941
+sources, feasibility, and policy before selecting a plan. This deliberately
+
+00:00:50.941 --> 00:00:56.222
+malicious candidate cites a nonexistent message. Dira rejects it before
+
+00:00:56.222 --> 00:00:56.750
+execution.
+
+00:00:57.100 --> 00:01:02.411
+The plan proposes rebooking the interview, moving flexible work, rebuilding
+
+00:01:02.411 --> 00:01:07.722
+study time, and delegating the club task. Delegation requires my
+
+00:01:07.722 --> 00:01:13.032
+approval. Dira pauses the entire plan here. The independent surface
+
+00:01:13.032 --> 00:01:16.750
+comparison confirms that nothing has changed yet.
+
+00:01:17.100 --> 00:01:22.694
+After I approve, Dira revalidates the plan against fresh state.
+
+00:01:22.694 --> 00:01:28.289
+The first interview slot is already taken. Rather than pretending
+
+00:01:28.289 --> 00:01:33.883
+it succeeded, Dira observes the failure and replans around another
+
+00:01:33.883 --> 00:01:39.477
+offered slot. Each action needs an independent read-back before the
+
+00:01:39.477 --> 00:01:45.072
+internal graph is updated. In this run, deterministic planning supplies
+
+00:01:45.072 --> 00:01:46.750
+the winning repair.
+
+00:01:47.100 --> 00:01:51.372
+Thirteen actions are verified, and slack returns to positive territory.
+
+00:01:51.372 --> 00:01:55.643
+Study time is restored before the exam, flexible work moves,
+
+00:01:55.643 --> 00:01:59.915
+and Maya becomes the task owner. The interview request remains
+
+00:01:59.915 --> 00:02:04.187
+explicitly marked as awaiting the counterparty. A successful request is
+
+00:02:04.187 --> 00:02:06.750
+never presented as someone else’s confirmation.
+
+00:02:07.100 --> 00:02:12.291
+Dira keeps account-specific commitments and private memory across sessions. Confirmed
+
+00:02:12.291 --> 00:02:17.482
+corrections can become reusable rules for later plans. You choose
+
+00:02:17.482 --> 00:02:22.674
+the connected tools, approval requirements, and messaging policy, and you
+
+00:02:22.674 --> 00:02:24.750
+can export your memory.
+
+00:02:25.100 --> 00:02:28.588
+The broker also blocks this forbidden destination and records the
+
+00:02:28.588 --> 00:02:32.076
+denial. These demo integrations are simulated; real Google checks are
+
+00:02:32.076 --> 00:02:35.564
+documented separately. OpenShell is not active around this hosted app.
+
+00:02:35.564 --> 00:02:39.052
+Dira’s goal is simple: help you keep the promises behind
+
+00:02:39.052 --> 00:02:39.750
+your calendar.

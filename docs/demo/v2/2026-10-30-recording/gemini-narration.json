@@ -1,0 +1,294 @@
+{
+  "provider": "Google Cloud Vertex AI",
+  "model": "gemini-2.5-flash-tts",
+  "voice": "Kore",
+  "narration": "AI-generated speech",
+  "durationSeconds": 160,
+  "inputTokens": 1551,
+  "audioOutputTokens": 4322,
+  "estimatedTtsCostUsd": 0.043995,
+  "pricingReference": "https://cloud.google.com/text-to-speech/pricing",
+  "silentMasterSha256": "dc95d3e746c62e54062d6b2c87407874552e46856e2bb692d2a28ea2ba6a8944",
+  "chapters": [
+    {
+      "index": 0,
+      "start": 0,
+      "duration": 15,
+      "title": "One changed date can break a week",
+      "text": "A calendar shows when you\u2019re busy. It rarely shows which promises depend on each other. For a student balancing exams, interviews, and club responsibilities, one changed date can break the whole week. Dira connects those commitments and helps repair the consequences.",
+      "model": "gemini-2.5-flash-tts",
+      "voice": "Kore",
+      "generatedSeconds": 18.250958,
+      "requestSeconds": 10.42,
+      "mimeType": "audio/L16;codec=pcm;rate=24000",
+      "usage": {
+        "promptTokenCount": 192,
+        "candidatesTokenCount": 456,
+        "totalTokenCount": 648,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 192
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 456
+          }
+        ]
+      },
+      "trimStartSeconds": 0.12279,
+      "trimEndSeconds": 17.68433,
+      "tempoFactor": 1.19874,
+      "speechStartSeconds": 0.1,
+      "speechEndSeconds": 14.75
+    },
+    {
+      "index": 1,
+      "start": 15,
+      "duration": 20,
+      "title": "One email exposes three conflicts",
+      "text": "Here\u2019s a synthetic student week. The professor moves Friday\u2019s exam to Wednesday. That leaves too little preparation time, breaks the recovery buffer before an interview, and conflicts with club work. Dira\u2019s feasibility engine exposes all three problems. Available slack drops below zero.",
+      "model": "gemini-2.5-flash-tts",
+      "voice": "Kore",
+      "generatedSeconds": 20.570958,
+      "requestSeconds": 10.16,
+      "mimeType": "audio/L16;codec=pcm;rate=24000",
+      "usage": {
+        "promptTokenCount": 196,
+        "candidatesTokenCount": 514,
+        "totalTokenCount": 710,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 196
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 514
+          }
+        ]
+      },
+      "trimStartSeconds": 0.13179,
+      "trimEndSeconds": 20.57096,
+      "tempoFactor": 1.04016,
+      "speechStartSeconds": 15.1,
+      "speechEndSeconds": 34.75
+    },
+    {
+      "index": 2,
+      "start": 35,
+      "duration": 22,
+      "title": "Models propose. Deterministic checks decide.",
+      "text": "NVIDIA Nemotron Super, running on Nebius Token Factory, interprets the email. Ultra proposes structured repair candidates. Deterministic code checks their sources, feasibility, and policy before selecting a plan. This deliberately malicious candidate cites a nonexistent message. Dira rejects it before execution.",
+      "model": "gemini-2.5-flash-tts",
+      "voice": "Kore",
+      "generatedSeconds": 24.610958,
+      "requestSeconds": 14.21,
+      "mimeType": "audio/L16;codec=pcm;rate=24000",
+      "usage": {
+        "promptTokenCount": 195,
+        "candidatesTokenCount": 615,
+        "totalTokenCount": 810,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 195
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 615
+          }
+        ]
+      },
+      "trimStartSeconds": 0.16354,
+      "trimEndSeconds": 24.61096,
+      "tempoFactor": 1.12921,
+      "speechStartSeconds": 35.1,
+      "speechEndSeconds": 56.75
+    },
+    {
+      "index": 3,
+      "start": 57,
+      "duration": 20,
+      "title": "The owner approves before execution",
+      "text": "The plan proposes rebooking the interview, moving flexible work, rebuilding study time, and delegating the club task. Delegation requires my approval. Dira pauses the entire plan here. The independent surface comparison confirms that nothing has changed yet.",
+      "model": "gemini-2.5-flash-tts",
+      "voice": "Kore",
+      "generatedSeconds": 20.930958,
+      "requestSeconds": 11.44,
+      "mimeType": "audio/L16;codec=pcm;rate=24000",
+      "usage": {
+        "promptTokenCount": 187,
+        "candidatesTokenCount": 523,
+        "totalTokenCount": 710,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 187
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 523
+          }
+        ]
+      },
+      "trimStartSeconds": 0.15517,
+      "trimEndSeconds": 20.93096,
+      "tempoFactor": 1.05729,
+      "speechStartSeconds": 57.1,
+      "speechEndSeconds": 76.75
+    },
+    {
+      "index": 4,
+      "start": 77,
+      "duration": 30,
+      "title": "An unavailable slot triggers recovery",
+      "text": "After I approve, Dira revalidates the plan against fresh state. The first interview slot is already taken. Rather than pretending it succeeded, Dira observes the failure and replans around another offered slot. Each action needs an independent read-back before the internal graph is updated. In this run, deterministic planning supplies the winning repair.",
+      "model": "gemini-2.5-flash-tts",
+      "voice": "Kore",
+      "generatedSeconds": 28.090958,
+      "requestSeconds": 11.48,
+      "mimeType": "audio/L16;codec=pcm;rate=24000",
+      "usage": {
+        "promptTokenCount": 208,
+        "candidatesTokenCount": 702,
+        "totalTokenCount": 910,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 208
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 702
+          }
+        ]
+      },
+      "trimStartSeconds": 0.15708,
+      "trimEndSeconds": 28.09096,
+      "tempoFactor": 0.94212,
+      "speechStartSeconds": 77.1,
+      "speechEndSeconds": 106.75
+    },
+    {
+      "index": 5,
+      "start": 107,
+      "duration": 20,
+      "title": "Thirteen verified actions. Positive slack.",
+      "text": "Thirteen actions are verified, and slack returns to positive territory. Study time is restored before the exam, flexible work moves, and Maya becomes the task owner. The interview request remains explicitly marked as awaiting the counterparty. A successful request is never presented as someone else\u2019s confirmation.",
+      "model": "gemini-2.5-flash-tts",
+      "voice": "Kore",
+      "generatedSeconds": 22.370958,
+      "requestSeconds": 14.22,
+      "mimeType": "audio/L16;codec=pcm;rate=24000",
+      "usage": {
+        "promptTokenCount": 197,
+        "candidatesTokenCount": 559,
+        "totalTokenCount": 756,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 197
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 559
+          }
+        ]
+      },
+      "trimStartSeconds": 0.12142,
+      "trimEndSeconds": 22.37096,
+      "tempoFactor": 1.13229,
+      "speechStartSeconds": 107.1,
+      "speechEndSeconds": 126.75
+    },
+    {
+      "index": 6,
+      "start": 127,
+      "duration": 18,
+      "title": "Private memory and owner-chosen controls",
+      "text": "Dira keeps account-specific commitments and private memory across sessions. Confirmed corrections can become reusable rules for later plans. You choose the connected tools, approval requirements, and messaging policy, and you can export your memory.",
+      "model": "gemini-2.5-flash-tts",
+      "voice": "Kore",
+      "generatedSeconds": 17.850958,
+      "requestSeconds": 10.18,
+      "mimeType": "audio/L16;codec=pcm;rate=24000",
+      "usage": {
+        "promptTokenCount": 184,
+        "candidatesTokenCount": 446,
+        "totalTokenCount": 630,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 184
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 446
+          }
+        ]
+      },
+      "trimStartSeconds": 0.09167,
+      "trimEndSeconds": 17.85096,
+      "tempoFactor": 1.00619,
+      "speechStartSeconds": 127.1,
+      "speechEndSeconds": 144.75
+    },
+    {
+      "index": 7,
+      "start": 145,
+      "duration": 15,
+      "title": "An audited denial \u2014 and a free judge path",
+      "text": "The broker also blocks this forbidden destination and records the denial. These demo integrations are simulated; real Google checks are documented separately. OpenShell is not active around this hosted app. Dira\u2019s goal is simple: help you keep the promises behind your calendar.",
+      "model": "gemini-2.5-flash-tts",
+      "voice": "Kore",
+      "generatedSeconds": 20.290958,
+      "requestSeconds": 11.89,
+      "mimeType": "audio/L16;codec=pcm;rate=24000",
+      "usage": {
+        "promptTokenCount": 192,
+        "candidatesTokenCount": 507,
+        "totalTokenCount": 699,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 192
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 507
+          }
+        ]
+      },
+      "trimStartSeconds": 0.14679,
+      "trimEndSeconds": 20.29096,
+      "tempoFactor": 1.37503,
+      "speechStartSeconds": 145.1,
+      "speechEndSeconds": 159.75
+    }
+  ]
+}

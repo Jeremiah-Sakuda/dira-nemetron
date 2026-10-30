@@ -1,14 +1,16 @@
 # Round 1 — impact and originality review
 
+> October 30 editorial correction: the internal Potential Impact score and aggregate mean are withdrawn. The assessment now follows the official problem, audience and demonstrated-solution criterion. Other numerical scores describe the original October 18 snapshot.
+
 Independent internal AI judge simulation, October 18, 2026. Source snapshot: `efd6a26`; deployment identifiers are those in [round-1-context.md](round-1-context.md). This is not an official judgment, an official scoring scale, or a prediction of an award. All four criteria receive equal weight.
 
 | Criterion | Internal score / 10 | Reason |
 | --- | --- | --- |
 | Technological Implementation | 7.5 | Meaningful live Super interpretation and Ultra repair contribution, unusually explicit deterministic gates, provider read-back and recovery evidence. The model corpus is small; actual Gmail evidence starts from an operator plan, and several Personal AI runtime pieces remain unactivated. |
 | Design | 6.5 | A coherent approval, correction and verification journey is described and measured. Conflicting current-state claims across the primary judge materials impair trust and comprehension. This reviewer did not directly inspect a rendered live UI. |
-| Potential Impact | 6.0 | The student cascade is specific and plausible. Demonstration establishes synthetic feasibility and controlled provider execution; it does not yet establish an unscripted user's value, repeated usefulness or reduced coordination work. |
+| Potential Impact | — | Students coordinating coursework, recruiting and team responsibilities face a specific dependency problem. The demonstrated exam-change cascade connects that problem to an approved, verified schedule repair. |
 | Quality of the Idea | 8.0 | Modeling promises and dependencies, using a model to widen feasible repair options, and compiling its intents through stored provenance are distinctive together. The strongest evidence of the model adding capability is buried beyond the default judge journey. |
-| Equal-weight mean | **7.0** | Evidence strength, not feature count, determines this assessment. |
+| Equal-weight mean | — | Withdrawn with the earlier Impact assessment; no replacement numerical judging round was run. |
 
 ## Stage One
 
@@ -34,15 +36,15 @@ Public `/try` and `/evidence` retrieval returned an internal error through the w
 
 **Acceptance:** README, Devpost draft, checklist and significant-update table agree on current hosting, Google verification scope and inactive Hermes mirror. No current claim says OpenShell surrounds Cloud Run, that Gmail inbox intake/sending was verified, or that Nebius VMs remain active. The significant-update text identifies both the inherited deterministic engine and the demonstrated new capabilities.
 
-### 2. High — demonstrate one audience value loop beyond the scripted shock
+### 2. Present the student problem and its demonstrated resolution
 
-**Evidence:** PRD “Problem and user” identifies a student leader first and a professional second, but also describes the user as anyone owing things to others. Its first goal is a stranger receiving an unscripted repair. The public story remains the seeded exam cascade. Actual [Calendar evidence](../../evidence/2026-10-16-google-calendar-live.json) proves a controlled two-event deterministic overlap repair, not live model intake. Actual [Gmail evidence](../../evidence/2026-10-16-google-gmail-live.json) explicitly begins with operator-provisioned synthetic plans and excludes inbox interpretation. Neither artifact establishes adoption, saved time or recurring benefit.
+**Audience:** a student coordinating coursework, recruiting and a team deliverable.
 
-**Why it affects judging:** A real problem is explained, but the demonstrated outcome is still chiefly engine correctness. It remains unclear how much setup and confirmation a student must perform before Dira handles an ordinary new change.
+**Problem:** a changed exam date removes preparation time, breaks an interview buffer and conflicts with work another person depends on.
 
-**Action:** Narrow the primary audience to a student coordinating coursework, recruiting and one team deliverable. Add a second independently specified synthetic source change through the normal reviewed intake and approval path, using that audience's vocabulary. Publish the required confirmations, handled/unhandled steps and resulting commitment status. If a consenting owner pilot is completed, publish only redacted aggregate observations with its duration and sample size; otherwise keep it explicitly synthetic. Treat the professional persona as a future extension until demonstrated.
+**Presentation:** follow source → interpreted change → affected commitments → approved repair → independently read-back result. Show restored study time, the delegated task and the interview request's explicit counterparty status. This sequence makes the problem, audience and solution concrete under the official Potential Impact criterion.
 
-**Acceptance:** A judge can follow source → interpreted change → affected promise → approved repair → independently observed outcome for an additional case without an operator-seeded action plan. The submission states what the user had to confirm and what remains manual. No unsupported productivity, adoption or market-size outcome is introduced.
+**Acceptance:** a judge can explain whose problem Dira addresses, why the commitments are connected, and how the demonstrated repair addresses the disruption. Keep the synthetic integration label alongside the demonstration.
 
 ### 3. High — put the useful Ultra contribution into the judge journey
 
@@ -72,6 +74,6 @@ Public `/try` and `/evidence` retrieval returned an internal error through the w
 
 **Acceptance:** Public video URL, duration, final submission confirmation or exact remaining owner action, unauthenticated demo/evidence access evidence, and an explicit plan for inference exhaustion are recorded. The video labels simulated actions and isolated sandbox evidence and includes the audience outcome, selected Ultra-only repair and later rule reuse.
 
-## Evidence limits
+## Submission emphasis
 
-The strong core and transparent failure reporting deserve credit. The October 13 corpus and deployed synthetic repair are small measured examples, not broad reliability or user-impact studies. The October 16 actual-provider checks establish specific adapter and approval behavior, not a complete Gmail-driven autonomous assistant. Raising Impact requires a more convincing demonstrated user workflow, not invented usage statistics or a larger feature list.
+Lead with the student commitment cascade, the owner-controlled repair and the verified result. Make the model contribution and persistent correction rules easy to inspect. Use the current submission package for the public narrative and operator checklists for publishing and account tasks.

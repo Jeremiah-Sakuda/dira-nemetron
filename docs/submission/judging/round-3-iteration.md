@@ -1,6 +1,6 @@
 # Iteration after round 3 — October 18, 2026
 
-Final panel mean **7.46/10** before this implementation pass: engineering 7.375, product 7.625, impact 7.375. This completes the requested third judge→iteration cycle. There is no invented fourth score or assumption that fixes automatically raise scores.
+Engineering and product changes following internal review round 3. The October 30 editorial correction withdraws the earlier internal Impact score and aggregate mean; see [the review summary](summary.md).
 
 ## Changes from final review
 
@@ -15,9 +15,9 @@ Final panel mean **7.46/10** before this implementation pass: engineering 7.375,
 
 GitHub CI on preceding iteration `04520e1` passed all ten jobs ([39172075199](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/runs/39172075199)). Final-snapshot CI/deployment/browser results will be added after publication. Iteration2 production is frontend `dpl_67wNcPpinmA2emz7FWyptXkA5XQ1`, backend `00016-s9r`, full dependency image `sha256:8c1a4b0496590e0b7b768cc542d65de9cdbc0542ac4b37d34fde601050df2c93`.
 
-## Honest residuals
+## Operator follow-up
 
-Impact remains limited by controlled fixtures and absence of a sustained user pilot. The recovered ASK_FIRST proof measures a policy verdict, not owner Hermes operation. Google publishing/reconnect remains owner-dependent. The local official Hermes gateway did not pass its bridge probe; no owner token/turn or active immutable Skills mirror is claimed. Revised footage, public YouTube and final Devpost confirmation are tracked separately until completed. Future free hosting/live inference through December15 is an operating obligation, not observed uptime.
+The recovered ASK_FIRST proof measures a policy verdict, not owner Hermes operation. Google publishing/reconnect remains owner-dependent. The local official Hermes gateway did not pass its bridge probe; no owner token/turn or active immutable Skills mirror is claimed. Revised footage, public YouTube and final Devpost confirmation are tracked separately until completed. Future free hosting/live inference through December15 is an operating obligation, not observed uptime.
 
 ## Final deployed walkthrough follow-up
 
@@ -30,7 +30,7 @@ The final follow-up rejects that model shape in the compiler, denies an unmatche
 
 The corrected public walkthrough passed on backend `00018-w55` / source `070e1df`, frontend `dpl_Azc7sKTGz5tvdxaXJ2tZfyW3769x` / source `8165d69`. Zero simulated calendar/message effects preceded authenticated approval. The stale first booking failed409; the later offered time was booked/read back, all13 actions verified, final slack78min. A subsequent hostile email produced NO_ACTION_NEEDED with unchanged independent surface reads. The application egress probe returned an audited403. [Exact model/fallback and deployment evidence](../../evidence/2026-10-18-final-judge-path.json).
 
-CI [39172973527](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/runs/39172973527) passed all ten jobs on that follow-up. The new local 2:26 narrated video/captions and upload-ready materials are complete; public YouTube/Devpost publication awaits unlocked signed-in Chrome and any action-time owner/security/legal steps. Google project publishing still needs the owner's decision. No owner Hermes activation or sustained impact result is claimed.
+CI [39172973527](https://github.com/Jeremiah-Sakuda/dira-nemetron/actions/runs/39172973527) passed all ten jobs on that follow-up. The new local 2:26 narrated video/captions and upload-ready materials are complete; public YouTube/Devpost publication awaits unlocked signed-in Chrome and any action-time owner/security/legal steps. Google project publishing still needs the owner's decision. The optional owner Hermes companion has separate runtime configuration.
 
 Hosting follow-up: Vercel's default selected Node24 for the final package build despite CI/backend using Node22. Root/web engines and lock metadata are now pinned to `22.x`; dry-run clean-install consistency and web typechecking passed. This prevents an unreviewed major runtime change during judging. The revised video uses the settled two-run Today history; narration/captions remain2:26.
 

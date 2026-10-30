@@ -1,0 +1,32 @@
+{
+  "programs": [],
+  "stream_groups": [],
+  "streams": [
+    {
+      "codec_name": "h264",
+      "codec_type": "video",
+      "width": 1920,
+      "height": 1080,
+      "r_frame_rate": "30/1",
+      "duration": "160.000000"
+    },
+    {
+      "codec_name": "aac",
+      "codec_type": "audio",
+      "sample_rate": "48000",
+      "channels": 2,
+      "r_frame_rate": "0/0",
+      "duration": "160.000000"
+    }
+  ],
+  "format": {
+    "duration": "160.000000",
+    "size": "9185785"
+  },
+  "fullDecode": "passed",
+  "silentMasterVideoPacketsUnchanged": true,
+  "videoPacketHash": "SHA256=aa272c03016854c50b750f5a4a67d57ba5680fb126a90e5cf6c10b8eb0ee77c3",
+  "audioLoudnessLufs": "-16.67",
+  "audioTruePeakDbtp": "-4.23",
+  "sha256": "5a45943c3778e683af9c474a0dab696c772501270a32bdc06cb503a26e4cbba1"
+}

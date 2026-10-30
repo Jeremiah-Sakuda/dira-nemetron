@@ -1,0 +1,52 @@
+[
+  {
+    "file": "01-the-repaired-week.jpg",
+    "caption": "The repaired week: approved changes, independent read-back and positive slack.",
+    "sourceVideo": "docs/demo/v2/2026-10-30-recording/dira-demo-silent-2m40.mp4",
+    "sourceSeconds": 111,
+    "width": 1920,
+    "height": 1280,
+    "bytes": 181986,
+    "preparation": "Frame extracted from actual Chrome recording; padding added for 3:2 canvas. Existing recording labels retained."
+  },
+  {
+    "file": "02-one-email-three-conflicts.jpg",
+    "caption": "One exam-change email exposes three connected conflicts.",
+    "sourceVideo": "docs/demo/v2/2026-10-30-recording/dira-demo-silent-2m40.mp4",
+    "sourceSeconds": 30,
+    "width": 1920,
+    "height": 1280,
+    "bytes": 193927,
+    "preparation": "Frame extracted from actual Chrome recording; padding added for 3:2 canvas. Existing recording labels retained."
+  },
+  {
+    "file": "03-approval-before-action.jpg",
+    "caption": "Dira pauses the plan for owner approval before execution.",
+    "sourceVideo": "docs/demo/v2/2026-10-30-recording/dira-demo-silent-2m40.mp4",
+    "sourceSeconds": 64,
+    "width": 1920,
+    "height": 1280,
+    "bytes": 168260,
+    "preparation": "Frame extracted from actual Chrome recording; padding added for 3:2 canvas. Existing recording labels retained."
+  },
+  {
+    "file": "04-nemotron-reasoning.jpg",
+    "caption": "Nemotron Super and Ultra run through Nebius Token Factory; deterministic gates validate proposals.",
+    "sourceVideo": "docs/demo/v2/2026-10-30-recording/dira-demo-silent-2m40.mp4",
+    "sourceSeconds": 50,
+    "width": 1920,
+    "height": 1280,
+    "bytes": 236790,
+    "preparation": "Frame extracted from actual Chrome recording; padding added for 3:2 canvas. Existing recording labels retained."
+  },
+  {
+    "file": "05-owner-controls.jpg",
+    "caption": "Owner-chosen approval requirements and Calendar/Gmail source controls.",
+    "sourceVideo": "docs/demo/v2/2026-10-30-recording/dira-demo-silent-2m40.mp4",
+    "sourceSeconds": 142,
+    "width": 1920,
+    "height": 1280,
+    "bytes": 172472,
+    "preparation": "Frame extracted from actual Chrome recording; padding added for 3:2 canvas. Existing recording labels retained."
+  }
+]
